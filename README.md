@@ -15,8 +15,20 @@ Python 基础 → FastAPI 接口 → 调用 LLM → 保存代码 → 写学习�
 ## 本周入口
 
 - [查看第 1 周学习计划](week-01/README.md)
+- [环境与依赖安装说明](week-01/环境与依赖.md)
 - 每天完成一个可提交成果，不追求一次学完全部知识。
 - 本周验收：能够独立运行一个 FastAPI 接口，并通过接口调用一次 LLM。
+
+## 环境准备
+
+依赖统一写在 [`requirements.txt`](requirements.txt)，用 `uv` 安装（`.venv` 里没有 pip）：
+
+```bash
+.venv\Scripts\activate
+uv pip install -r requirements.txt
+```
+
+调用 LLM 前，需在项目根目录创建 `.env`（参考 [`.env.example`](.env.example)）并填入 `DEEPSEEK_API_KEY`。更多说明见 [环境与依赖安装说明](week-01/环境与依赖.md)。
 
 ## 仓库使用方法
 

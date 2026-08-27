@@ -1,10 +1,11 @@
 import os
+
 from database import init_db
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
 from openai import AsyncOpenAI, OpenAIError
 from openai.types.chat import ChatCompletionMessageParam
+from pydantic import BaseModel
 
 load_dotenv()
 

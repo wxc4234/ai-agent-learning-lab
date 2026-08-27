@@ -1,4 +1,5 @@
 import json
+
 from day2 import analyze_messages
 
 

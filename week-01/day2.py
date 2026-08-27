@@ -1,7 +1,8 @@
 import json
+
 # user_content = [
 #     {"role": "user", "content": "你好"},
-#     {"role": "assitant", "content": "有什么我能帮助你的"},
+#     {"role": "assistant", "content": "有什么我能帮助你的"},
 #     {"role": "user", "content": "什么是agent"}
 # ]
 
@@ -62,7 +63,7 @@ def analyze_messages(messages):
         "invalid_count": invalid_count,
         "longest_user_message": longest_user_message,
     }
-import json
+
 
 
 def save_messages(messages, filename):
