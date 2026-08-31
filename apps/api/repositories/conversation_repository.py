@@ -1,10 +1,15 @@
-import sqlite3
-from pathlib import Path
+"""会话消息的 SQLite 持久化实现。"""
 
-DB_PATH = Path(__file__).parent / "chat.db"
+import sqlite3
+
+from config import APP_DIR
+
+# 数据文件属于应用目录，而非当前模块目录；移动 Repository 文件也不会丢失历史数据。
+DB_PATH = APP_DIR / "chat.db"
 
 
 def init_db():
+    """在服务启动时幂等创建消息表，新电脑首次运行也可直接启动。"""
     with sqlite3.connect(DB_PATH) as connection:
         connection.execute("""
             CREATE TABLE IF NOT EXISTS messages (
@@ -23,6 +28,7 @@ def save_conversation_turn(
     user_content: str,
     assistant_content: str,
 ):
+    """用一次事务连续保存用户消息和助手回复，避免只写入半轮对话。"""
     with sqlite3.connect(DB_PATH) as connection:
         connection.execute(
             """
@@ -44,6 +50,7 @@ def save_conversation_turn(
 
 
 def load_conversation(session_id: str) -> list[dict[str, str]]:
+    """按写入顺序恢复会话，供聊天 Service 重新构建模型上下文。"""
     with sqlite3.connect(DB_PATH) as connection:
         cursor = connection.execute(
             """
@@ -52,6 +59,7 @@ def load_conversation(session_id: str) -> list[dict[str, str]]:
             WHERE session_id = ?
             ORDER BY id ASC
             """,
+            # 参数化查询避免把用户输入拼进 SQL，防止注入并正确处理特殊字符。
             (session_id,),
         )
         rows = cursor.fetchall()

@@ -1,0 +1,28 @@
+# 跨平台本地数据库环境：macOS、Windows 和 Linux 都使用同一镜像与版本。
+name: ai-agent-learning-lab
+
+services:
+  postgres:
+    # pgvector 在 PostgreSQL 基础上增加向量检索能力，后续 RAG 会直接使用。
+    image: pgvector/pgvector:0.8.6-pg17-bookworm
+    container_name: ai-agent-postgres
+    environment:
+      # 仅用于本地学习环境；部署时会改为安全的环境变量或 Secret 管理。
+      POSTGRES_USER: agent_app
+      POSTGRES_PASSWORD: agent_local_password
+      POSTGRES_DB: agent_lab
+    ports:
+      # 让 FastAPI 可以通过 localhost:5432 连接容器内的 PostgreSQL。
+      - "5432:5432"
+    volumes:
+      # 命名 Volume 独立于容器生命周期，重启或重建容器不会丢失数据。
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      # 服务真正可连接后才标记为健康，后续 API 启动可以依赖这个状态。
+      test: ["CMD-SHELL", "pg_isready -U agent_app -d agent_lab"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  postgres_data:

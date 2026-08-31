@@ -1,4 +1,4 @@
-# 环境与依赖（第 1 周）
+# 环境与依赖
 
 这份文档专门说明：**需要安装什么、如何选择 Python 解释器、怎样启动项目，以及出错时如何排查**。
 
@@ -9,7 +9,7 @@
 - VS Code（推荐）
 - DeepSeek API Key（调用 `/chat` 时需要）
 
-本项目是 Python 项目，**不需要 pnpm 或 Node.js**。
+当前 `apps/api` 是 Python 项目，运行它**不需要 pnpm 或 Node.js**。第 3 周开始开发 `apps/web` 中的 Next.js Agent 前端时才会使用 Node.js 和 pnpm，届时会补充前端环境说明。
 
 ### 第三方依赖
 
@@ -17,6 +17,7 @@
 |---|---|
 | `fastapi` | 编写 Web API |
 | `pydantic` | 校验请求和响应数据 |
+| `pydantic-settings` | 统一读取和校验环境配置 |
 | `python-dotenv` | 从 `.env` 读取环境变量 |
 | `openai` | 通过兼容接口调用 DeepSeek |
 | `uvicorn` | 启动 FastAPI 应用 |
@@ -128,13 +129,13 @@ Windows PowerShell：
 然后进入接口目录：
 
 ```bash
-cd week-01/fastapi_app
+cd apps/api
 ```
 
 ### 启动 AI 对话接口
 
 ```bash
-python -m uvicorn chat_api:app --reload
+python -m uvicorn main:app --reload
 ```
 
 打开 Swagger：<http://127.0.0.1:8000/docs>。
@@ -156,7 +157,7 @@ python -m uvicorn chat_api:app --reload
 python -m uvicorn main:app --reload
 ```
 
-`chat_api:app` 的意思是：从 `chat_api.py` 中找到名为 `app` 的 FastAPI 对象。`main:app` 同理。
+`main:app` 的意思是：从 `main.py` 中找到名为 `app` 的 FastAPI 对象。
 
 推荐使用 `python -m uvicorn`，这样可以明确使用当前虚拟环境中的 Python，减少调用到错误解释器的情况。
 

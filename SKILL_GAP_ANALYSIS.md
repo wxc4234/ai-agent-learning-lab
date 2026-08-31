@@ -1,175 +1,236 @@
-# Agent 工程师技能差距分析（路线图补强）
+# AI Agent 应用开发岗位与技能校准
 
-更新时间：2026-08-28（Asia/Shanghai）
+目标方向：前端 / 全栈产品工程
+调研日期：2026-08-31（Asia/Shanghai）
 
-这份文档回答一个问题：**现有 `LEARNING_HANDOFF.md` 的学习路径，和 2026 年真正的 Agent 应用开发工程师所需技能相比，缺了什么、要不要补。**
+这份文档只解释：**目标岗位是什么、市场为什么需要这些能力、路线为什么这样安排。**
 
-它是一份「补强建议」，不是「推翻重来」。现有"先手写理解、再上框架"的节奏是对的，本文只负责把缺的现代核心技术补进去。
+具体学习步骤统一查看 [LEARNING_PLAN.md](LEARNING_PLAN.md)。
 
----
+## 1. 目标岗位修正
 
-## 1. 一句话结论
+目标不是通用的“大模型应用开发工程师”，而是：
 
-现有路径**地基很扎实**（Python / FastAPI / LLM 调用 / Tool Calling / RAG），但**重心偏"模型 + 单次工具调用"，缺少 2026 年 agent 工程真正值钱的那一半**：Agent 运行时、MCP、上下文工程、可观测性、评测、多 Agent 和沙箱安全。
+- AI Agent 前端工程师。
+- AI Agent 应用开发工程师（偏前端）。
+- Agent 产品工程师。
+- AI Agent 全栈应用工程师。
 
-其中**向量数据库其实已经在路线里了**（第 9 节 C「RAG」），只是写得太泛，需要具体化。真正完全缺失的是下面第 4 节表里那几项。
+它与纯大模型岗位的区别：
 
----
-
-## 2. 参考的两个开源项目
-
-### 2.1 OpenAI Codex / Codex Harness
-
-- 仓库：`github.com/openai/codex`（Apache-2.0）
-- CLI 前端 2025 年开源，底层 **Codex Harness（agent 运行时）** 2026-08-19 完整开源
-- 核心是 Rust 写的 `codex-rs`，值得学习的是它的运行时能力：
-
-| 能力 | 说明 |
+| 方向 | 主要工作 |
 |---|---|
-| **Agent loop** | 拼 prompt（system 规则 + 工具信息 + MCP 工具列表 + AGENTS.md + 环境）→ LLM 推理出事件流（工具调用 + reasoning）→ 内部迭代直到"完成" |
-| **Prompt caching** | 把 O(n²) 成本降到 O(n)，省成本、降延迟 |
-| **Compaction** | 超 token 限制时把历史**总结成摘要**，而不是硬截断 |
-| **Retained reasoning** | 跨工具调用保留推理状态，减少重复推理 token |
-| **沙箱** | bubblewrap / Seatbelt / Windows 沙箱 + WFP 防火墙，4 档沙箱模式 |
-| **MCP** | 一等公民：codex-mcp / rmcp-client / mcp-server |
-| **Hooks** | session_start / pre_tool_use / post_tool_use 等生命周期钩子 |
-| **多 Agent** | spawn_agent / send_input / wait_agent / close_agent |
-| **持久记忆** | 两阶段（抽取 + 整合）写入 `memory_summary.md`，下次会话注入 |
+| 大模型算法 | 训练、微调、推理优化、模型效果 |
+| 通用大模型应用后端 | Python 服务、RAG、模型网关、平台能力 |
+| **Agent 前端/产品工程** | 把 Agent 的计划、工具、状态、引用、审批和错误变成可用产品 |
+| **Agent 全栈应用** | 同时完成 Agent 前端、API、状态、工具和数据闭环 |
 
-### 2.2 DeepSeek Harness（DSH）
+你的前端经验应该成为差异化优势，而不是被 Python 学习完全替代。
 
-- DeepSeek 的第一款 agent 框架，理念是**"一切皆插件"（everything is a plugin）**，被称作"agent 界的 Android"
-- 它的核心主张一句话概括：
+## 2. 招聘调研方法
 
-> **Agent = Model + Harness（运行时）**
+本次分两层调研：
 
-模型只是大脑，harness 才是把模型变成可用 agent 的那一半——负责 loop、工具编排、MCP、插件、记忆、评测。
+1. 20 个国内外 Agent/LLM/RAG 广义岗位，用于确认 Agent 工程的后端和生产化底座。
+2. BOSS 直聘的 Agent 前端、Agent 应用和 Agent 全栈岗位，用于校准你的准确投递方向。
 
----
+这些是定向样本，不是完整市场普查；岗位下线后链接可能失效。
 
-## 3. 核心洞察
+## 3. BOSS 目标岗位的直接信号
 
-现有路径一直在教"模型 + 单次 tool call"的底层原理，这是必要的地基。但 Codex 和 DSH 揭示的现代 agent 工程，重心在：
+### 字节跳动：AI Agent 前端开发工程师
 
-1. **把 loop 抽象成可复用的「agent 运行时」**，而不是每次都手写一遍
-2. **围绕这个运行时的周边设施**：MCP 接工具、上下文工程控成本、可观测性还原轨迹、评测验证质量、沙箱保安全
+公开岗位强调：
 
-所以补强的方向不是"换框架"，而是**把手写的 tool loop 逐步升华成一个你自己拥有的最小 agent runtime，再补上周边设施**。
+- AI Agent 研发平台前端。
+- Web、桌面端、IDE 插件等多终端。
+- React/Vue、Koa、通用组件、前端架构和研发效能。
+- 理解 Agent 产品与应用场景。
 
----
+### 阿里巴巴：前端开发工程师－AI Agent 方向
 
-## 4. 差距分析表（按优先级）
+公开岗位强调：
 
-| 优先级 | 缺的能力 | 为什么是核心 | 现有路径状态 |
-|---|---|---|---|
-| 🔴 1 | **MCP（模型上下文协议）** | 给 agent 接外部工具/数据源的标准方式，Codex 和 DSH 都是一等公民 | 完全没提 |
-| 🔴 2 | **Agent 运行时 / harness 心智** | "Agent = Model + Harness"，把 loop 抽象成可复用 runtime（统一 loop + 停止条件 + 重试） | 有"抽取通用 execute_tool"，但没升华成 runtime |
-| 🔴 3 | **上下文工程** | 不止滑动窗口，还有 compaction 摘要、长期记忆（抽取+整合）、prompt caching | 只有"滑动窗口 + SQLite 存消息"，无记忆整合 |
-| 🟠 4 | **可观测性 / tracing** | 用 OpenTelemetry + 轨迹日志还原"模型每步看到啥、做了啥" | 只有"日志"两个字 |
-| 🟠 5 | **评测（LLM-as-judge）** | 用 LLM 当评委 + 轨迹评测 + benchmark harness 思路 | "评测集"很弱 |
-| 🟠 6 | **多 Agent 模式** | supervisor / 子 agent 分发（Codex 的 spawn_agent、DSH 的 agent-teams） | 没提 |
-| 🟡 7 | **安全沙箱执行** | 模型生成的代码/命令要在沙箱里跑 | 只有"工具白名单 + 不用 eval" |
-| 🟡 8 | **编排框架** | 最终要落到 LangGraph / OpenAI Agents SDK / DSH | 明确"先不上框架"（哲学对，但缺终点） |
-| 🟡 9 | **向量数据库具体化** | 具体到 Chroma/Qdrant/pgvector + hybrid search + rerank | 已提但太泛 |
-| 🟢 10 | **结构化输出** | 用 Pydantic + JSON mode 让模型稳定返回 JSON（前端转岗尤其需要） | 用 Pydantic 做请求校验，没强调输出结构化 |
+- React、TypeScript、状态管理、SSR 和中大型应用架构。
+- REST/GraphQL 集成和独立完成前后端模块。
+- 将复杂 AI 能力转化为易用的产品体验。
+- 高性能、高并发、鲁棒性和生产级 Agent 平台。
 
----
+### Shopee / MiniMax 等 Agent 前端岗位
 
-## 5. 各缺项速查（是什么 → 为什么 → 怎么学）
+公开岗位描述中直接出现：
 
-### 🔴 MCP（模型上下文协议）
+- 对话、任务执行、工具调用等 Agent 交互界面。
+- streaming 流式响应和 Agent 前端交互层。
+- AI Agent / AI App 的跨端产品开发。
 
-- **是什么**：一套标准协议，让 agent 用统一方式连接外部工具、数据源、服务。一个 MCP server 暴露若干 tool，任何 MCP client 都能调。
-- **为什么**：没有它，每接一个新工具都要单独写胶水代码；有了它，工具"即插即用"，是 2026 年 agent 生态的事实标准。
-- **怎么学**：先用 FastAPI/官方 SDK 写一个最小 MCP server（暴露 1～2 个工具），再用 client 连它，理解 `list_tools` / `call_tool` 语义。
+### Agent 全栈岗位
 
-### 🔴 Agent 运行时 / harness 心智
+公开岗位中还出现：
 
-- **是什么**：一个可复用的循环——拼 prompt → LLM 推理 → 执行工具 → 结果回填 → 迭代，直到满足停止条件（拿到最终答案 / 达到最大轮次）。
-- **为什么**：你现在手写的 tool loop 就是它的雏形。抽象成 runtime 后，多工具、多轮、多 agent 都能复用同一套逻辑。
-- **怎么学**：把 `chat_api.py` 里的工具循环抽成一个 `run_agent(messages, tools)`，加最大循环次数、错误重试、停止条件。
+- TypeScript 全栈 Agent 开发。
+- Agent 工作流、MCP、Skills、数据库和系统集成。
+- 运行日志、任务状态、错误恢复、评测和可靠性。
 
-### 🔴 上下文工程
+结论：**前端不是只负责聊天框，而是负责把非确定性的 Agent 执行过程变成透明、可控制、可恢复的产品体验。**
 
-- **是什么**：管理喂给模型的上下文，包括三件事：
-  - **compaction**：超限时把历史**总结成摘要**（不是硬截断）
-  - **长期记忆**：两阶段（抽取事实 + 整合去重）写入记忆文件，下次会话注入
-  - **prompt caching**：命中缓存的重复前缀，省成本、降延迟
-- **为什么**：上下文是 agent 最大的成本和最大的失忆来源，工程化的上下文管理直接决定质量和成本。
-- **怎么学**：先做"超 N 轮时用模型把旧对话总结成摘要替换"，再做"把关键事实持久化成记忆"，最后了解 prompt caching 的机制。
+## 4. 广义 Agent 岗位的工程底座
 
-### 🟠 可观测性 / tracing
+此前 20 个广义岗位样本的人工标注结果：
 
-- **是什么**：给 agent 的每一次工具调用、每一次 LLM 推理打上 trace，能还原"模型每一步看到什么、做了什么、花了多久"。
-- **为什么**：agent 出问题时，没有轨迹日志就只能靠猜。DSH 的评测和 AgentLoop 都强调 trajectory（轨迹）日志的价值。
-- **怎么学**：先用结构化日志记录（session_id、工具名、耗时、成功/失败），进阶接 OpenTelemetry 或 Langfuse/LangSmith。
+| 能力标签 | 命中岗位数 | 对本路线的意义 |
+|---|---:|---|
+| Agent、工具调用或工作流 | 20 / 20 | 必须理解 Agent 执行链路 |
+| Python | 19 / 20 | 偏前端也需要能与 Python Agent 服务协作 |
+| LangGraph/LangChain 等框架 | 17 / 20 | 至少掌握一个主框架 |
+| RAG、检索或向量数据库 | 16 / 20 | 知识型 Agent 是常见业务场景 |
+| Python Web 框架 | 15 / 20 | 全栈作品需要真实 Agent 后端 |
+| SQL、Redis、队列或向量存储 | 14 / 20 | Agent 有会话、任务和运行状态 |
+| 评测、可观测性、可靠性或安全 | 14 / 20 | Agent 产品必须可调试和可控制 |
+| Docker、云、CI/CD 或 Linux | 10 / 20 | 作品需要能部署和复现 |
+| MCP | 9 / 20 | 标准工具接入能力正在进入岗位要求 |
 
-### 🟠 评测（LLM-as-judge）
+这张表不表示目标要转成纯 Python 后端，而是说明偏前端 Agent 工程师也不能只会 React 页面。
 
-- **是什么**：用另一个 LLM 当评委，给 agent 的回答打分；或用轨迹评测判断"模型有没有走对步骤"；对标 benchmark harness（terminal-bench / dsh-eval / SWE-bench 思路）。
-- **为什么**：手工测试几个例子不叫评测，无法知道改动是变好还是变坏。
-- **怎么学**：先做"RAG 问答评测集 + LLM 打分"，再做"固定用例集跑 agent，对比轨迹和最终答案"。
+## 5. 最终能力模型
 
-### 🟠 多 Agent 模式
-
-- **是什么**：一个 supervisor 把任务拆给多个子 agent 分别执行，再汇总（Codex 的 spawn_agent、DSH 的 agent-teams）。
-- **为什么**：复杂任务（一个做检索、一个写代码、一个做校验）单 agent 串行效率低、易出错。
-- **怎么学**：先理解"子 agent = 一个独立的 agent runtime + 独立上下文"，再用框架的 spawn/subagent 能力做一个小 demo。
-
-### 🟡 安全沙箱执行
-
-- **是什么**：模型生成的代码或命令在受限环境（Docker / bubblewrap / 受限 shell）里执行，无法碰宿主文件系统、网络和密钥。
-- **为什么**：只要 agent 能执行代码，就存在注入/越权风险。工具白名单只能管"调哪个函数"，管不了"函数内部干了啥"。
-- **怎么学**：理解沙箱模型；做"代码执行类工具"时用 Docker 容器隔离执行。
-
-### 🟡 编排框架
-
-- **是什么**：LangGraph、OpenAI Agents SDK、DeepSeek Harness 这类把 agent 流程图形化/声明式编排的框架。
-- **为什么**：手写 loop 能理解原理，但生产项目用框架能省大量样板代码、自带观测和重试。
-- **怎么学**：先手写理解底层（你正在做），再挑一个框架（建议 LangGraph 或 OpenAI Agents SDK）重构作品集项目。
-
-### 🟡 向量数据库具体化
-
-- **是什么**：把"向量数据库"落到具体技术——Chroma（轻量）或 Qdrant（生产级）或 pgvector（复用 PostgreSQL）。
-- **为什么**：泛泛写"向量数据库"学不深；具体到某一家才能学会 hybrid search（BM25 + 向量）和 rerank（交叉编码器重排）。
-- **怎么学**：选一个（建议先 Chroma 入门、再 Qdrant），做"向量检索 + BM25 混合 + rerank"的完整链路。
-
-### 🟢 结构化输出
-
-- **是什么**：用 Pydantic 定义输出 schema + JSON mode，让模型稳定返回结构化 JSON，而不是自由文本。
-- **为什么**：前端转岗尤其需要——agent 返回结构化的数据才能被前端/下游直接消费。
-- **怎么学**：给接口加一个 `response_model`，让 agent 的最终答案也走结构化输出校验。
-
----
-
-## 6. 建议的增补路线（映射到现有 12 周）
-
-不推翻现有节奏，只在关键节点插入：
-
-| 时间 | 现有主线 | 增补内容 |
+| 优先级 | 能力 | 达到什么程度 |
 |---|---|---|
-| 第 1～2 周 | Python、FastAPI、LLM、SQLite、Tool Calling | 心里把手写 loop 命名为"最小 agent runtime"（🔴2 的起点） |
-| 第 3～4 周 | RAG、向量检索、引用和评测 | 向量数据库具体化（Chroma/Qdrant）+ hybrid search + rerank（🟡9）；补结构化输出（🟢10） |
-| 第 5～6 周 | **新增**：上下文工程 | compaction 摘要、长期记忆（抽取+整合）、prompt caching（🔴3） |
-| 第 5～6 周 | **新增**：观测 + 评测 | OpenTelemetry/Langfuse 追踪 + LLM-as-judge 评测（🟠4、🟠5） |
-| 第 7～8 周 | 工作流、状态管理、多工具、测试、日志 | 引入 MCP（写一个 MCP server）（🔴1）；多 Agent 模式（🟠6）；安全沙箱（🟡7） |
-| 第 9～10 周 | 部署、性能、安全和演示 | 落一个编排框架（LangGraph 或 OpenAI Agents SDK）（🟡8） |
-| 第 11～12 周 | 简历、项目表达和面试准备 | 保留 |
+| 必备 | React、TypeScript、Next.js | 能独立设计并实现生产级 Agent 界面 |
+| 必备 | Streaming、SSE、WebSocket | 能处理增量事件、停止、重连和恢复 |
+| 必备 | Agent UI 状态模型 | 能展示 plan、tool、approval、result 和 error |
+| 必备 | Tool Calling、结构化输出 | 能从模型事件转换到类型安全的前端组件 |
+| 必备 | Python、FastAPI | 能独立完成 Agent API，而不只是等待后端提供接口 |
+| 必备 | PostgreSQL、Redis | 能持久化会话、任务、工具事件并处理缓存状态 |
+| 重要 | LangGraph、MCP | 能实现状态工作流、工具接入和人工确认 |
+| 重要 | RAG、pgvector | 能实现带引用和权限的知识型 Agent |
+| 重要 | 测试、Trace、评测 | 能复现和定位 Agent 的非确定性问题 |
+| 加分 | 桌面端、IDE 插件、可视化编排 | 对应字节等 Agent 开发平台岗位 |
+| 暂缓 | 微调、CUDA、模型训练 | 与当前目标岗位投入产出不匹配 |
 
----
+建议学习时间分配：前端产品 35%，Agent/RAG 30%，Python 后端 25%，部署安全与求职 10%。
 
-## 7. 与 LEARNING_HANDOFF.md 的关系
+## 6. 开源项目如何影响路线
 
-- 本文件**只增补路线图，不改变当前断点**。
-- 当前断点仍是：**无参数时间工具已完成；下一课是带参数工具 `add_numbers`**。
-- "先手动理解、再上框架"的哲学保持不变，MCP / 框架 / 多 Agent 都排在打好 Tool Calling 地基之后。
+| 项目 | 借鉴内容 | 不照搬什么 |
+|---|---|---|
+| [OpenAI Codex](https://github.com/openai/codex) | 跨平台工具执行、审批、沙箱、MCP、会话、Compaction 和事件流 | Rust 工程和完整系统级沙箱 |
+| [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) | Agent Loop、Session Event Log、Tool Registry、插件化执行管线 | 快速变化的大型插件体系 |
+| [LangGraph](https://github.com/langchain-ai/langgraph) | 状态图、Checkpoint、恢复、Memory 和 Human-in-the-loop | 只背框架 API 而不理解状态 |
+| [Vercel AI SDK](https://github.com/vercel/ai) | TypeScript 流式 UI、工具状态和结构化数据 | 把所有 Agent 后端都塞进 Next.js |
+| [Mastra](https://github.com/mastra-ai/mastra) | TypeScript Agent、Workflow、HITL 和 Evals | 与 LangGraph 同时深入两套框架 |
+| [Dify](https://github.com/langgenius/dify) | 前后端、数据库、Redis、Worker 和可观测性的完整产品结构 | 复制整个平台 |
+| [RAGFlow](https://github.com/infiniflow/ragflow) | 文档、对象存储、检索、数据库和任务系统 | 一开始就部署完整重型架构 |
+| [MCP Python SDK](https://github.com/modelcontextprotocol/python-sdk) | 标准 Tool、Resource、Prompt 和传输协议 | 为每个工具继续写私有协议 |
 
----
+### 在作品集中的具体映射
 
-## 8. 参考来源
+```text
+Codex / DSH 的 Event 与 Session
+→ PostgreSQL 保存 run_events
 
-- [openai/codex](https://github.com/openai/codex)
-- [OpenAI Codex 源码深度研究](https://github.com/xiaonancs/codex-source-analysis)
-- [Codex Harness 全面开源：三层集成接口解析](https://news.qiniu.com/archives/1787276125198)
-- [Agent = Model + Harness：DeepSeek Harness 开源后如何评测 Agent 运行时](https://xie.infoq.cn/article/a939826a995decfba071a0137)
-- [DeepSeek Harness: más allá de las 100.000 estrellas](https://wavect.io/es/blog/deepseek-harness-enterprise-review/)
+Tool Registry 与执行管线
+→ Schema → 权限 → 执行 → 超时/重试 → Trace
+
+模型和工具的流式事件
+→ Next.js Agent 时间线与状态卡片
+
+Approval / Sandbox
+→ 高风险操作批准、修改、拒绝和隔离执行
+
+MCP / Skills
+→ 标准化连接外部工具
+```
+
+pgvector 不是从 Codex 或 DeepSeek Harness 照搬的。它用于 RAG 知识检索；Harness 项目主要影响 Agent Runtime、工具执行和会话架构。
+
+## 7. 最终技术选型
+
+- 产品前端：TypeScript + React + Next.js + Vercel AI SDK。
+- Agent 后端：Python + FastAPI + Pydantic。
+- 状态与数据：PostgreSQL + SQLAlchemy + Alembic + Redis。
+- 向量检索：PostgreSQL + pgvector；Qdrant 只作为后续进阶。
+- Agent 编排：先手写最小循环，再使用 LangGraph。
+- 工具协议：MCP Python SDK。
+- 生产化：pytest + Docker Compose + OpenTelemetry/Langfuse + CI/CD。
+
+跨平台统一使用 Docker Compose。macOS 与 Windows 运行相同镜像、迁移和命令；本地数据分别保存，需要共享时再连接云数据库。
+
+## 8. BOSS 目标岗位来源
+
+- [字节跳动｜AI Agent 前端开发工程师－开发者服务](https://www.zhipin.com/job_detail/355bf7b1b6e7b19a0nN63928EFZY.html)
+- [阿里巴巴｜前端开发工程师－AI Agent 方向](https://www.zhipin.com/job_detail/5eddf8848c51eeb9031_2ty8EFdY.html)
+- [AI Agent 工程师（前端背景）](https://www.zhipin.com/job_detail/e896b1a48d4d5ba90nB43NW5GFNU.html)
+- [AI Agent 全栈工程师](https://www.zhipin.com/job_detail/8295c5c9fb72ea870nJ83NW8F1RQ.html)
+- [阿里 Agent 前端与 AI 前端岗位集合](https://www.zhipin.com/zhaopin/d1304da9ebe1ae391nJ-09q6Ew~~/)
+- [Shopee Agent 前端与 AI 平台全栈岗位](https://www.zhipin.com/zhaopin/b88ef27f4fe6eb7c1HJ82t-6FA~~/)
+- [TypeScript 全栈与 Agent 全栈岗位](https://www.zhipin.com/zhaopin/7262d16559e61b0d0Hx53Ni8/)
+- [深圳 AI Agent 前端岗位集合](https://www.zhipin.com/zhaopin/70f28db8bc1a3c101HB92dm9Eg~~/)
+- [MiniMax 等 Agent 前端 / AI App 岗位](https://m.zhipin.com/zhaopin/8087b552b9b44bec1Hx72t27/)
+- [Agent 全栈交付方向前端架构岗位](https://www.zhipin.com/zhaopin/40e83b33ec8e69b31XR409U~/)
+
+## 9. 广义岗位样本来源
+
+- [瑞风协同｜AI 应用开发工程师](https://www.zhaopin.com/jobdetail/CC388480710J40822509716.htm)
+- [海康威视｜高级应用软件开发－大模型](https://talent.hikvision.com/home/socity/position?postId=B4F6AAF8C5C1FEB7D6C131231EBAB46F)
+- [飞享数据｜LangGraph AI Agent 工程师](https://www.zhaopin.com/jobdetail/CC245321380J40817430109.htm)
+- [和利时｜智能体开发工程师](https://www.zhaopin.com/jobdetail/CC000145900J40870795001.htm)
+- [中科曙光｜AI Agent 平台与框架工程师](https://www.zhaopin.com/jobdetail/CC120205180J40903014213.htm)
+- [埃森哲｜AI 全栈工程师（Agent 方向）](https://www.accenture.com/cn-en/careers/jobdetails?id=14477303_en)
+- [Randstad｜AI Agent + Python 后端](https://www.randstad.com/jobs/ai-agent-pythonhou-duan-kai-fa-gong-cheng-shi-_shang-hai-_46970632/)
+- [Bain｜Full Stack TypeScript Engineer, AI Products](https://www.linkedin.com/jobs/view/full-stack-typescript-engineer-ai-products-dataedge-at-bain-company-4426382734)
+- [SurfSense｜Software Engineer](https://job-boards.greenhouse.io/surfsense/jobs/5725619004)
+- [Knit｜Senior Full Stack Engineer](https://job-boards.greenhouse.io/knit/jobs/4185589009)
+
+## 10. 2026-08-31 复核：路线与市场的差距
+
+在原有 20 岗位样本之外，又复核了一轮 2026 年的公开岗位描述、招聘方视角文章和面试题库统计。**结论：技术选型没有踩空，但优先级排错了。**
+
+### 10.1 已经对上的部分
+
+Python + async、FastAPI、LangGraph、RAG（chunking / hybrid / rerank）、向量库、MCP、Function Calling、Docker / CI、可观测性——这些在复核的岗位描述里逐条命中。腾讯 2027 校招已把 Agent 开发列为独立岗位，要求为「Python/TypeScript/Go 至少精通一门」+「深入理解 Agent 原理」+ LangGraph 等框架，本路线完全覆盖。
+
+一个额外信号：腾讯把「熟练使用 AI 编程工具（如 Cursor、Claude Code 等）」**写进了岗位要求而非加分项**。这是零成本项，应写进简历并在项目 README 说明工作流。
+
+### 10.2 三个结构性偏差（已修正）
+
+| 偏差 | 市场信号 | 原计划 | 修正后 |
+|---|---|---|---|
+| 评测与可观测性排太后 | 招聘方称 evals 与 guardrails 是「承重技能」，面试核心问题是「你怎么知道改动之后变好了」「你怎么知道评测可信」 | 第 9 周才做 Trace 和自动评测 | 第 3 周即建 run_id 事件落库 + 5 条冒烟评测，逐周加用例；每天固定跑一次 |
+| 缺 Agent 层评测 | 面试题库点名 LLM-as-Judge、AgentBench、WebArena、SWE-bench | 只有第 6 周的检索评测（命中率/MRR/引用正确率） | 第 7 周 Day 7 增加轨迹评测 + LLM-as-Judge，度量工具选择正确率与该拒答时是否拒答 |
+| 术语与 JD 对不上 | JD 原文用「Planning、Memory、Tool Use、Reflection」；面试题库把「手写 ReAct loop」列为必备、把 **memory 设计称为区分度最高的领域** | 第 7 周写作「多工具、事件、停止条件、记忆」 | 按四要素重写第 7 周，显式包含 ReAct 与 Context Engineering |
+
+第三项是表达缺口而非技术缺口——做的事情本来就对，改标题成本极低，收益是简历直接命中关键词。
+
+### 10.3 补充的概念级内容
+
+以下在面试中频率高但实现成本与收益不匹配，各留 2 ～ 4 小时达到「能讲清、能画图」即可，不实现：第二个 Agent 框架（JD 常写「≥2 个框架」）、多 Agent 协作与路由、A2A 与 Agent Card、Computer Use / GUI Agent、其他向量库的选型理由。
+
+保持「只深入一个框架」的判断不变：招聘方明确把 framework name-dropping 列为**被高估**的信号，深度比广度值钱。
+
+### 10.4 被低估的自身优势
+
+**AG-UI 协议**（基于 SSE 的事件协议，专门定义 Agent 与用户界面如何通信，CopilotKit 构建于其上）解决的正是第 3 ～ 4 周要手搓的问题，原路线完全没提。对偏前端的目标岗位而言，这比多学一个后端框架更有价值——它等于是「Agent UI 事件应该长什么样」的现成答案，可以选择对齐，也可以说明为什么不对齐，两种都是有效回答。
+
+### 10.5 时间与作品集策略修正
+
+复核日期 08-31，剩余 11 周（至 11-15）。原计划第 10 ～ 11 周各用一周完成一个完整项目不现实。修正为：
+
+- 第 3 ～ 9 周的产出全部长在同一套 `apps/api` + `apps/web` 里；第 10 ～ 11 周**只做收尾和包装，不是开始做项目**。
+- 原项目一与项目二合并为一个足够深的主项目（两者共用约 80% 技术栈）。招聘方看的是 `build → measure → refine` 的具体痕迹，一个有真实评测数据、Trace 和失败恢复演示的项目胜过两个只有顺利路径的 Demo。
+- 第二项目改为第 9 周末评估后再决定。
+- **第 8 周开始第一批投递**，不等作品集完成。届时已有流式 UI、工具过程、RAG 带引用、ReAct + LangGraph、评测和 Trace，足以支撑面试对话；面试反馈能反向指导第 9 ～ 12 周补什么。
+- 第 9 周增加云部署，让作品有公网地址。JD 普遍要求 AWS/Azure/GCP 之一，且「能点开就用」与「只能本地跑」在投递时说服力差距明显。
+
+### 10.6 本次复核来源
+
+- [The Complete AI Agent Engineer Skills Stack You Need in 2026](https://www.mygreatlearning.com/blog/the-complete-ai-agent-engineer-skills-stack-you-need-in-2026/)
+- [AI Agent Engineer: Job Description, Skills & Salary 2026](https://www.techademy.com/ai-agent-engineer-job-salary-2026)
+- [How to Recruit AI Agent Engineers in 2026](https://www.herohunt.ai/blog/how-to-recruit-ai-agent-engineers-in-2026/)（招聘方视角，evals/guardrails 为承重技能的出处）
+- [腾讯 2027 校招拆解：Agent 开发成了独立岗位](https://www.cnblogs.com/itech/p/22482094)
+- [面试 AI Agent 工程师会被问什么？40+ 真题 + 知识图谱](https://www.cnblogs.com/itech/p/20111938)（必问项与 memory 区分度的出处）
+- [Prompt 工程师正在消失，Harness 工程师正在崛起](https://www.cnblogs.com/badhope/p/22485208/prompt-to-harness-engineering-2026)（失败复合效应 `0.95²⁰ ≈ 36%` 的出处）
+- [AG-UI 协议文档](https://docs.copilotkit.ai/agno/ag-ui)
+- [Context Engineering: A Practical Guide for AI Agents (2026)](https://sourcegraph.com/blog/context-engineering)
+
+这些同样是定向样本而非市场普查，其中数篇为行业博客而非一手 JD，用于判断趋势和优先级，不作为唯一依据。
