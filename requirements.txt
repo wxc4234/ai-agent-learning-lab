@@ -13,6 +13,14 @@ python-dotenv==1.2.3
 openai==3.3.1
 # ORM：先在 SQLite 上练习数据建模，之后可平滑切换到 PostgreSQL
 SQLAlchemy==2.0.52
+# PostgreSQL 驱动：让 SQLAlchemy 能通过 psycopg 连接本地 pgvector 数据库
+psycopg[binary]==3.3.5
+# 数据库迁移：把表结构变更记录为可升级、可回退的版本
+alembic==1.19.1
+# 自动化测试：验证工具、数据库和接口逻辑，避免测试时调用模型 API
+pytest==9.1.1
+# FastAPI 接口测试客户端的 HTTP 传输依赖
+httpx==0.28.1
 # ASGI 服务器（启动 FastAPI 应用用）
 uvicorn==0.52.4
 # 代码格式化工具（VS Code 已配置为默认格式化器）

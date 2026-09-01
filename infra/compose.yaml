@@ -23,6 +23,23 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
-
+  redis:
+    # 固定镜像版本，保证 macOS 与 Windows 拉取同一套运行环境。
+    image: redis:7.4.11-alpine3.21
+    container_name: ai-agent-redis
+    ports:
+      # 让本机 FastAPI 后续可通过 localhost:6379 连接 Redis。
+      - "6379:6379"
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      # AOF 与命名 Volume 一起保证容器重建后缓存数据仍可恢复。
+      - redis_data:/data
+    healthcheck:
+      # Redis 响应 PONG 后才会标记为健康。
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 volumes:
   postgres_data:
+  redis_data:

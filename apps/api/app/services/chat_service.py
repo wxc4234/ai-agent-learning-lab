@@ -1,14 +1,14 @@
 import asyncio
 
-from config import settings
 from openai import OpenAIError
 from openai.types.chat import ChatCompletionMessageParam
-from repositories.conversation_repository import (
+
+from app.config import settings
+from app.repositories.conversation_repository import (
     load_conversation,
     save_conversation_turn,
 )
-
-from service.model_client import client
+from app.services.model_client import client
 
 # 内存缓存减少同一会话的重复数据库读取；服务重启后仍可由 SQLite 恢复。
 conversations: dict[str, list[ChatCompletionMessageParam]] = {}

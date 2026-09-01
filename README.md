@@ -23,8 +23,10 @@
 `apps/api` 中已经包含：
 
 - FastAPI + DeepSeek 多轮对话。
-- SQLite 会话持久化。
+- Docker Compose 管理 PostgreSQL + pgvector、Redis 的本地环境。
+- PostgreSQL + pgvector 会话持久化。
 - Tool Calling 和本地工具白名单。
+- pytest 自动化测试：工具、仓储与接口错误契约。
 - Swagger 测试接口。
 
 ## 快速启动
@@ -33,7 +35,7 @@
 
 ```bash
 cd apps/api
-python -m uvicorn main:app --reload
+python -m uvicorn app.main:app --reload
 ```
 
 然后打开 <http://127.0.0.1:8000/docs>。
@@ -52,6 +54,7 @@ ai-agent-learning-lab/
 ├── requirements.txt             # Python 依赖
 ├── apps/
 │   ├── api/                     # 持续演进的 FastAPI Agent 后端
+│   │   └── app/                 # API 源码包：路由、服务、仓储和工具
 │   └── web/                     # 第 3 周加入的 Next.js Agent 前端
 └── week-01/                     # 仅保存第 1 周记录和一次性练习
     └── README.md                # 第 1 周完成记录

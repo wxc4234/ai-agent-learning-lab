@@ -7,8 +7,10 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # 以文件位置定位目录，而不是依赖终端当前所在目录，跨平台启动时更稳定。
 APP_DIR = Path(__file__).resolve().parent
+# 应用源码位于 apps/api/app；API_DIR 保留运行时数据和应用级配置的稳定位置。
+API_DIR = APP_DIR.parent
 # apps/api 的上两层就是仓库根目录，其中保存了不提交 Git 的 .env。
-PROJECT_ROOT = APP_DIR.parents[1]
+PROJECT_ROOT = API_DIR.parents[1]
 
 
 class Settings(BaseSettings):
@@ -30,9 +32,9 @@ class Settings(BaseSettings):
         validation_alias="DEEPSEEK_MODEL",
     )
 
-    # 当前 SQLite 仍使用文件路径；保留 URL 是为后续 SQLAlchemy/PostgreSQL 迁移准备。
+    # 未设置环境变量时使用应用目录的 SQLite 文件，便于首次启动和本地回退。
     database_url: str = Field(
-        default=f"sqlite:///{APP_DIR / 'chat.db'}",
+        default=f"sqlite:///{API_DIR / 'chat.db'}",
         validation_alias="DATABASE_URL",
     )
 

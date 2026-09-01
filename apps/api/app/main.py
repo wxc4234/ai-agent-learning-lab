@@ -2,11 +2,12 @@ import asyncio
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
-from repositories.conversation_repository import init_db
-from routers.chat import router as chat_router
-from routers.conversation import router as conversation_router
-from routers.health import router as health_router
-from routers.tools import router as tools_router
+
+from app.repositories.conversation_repository import init_db
+from app.routers.chat import router as chat_router
+from app.routers.conversation import router as conversation_router
+from app.routers.health import router as health_router
+from app.routers.tools import router as tools_router
 
 
 @asynccontextmanager

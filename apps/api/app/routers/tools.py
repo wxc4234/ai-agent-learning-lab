@@ -1,9 +1,10 @@
-from config import settings
 from fastapi import APIRouter, HTTPException
 from openai.types.chat import ChatCompletionMessageParam
-from schemas import ToolTestRequest
-from service.model_client import client
-from tools.registry import TOOL_FUNCTIONS, TOOLS
+
+from app.config import settings
+from app.schemas import ToolTestRequest
+from app.services.model_client import client
+from app.tools.registry import TOOL_FUNCTIONS, TOOLS
 
 # 工具调用单独分组，后续可在这里加入审批、超时、重试和执行轨迹。
 router = APIRouter(tags=["tools"])

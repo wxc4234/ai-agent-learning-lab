@@ -1,6 +1,7 @@
 from fastapi import APIRouter, HTTPException
-from repositories.conversation_repository import load_conversation
-from schemas import ConversationHistoryResponse
+
+from app.repositories.conversation_repository import load_conversation
+from app.schemas import ConversationHistoryResponse
 
 # 该接口服务于后续的会话列表、刷新恢复和 Agent 运行历史界面。
 router = APIRouter(tags=["conversations"])

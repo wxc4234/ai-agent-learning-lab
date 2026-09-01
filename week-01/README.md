@@ -37,7 +37,7 @@
 
 ```bash
 cd apps/api
-python -m uvicorn main:app --reload
+python -m uvicorn app.main:app --reload
 ```
 
 打开 <http://127.0.0.1:8000/docs> 进行测试。

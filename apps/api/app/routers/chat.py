@@ -1,7 +1,8 @@
 from fastapi import APIRouter, HTTPException
 from openai import OpenAIError
-from schemas import ChatRequest, ChatResponse
-from service.chat_service import create_chat_reply
+
+from app.schemas import ChatRequest, ChatResponse
+from app.services.chat_service import create_chat_reply
 
 # tag 只影响 Swagger 分组，让前端联调时按业务而非文件查找接口。
 router = APIRouter(tags=["chat"])
@@ -31,4 +32,4 @@ async def chat(request: ChatRequest):
         ) from error
 
     return ChatResponse(reply=reply)
-"""聊天相关 HTTP 接口；业务编排位于 service.chat_service。"""
+"""聊天相关 HTTP 接口；业务编排位于 services.chat_service。"""

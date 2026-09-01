@@ -7,6 +7,7 @@
 - Git
 - Python 3.10 或更高版本
 - VS Code（推荐）
+- Docker Desktop（启动 PostgreSQL + pgvector 与 Redis）
 - DeepSeek API Key（调用 `/chat` 时需要）
 
 当前 `apps/api` 是 Python 项目，运行它**不需要 pnpm 或 Node.js**。第 3 周开始开发 `apps/web` 中的 Next.js Agent 前端时才会使用 Node.js 和 pnpm，届时会补充前端环境说明。
@@ -20,6 +21,9 @@
 | `pydantic-settings` | 统一读取和校验环境配置 |
 | `python-dotenv` | 从 `.env` 读取环境变量 |
 | `openai` | 通过兼容接口调用 DeepSeek |
+| `SQLAlchemy` + `psycopg` | 访问 PostgreSQL 数据库 |
+| `alembic` | 管理数据库表结构迁移 |
+| `pytest` + `httpx` | 执行自动化测试与接口测试 |
 | `uvicorn` | 启动 FastAPI 应用 |
 | `ruff` | 格式化和检查 Python 代码 |
 
@@ -92,7 +96,29 @@ DEEPSEEK_API_KEY=在这里填写你的key
 - `chat_api.py` 已调用 `load_dotenv()`，会主动读取 `.env`。
 - VS Code 提示 `python.terminal.useEnvFile` 时，可以启用它，但项目读取 Key 并不依赖这个设置。
 
-## 4. 在 VS Code 中选择正确解释器
+## 4. 启动本地基础服务
+
+在启动 FastAPI 前，先在**项目根目录**启动 PostgreSQL + pgvector 与 Redis：
+
+```bash
+docker compose -f infra/compose.yaml up -d
+docker compose -f infra/compose.yaml ps
+```
+
+两个服务的状态都应显示为 `healthy`。本地开发连接信息：
+
+- PostgreSQL：`127.0.0.1:5432`，数据库 `agent_lab`
+- Redis：`127.0.0.1:6379`
+
+`.env` 还需要包含本地 PostgreSQL 的连接地址：
+
+```dotenv
+DATABASE_URL=postgresql+psycopg://agent_app:agent_local_password@127.0.0.1:5432/agent_lab
+```
+
+此密码仅用于本地学习环境；生产环境必须改用 Secret 管理。停止服务时使用 `docker compose -f infra/compose.yaml down`；它不会删除命名卷中的本地数据。
+
+## 5. 在 VS Code 中选择正确解释器
 
 1. 用 VS Code 打开整个 `ai-agent-learning-lab` 文件夹。
 2. 打开命令面板，运行 `Python: Select Interpreter`。
@@ -110,7 +136,7 @@ python -m pip show fastapi
 
 解释器路径中应该包含当前项目的 `.venv`。通常同一个 VS Code 工作区只需要选择一次；新建 Python 文件不需要重新选择。
 
-## 5. 启动项目
+## 6. 启动项目
 
 每次重新打开终端后，先激活虚拟环境。
 
@@ -135,7 +161,7 @@ cd apps/api
 ### 启动 AI 对话接口
 
 ```bash
-python -m uvicorn main:app --reload
+python -m uvicorn app.main:app --reload
 ```
 
 打开 Swagger：<http://127.0.0.1:8000/docs>。
@@ -154,14 +180,14 @@ python -m uvicorn main:app --reload
 先在终端按 `Ctrl + C` 停止当前服务，再运行：
 
 ```bash
-python -m uvicorn main:app --reload
+python -m uvicorn exercises.fastapi_crud:app --reload
 ```
 
-`main:app` 的意思是：从 `main.py` 中找到名为 `app` 的 FastAPI 对象。
+`exercises.fastapi_crud:app` 的意思是：从 `exercises/fastapi_crud.py` 中找到名为 `app` 的 FastAPI 对象。
 
 推荐使用 `python -m uvicorn`，这样可以明确使用当前虚拟环境中的 Python，减少调用到错误解释器的情况。
 
-## 6. 常见问题
+## 7. 常见问题
 
 ### `No module named fastapi` 或 `No module named uvicorn`
 
@@ -205,7 +231,7 @@ Swagger 只显示结果，真正的 Python 错误在启动服务的终端中。�
 
 确认启动命令带有 `--reload`。如果仍未生效，按 `Ctrl + C` 停止服务后重新启动。
 
-## 7. 提交前检查
+## 8. 提交前检查
 
 提交代码前确认以下文件没有进入 Git：
 

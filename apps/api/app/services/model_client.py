@@ -1,5 +1,6 @@
-from config import settings
 from openai import AsyncOpenAI
+
+from app.config import settings
 
 # API Key 只在连接模型时解封，其他模块不会接触敏感值。
 client = AsyncOpenAI(
