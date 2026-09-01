@@ -11,6 +11,7 @@ client = AsyncOpenAI(
     base_url=settings.deepseek_base_url,
 )
 
+
 async def stream_chat_completion(
     messages: list[ChatCompletionMessageParam],
 ) -> AsyncIterator[str]:
@@ -28,4 +29,6 @@ async def stream_chat_completion(
         delta = chunk.choices[0].delta.content
         if delta:
             yield delta
+
+
 """唯一的模型客户端出口，集中处理供应商连接配置。"""

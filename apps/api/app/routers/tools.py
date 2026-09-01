@@ -98,4 +98,6 @@ async def tool_test(request: ToolTestRequest):
         "tool_result": tool_result,
         "reply": final_reply,
     }
+
+
 """最小 Tool Calling 演示接口，展示模型请求与白名单执行闭环。"""

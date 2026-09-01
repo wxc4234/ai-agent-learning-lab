@@ -33,7 +33,10 @@ async def chat(request: ChatRequest):
         ) from error
 
     return ChatResponse(reply=reply)
+
+
 """聊天相关 HTTP 接口；业务编排位于 services.chat_service。"""
+
 
 @router.post("/chat/stream")
 async def chat_stream(request: ChatRequest) -> StreamingResponse:

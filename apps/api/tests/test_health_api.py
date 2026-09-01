@@ -1,7 +1,6 @@
+from app.routers.health import router as health_router
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-
-from app.routers.health import router as health_router
 
 
 def test_home_returns_service_status():

@@ -18,22 +18,15 @@ class User(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
 
     # 前端或未来认证系统提供的稳定用户标识，查询时也会使用索引。
-    external_id: Mapped[str] = mapped_column(
-        String(100),
-        unique=True,
-        index=True
-    )
+    external_id: Mapped[str] = mapped_column(String(100), unique=True, index=True)
 
     # 由数据库生成创建时间，避免依赖应用服务器的本地时钟。
     create_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        server_default=func.now()
+        DateTime(timezone=True), server_default=func.now()
     )
 
     # 一个用户可以拥有多个会话；数据库关联字段实际保存在 Conversation.user_id。
-    conversations: Mapped[list["Conversation"]] = relationship(
-        back_populates="user"
-    )
+    conversations: Mapped[list["Conversation"]] = relationship(back_populates="user")
 
 
 class Conversation(Base):
@@ -44,10 +37,7 @@ class Conversation(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
 
     # 外键保证每个会话都明确归属某个用户，并加速按用户查询会话列表。
-    user_id: Mapped[int] = mapped_column(
-        ForeignKey("users.id"),
-        index=True
-    )
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
 
     # API 和前端使用的稳定会话标识，不暴露数据库内部自增主键。
     external_id: Mapped[str] = mapped_column(
@@ -57,29 +47,22 @@ class Conversation(Base):
     )
 
     # 标题后续可由前端填写，或由模型根据首轮消息自动生成。
-    title: Mapped[str | None] = mapped_column(
-        String(200),
-        nullable=True
-    )
+    title: Mapped[str | None] = mapped_column(String(200), nullable=True)
 
     create_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        server_default=func.now()
+        DateTime(timezone=True), server_default=func.now()
     )
 
     # 与 User.conversations 对应，便于 conversation.user 访问所属用户。
-    user: Mapped[User] = relationship(
-        back_populates="conversations"
-    )
+    user: Mapped[User] = relationship(back_populates="conversations")
 
-    messages: Mapped[list["Message"]] = relationship(
-        back_populates="conversation"
-    )
+    messages: Mapped[list["Message"]] = relationship(back_populates="conversation")
 
     # 一段会话可触发多次 Agent 执行，例如每次用户发送新消息。
     runs: Mapped[list["AgentRun"]] = relationship(
         back_populates="conversation",
     )
+
 
 class Message(Base):
     """会话中的单条消息，可来自用户、助手、系统或工具。"""
@@ -109,6 +92,7 @@ class Message(Base):
     conversation: Mapped[Conversation] = relationship(
         back_populates="messages",
     )
+
 
 class AgentRun(Base):
     """一次 Agent 执行的状态记录，不等同于一条聊天消息。"""
@@ -148,6 +132,7 @@ class AgentRun(Base):
     events: Mapped[list["AgentRunEvent"]] = relationship(
         back_populates="run",
     )
+
 
 class AgentRunEvent(Base):
     """Agent Run 内发生的一条可追踪事件。"""

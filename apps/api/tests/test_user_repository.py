@@ -1,9 +1,8 @@
-from sqlalchemy import create_engine
-from sqlalchemy.orm import Session
-
 from app import models
 from app.database import Base
 from app.repositories.user_repository import get_or_create_user
+from sqlalchemy import create_engine
+from sqlalchemy.orm import Session
 
 
 def test_get_or_create_user_reuses_existing_user():

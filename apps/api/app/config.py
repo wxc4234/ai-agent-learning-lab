@@ -45,5 +45,6 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
+
 # BaseSettings 会在运行时读取 .env；Pylance 无法静态推断该来源，因此仅忽略这条误报。
 settings = Settings()  # pyright: ignore[reportCallIssue]

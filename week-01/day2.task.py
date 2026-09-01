@@ -12,10 +12,12 @@ class ConversationManager:
         if role not in ("user", "assistant"):
             raise ValueError("不支持的消息角色")
 
-        self.messages.append({
-            "role": role,
-            "content": content,
-        })
+        self.messages.append(
+            {
+                "role": role,
+                "content": content,
+            }
+        )
 
     def save(self):
         try:

@@ -17,13 +17,10 @@ conversations: dict[str, list[ChatCompletionMessageParam]] = {}
 # 只发送最近 5 轮，控制上下文长度、延迟和模型调用成本。
 MAX_ROUNDS = 5
 
+
 async def _prepare_chat_messages(
-        session_id: str,
-        prompt: str
-) -> tuple[
-    list[ChatCompletionMessageParam],
-    list[ChatCompletionMessageParam]
-]:
+    session_id: str, prompt: str
+) -> tuple[list[ChatCompletionMessageParam], list[ChatCompletionMessageParam]]:
     if session_id not in conversations:
         conversations[session_id] = [
             {
@@ -64,6 +61,7 @@ async def _prepare_chat_messages(
     ]
     return history, messages_to_send
 
+
 async def create_chat_reply(session_id: str, prompt: str) -> str:
     """完成一轮聊天并返回纯文本回复，不包含任何 HTTP 细节。"""
     history, messages_to_send = await _prepare_chat_messages(
@@ -103,14 +101,14 @@ async def create_chat_reply(session_id: str, prompt: str) -> str:
         history.pop()
         raise
 
+
 async def stream_chat_reply(
-        session_id: str,
-        prompt: str,
+    session_id: str,
+    prompt: str,
 ) -> AsyncIterator[str]:
     """逐块返回模型输出，并在完成后持久化完整回答。"""
     history, message_to_send = await _prepare_chat_messages(
-        session_id=session_id,
-        prompt=prompt
+        session_id=session_id, prompt=prompt
     )
 
     chunks: list[str] = []
@@ -127,7 +125,7 @@ async def stream_chat_reply(
             save_conversation_turn,
             session_id=session_id,
             user_content=prompt,
-            assistant_content=reply
+            assistant_content=reply,
         )
 
         history.append({"role": "assistant", "content": reply})

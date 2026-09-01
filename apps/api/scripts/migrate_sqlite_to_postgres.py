@@ -2,12 +2,11 @@
 
 import sqlite3
 
-from sqlalchemy import select
-
 from app.config import API_DIR
 from app.database import SessionLocal
 from app.models import Conversation, Message
 from app.repositories.user_repository import get_or_create_user
+from sqlalchemy import select
 
 # SQLite 时代没有真实登录系统；历史数据统一归属本地演示用户，之后可迁移到认证用户。
 LEGACY_USER_EXTERNAL_ID = "local-demo-user"

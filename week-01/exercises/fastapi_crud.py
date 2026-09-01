@@ -5,6 +5,7 @@ app = FastAPI()
 
 messages = []
 
+
 class Message(BaseModel):
     role: str
     content: str
@@ -13,15 +14,10 @@ class Message(BaseModel):
 @app.put("/messages/{message_id}")
 def update_message(message_id: int, message: Message):
     if message_id < 0 or message_id >= len(messages):
-        raise HTTPException(
-            status_code=404,
-            detail="消息不存在"
-        )
+        raise HTTPException(status_code=404, detail="消息不存在")
     messages[message_id] = message
-    return {
-        "status": "update",
-        "message": message
-    }
+    return {"status": "update", "message": message}
+
 
 # @app.get("/messages/{message_id}")
 # def get_message(message_id: int):
@@ -32,20 +28,16 @@ def update_message(message_id: int, message: Message):
 #         )
 #     return messages[message_id]
 
+
 @app.post("/messages")
 def create_message(message: Message):
     messages.append(message)
-    return {
-        "status": "create",
-        "message": message
-    }
+    return {"status": "create", "message": message}
+
 
 @app.get("/messages")
 def get_message():
-    return {
-        "total": len(messages),
-        "messages": messages
-    }
+    return {"total": len(messages), "messages": messages}
 
 
 # @app.post("/message")

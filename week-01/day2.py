@@ -23,6 +23,7 @@ messages = [
     {"role": "system"},
 ]
 
+
 def analyze_messages(messages):
     total = 0
     user_count = 0
@@ -63,7 +64,6 @@ def analyze_messages(messages):
         "invalid_count": invalid_count,
         "longest_user_message": longest_user_message,
     }
-
 
 
 def save_messages(messages, filename):

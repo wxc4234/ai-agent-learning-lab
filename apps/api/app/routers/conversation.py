@@ -7,7 +7,9 @@ from app.schemas import ConversationHistoryResponse
 router = APIRouter(tags=["conversations"])
 
 
-@router.get("/sessions/{session_id}/messages", response_model=ConversationHistoryResponse)
+@router.get(
+    "/sessions/{session_id}/messages", response_model=ConversationHistoryResponse
+)
 def get_session_message(session_id: str):
     messages = load_conversation(session_id)
 
@@ -23,4 +25,6 @@ def get_session_message(session_id: str):
         "total": len(messages),
         "messages": messages,
     }
+
+
 """会话历史查询接口。"""
