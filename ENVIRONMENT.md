@@ -1,6 +1,6 @@
 # 环境与依赖
 
-这份文档专门说明：**需要安装什么、如何选择 Python 解释器、怎样启动项目，以及出错时如何排查**。
+这份文档专门说明：**需要安装什么、如何启动前后端、怎样选择解释器，以及出错时如何排查**。
 
 ## 1. 项目需要什么
 
@@ -8,9 +8,11 @@
 - Python 3.10 或更高版本
 - VS Code（推荐）
 - Docker Desktop（启动 PostgreSQL + pgvector 与 Redis）
+- Node.js 24 LTS（Next.js 要求至少 Node.js 20.9）
+- pnpm 10.34.1（版本固定在 `apps/web/package.json`）
 - DeepSeek API Key（调用 `/chat` 时需要）
 
-当前 `apps/api` 是 Python 项目，运行它**不需要 pnpm 或 Node.js**。第 3 周开始开发 `apps/web` 中的 Next.js Agent 前端时才会使用 Node.js 和 pnpm，届时会补充前端环境说明。
+`apps/api` 是 FastAPI Agent 后端，`apps/web` 是 Next.js Agent 前端。完整运行时，两者都需要启动；浏览器只访问 Next.js，Next.js 再代理请求到 FastAPI。
 
 ### 第三方依赖
 
@@ -26,6 +28,9 @@
 | `pytest` + `httpx` | 执行自动化测试与接口测试 |
 | `uvicorn` | 启动 FastAPI 应用 |
 | `ruff` | 格式化和检查 Python 代码 |
+| `next` + `react` | 构建 Agent 前端和 BFF 路由 |
+| `tailwindcss` | 编写 Agent UI 样式 |
+| `pnpm` | 锁定并安装前端依赖 |
 
 `sqlite3`、`os`、`json` 和 `pathlib` 是 Python 标准库，不需要单独安装。
 
@@ -44,9 +49,33 @@ source .venv/bin/activate
 
 python -m pip install -r requirements.txt
 cp .env.example .env
+pnpm install --dir apps/web --frozen-lockfile
 ```
 
-### Windows PowerShell
+### Windows：先安装系统工具
+
+在新的 Windows 电脑上，先安装以下工具：
+
+1. [Git for Windows](https://git-scm.com/download/win)。
+2. [Python 3.10 x64](https://www.python.org/downloads/windows/)；安装时勾选 **Add Python to PATH**。
+3. [Docker Desktop for Windows](https://www.docker.com/products/docker-desktop/)；按安装向导启用 WSL 2 后端。
+4. [Node.js 24 LTS](https://nodejs.org/en/download)；不要选择 Current 版。
+
+安装完成后，重新打开 PowerShell，执行：
+
+```powershell
+git --version
+py -3.10 --version
+docker version
+docker compose version
+node --version
+npm install --global pnpm@10.34.1
+pnpm --version
+```
+
+`pnpm --version` 应为 `10.34.1`。项目的 `packageManager` 已固定该版本，避免不同电脑使用不同包管理器解析依赖。
+
+### Windows PowerShell：克隆并安装项目依赖
 
 ```powershell
 git clone https://github.com/wxc4234/ai-agent-learning-lab.git
@@ -57,6 +86,8 @@ py -3.10 -m venv .venv
 
 python -m pip install -r requirements.txt
 Copy-Item .env.example .env
+
+pnpm install --dir apps/web --frozen-lockfile
 ```
 
 如果 PowerShell 不允许激活脚本，可以先对当前终端临时放行：
@@ -87,14 +118,17 @@ python -m pip install -r requirements.txt
 
 ```dotenv
 DEEPSEEK_API_KEY=在这里填写你的key
+DATABASE_URL=postgresql+psycopg://agent_app:agent_local_password@127.0.0.1:5432/agent_lab
 ```
 
 注意：
 
 - 不要把真实 Key 写进 Python 代码或文档。
 - `.env` 已被 `.gitignore` 忽略，不会提交到 GitHub。
-- `chat_api.py` 已调用 `load_dotenv()`，会主动读取 `.env`。
+- FastAPI 的 Pydantic Settings 会主动读取根目录 `.env`。
 - VS Code 提示 `python.terminal.useEnvFile` 时，可以启用它，但项目读取 Key 并不依赖这个设置。
+
+前端的 BFF 默认代理到 `http://127.0.0.1:8000`。只有后端地址变化时，才复制 `apps/web/.env.example` 为 `apps/web/.env.local` 并修改 `API_BASE_URL`；不要使用 `NEXT_PUBLIC_` 前缀。
 
 ## 4. 启动本地基础服务
 
@@ -160,6 +194,14 @@ cd apps/api
 
 ### 启动 AI 对话接口
 
+首次启动或换电脑后，先执行数据库迁移：
+
+```bash
+python -m alembic upgrade head
+```
+
+再启动 FastAPI：
+
 ```bash
 python -m uvicorn app.main:app --reload
 ```
@@ -186,6 +228,17 @@ python -m uvicorn exercises.fastapi_crud:app --reload
 `exercises.fastapi_crud:app` 的意思是：从 `exercises/fastapi_crud.py` 中找到名为 `app` 的 FastAPI 对象。
 
 推荐使用 `python -m uvicorn`，这样可以明确使用当前虚拟环境中的 Python，减少调用到错误解释器的情况。
+
+### 启动 Next.js Agent 前端
+
+保持 FastAPI 在一个终端运行；在**第二个终端**从项目根目录执行：
+
+```bash
+cd apps/web
+pnpm dev
+```
+
+打开 <http://127.0.0.1:3000>。浏览器后续只调用 `POST /api/chat/stream`；该 BFF 路由会透明转发 FastAPI 的流，DeepSeek Key 不会进入浏览器。
 
 ## 7. 常见问题
 
@@ -214,6 +267,28 @@ source .venv/bin/activate
 
 这通常只是 VS Code 选错了解释器。重新运行 `Python: Select Interpreter`，选择项目 `.venv`，然后执行 `Developer: Reload Window`。
 
+### Windows 显示 `pnpm` 不是命令
+
+关闭并重新打开 PowerShell，再执行：
+
+```powershell
+npm install --global pnpm@10.34.1
+pnpm --version
+```
+
+如果 `node --version` 也不存在，说明 Node.js 安装后终端尚未刷新，或安装时没有写入 PATH；重新安装 Node.js 24 LTS 并打开新终端。
+
+### Docker Desktop 没有启动
+
+先打开 Docker Desktop，等待状态显示 Engine running，再执行：
+
+```powershell
+docker compose -f infra/compose.yaml up -d
+docker compose -f infra/compose.yaml ps
+```
+
+PostgreSQL 与 Redis 都显示 `healthy` 后再启动 FastAPI。
+
 ### `input()` 后编辑器像卡住一样
 
 `input()` 正在等待终端输入，不是程序崩溃。请在终端输入内容并按回车。学习 FastAPI 后，数据主要通过 Swagger 或 HTTP 请求传入，不再使用 `input()`。
@@ -238,5 +313,7 @@ Swagger 只显示结果，真正的 Python 错误在启动服务的终端中。�
 - `.env`
 - `.venv/`
 - `*.db`
+- `apps/web/.env.local`
+- `apps/web/node_modules/`
 
 它们已经写在 `.gitignore` 中。`.env.example` 可以提交，但里面只能保留占位符，不能放真实 Key。

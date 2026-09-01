@@ -12,7 +12,7 @@
 
 ## 当前进度
 
-第 1 周与第 2 周已完成。下一课是第 3 周 Day 1：**初始化 Next.js Agent UI，并理解 AG-UI 的事件模型。**
+第 1 周与第 2 周已完成；第 3 周 Day 1～Day 2 已完成。下一课是 Day 3：**Next.js Route Handler 作为 BFF 代理后端流。**
 
 当前代码已经具备：
 
@@ -26,6 +26,9 @@
 - Alembic 已初始化并接入 SQLAlchemy metadata；初始迁移为 `fed4e53cb0f7_create_agent_schema.py`。
 - 当前 `agent_lab` 已标记到该迁移版本；并已在空数据库执行 `alembic upgrade head`，验证可创建 5 张业务表。
 - pytest 测试套件已建立并通过：覆盖时间工具、工具注册白名单、用户仓储、健康检查及聊天接口的 422/502 错误契约；测试不调用模型 API。
+- `apps/web` 已初始化 Next.js + TypeScript + Tailwind + App Router，`pnpm dev` 可启动。
+- 已按 AG-UI 事件模型设计前端状态映射，见 `docs/agent-ui-events.md`。
+- `POST /chat/stream` 已接入 DeepSeek 真实流式输出；终端验证文本逐块到达，流结束后完整消息保存到 PostgreSQL。
 - 无参数时间工具 `get_current_time`。
 - 一次完整的 Tool Calling 执行闭环。
 
@@ -44,6 +47,8 @@
 | `apps/api/tests/` | pytest 自动化测试：工具、仓储与接口契约 |
 | `apps/api/scripts/migrate_sqlite_to_postgres.py` | 一次性 SQLite 历史消息迁移脚本 |
 | `docs/architecture.md` | 当前服务职责与请求、数据流向图 |
+| `docs/agent-ui-events.md` | Agent 流式事件与前端状态映射 |
+| `apps/web/` | 持续演进的 Next.js Agent 前端 |
 | `infra/compose.yaml` | 跨平台 PostgreSQL + pgvector、Redis 本地服务 |
 | `ENVIRONMENT.md` | 安装、启动和常见问题 |
 
@@ -54,24 +59,25 @@
 | `GET /` | 服务健康检查 |
 | `GET /chat` | 提示使用 POST |
 | `POST /chat` | 带 PostgreSQL 记忆的 DeepSeek 对话 |
+| `POST /chat/stream` | 逐块返回 DeepSeek 文本；流结束后保存完整对话 |
 | `GET /sessions/{session_id}/messages` | 查询 PostgreSQL 会话历史 |
 | `POST /tool-test` | 测试时间工具调用 |
 
 ## 下一课
 
-第 3 周 Day 1：**Next.js Agent UI 初始化。**
+第 3 周 Day 3：**Next.js BFF 流代理。**
 
-本课先完成一个小目标：确认 Node.js 与 pnpm 环境，并在 `apps/web/` 初始化 TypeScript + Tailwind 的 Next.js 应用。学习顺序：
+本课先完成一个小目标：用 Next.js Route Handler 转发 FastAPI 的流式响应；浏览器只访问前端同源地址，不直接暴露后端或模型配置。学习顺序：
 
-1. Next.js App Router 与当前 FastAPI 后端的职责边界。
-2. 初始化不含业务逻辑的前端应用。
-3. 阅读 AG-UI 事件类型，比较它与本项目后续事件设计。
+1. BFF 的职责与浏览器直接请求 FastAPI 的风险。
+2. Route Handler 如何转发 `response.body`，而不是调用 `response.json()`。
+3. 区分 Server Component 与需要实时读取流的 Client Component。
 
 验收标准：
 
-- `pnpm dev` 可启动本地前端。
-- 前端源码位于跨周目录 `apps/web/`。
-- 能说出前端需要展示的最小 Agent 运行状态。
+- 浏览器只请求 `/api/chat/stream`。
+- 前端代理不读取完整正文，流仍能逐块到达浏览器。
+- API Key 不出现在浏览器网络请求和前端环境变量中。
 
 ## 换电脑后恢复
 

@@ -25,6 +25,8 @@
 - FastAPI + DeepSeek 多轮对话。
 - Docker Compose 管理 PostgreSQL + pgvector、Redis 的本地环境。
 - PostgreSQL + pgvector 会话持久化。
+- FastAPI + DeepSeek 流式聊天接口。
+- Next.js Agent 前端与同源 BFF 流代理。
 - Tool Calling 和本地工具白名单。
 - pytest 自动化测试：工具、仓储与接口错误契约。
 - Swagger 测试接口。
