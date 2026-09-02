@@ -10,6 +10,7 @@
 4. [岗位与开源项目技能校准](SKILL_GAP_ANALYSIS.md)：为什么选择这些技术栈。
 5. [环境安装与启动](ENVIRONMENT.md)：macOS/Windows 配置和常见问题。
 6. [第 1 周完成记录](week-01/README.md)：已经完成的基础内容。
+7. [面试题库](interview-questions/README.md)：AI 全栈社招面试题库（算法 / 前端 / 后端 / AI / 系统设计 / 项目 / 行为面试）。
 
 当前阶段：**第 2 周，补齐支撑 Agent 产品开发所需的后端工程底座。** 第 3 周进入 Next.js Agent UI，并同步建立 run_id 事件落库与冒烟评测。
 
@@ -58,6 +59,7 @@ ai-agent-learning-lab/
 │   ├── api/                     # 持续演进的 FastAPI Agent 后端
 │   │   └── app/                 # API 源码包：路由、服务、仓储和工具
 │   └── web/                     # 第 3 周加入的 Next.js Agent 前端
+├── interview-questions/         # AI 全栈社招面试题库（见上第 7 点）
 └── week-01/                     # 仅保存第 1 周记录和一次性练习
     └── README.md                # 第 1 周完成记录
 ```
