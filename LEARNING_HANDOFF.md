@@ -1,6 +1,6 @@
 # AI Agent 学习交接
 
-更新时间：2026-09-01（Asia/Shanghai）
+更新时间：2026-09-04（Asia/Shanghai）
 
 这份文件只记录**当前进度、恢复方式和下一课**。完整路线统一查看 [LEARNING_PLAN.md](LEARNING_PLAN.md)，逐日任务与验收标准查看 [LEARNING_CURRICULUM.md](LEARNING_CURRICULUM.md)。
 
@@ -12,7 +12,7 @@
 
 ## 当前进度
 
-第 1 周与第 2 周已完成；第 3 周 Day 1～Day 2 已完成。下一课是 Day 3：**Next.js Route Handler 作为 BFF 代理后端流。**
+第 1 周与第 2 周已完成；第 3 周 Day 1～Day 3 已完成，Day 4（停止生成）代码已就位。下一课是 Day 4 验收收尾 → Day 5：**前端六态状态机与异常提示、重试。**
 
 当前代码已经具备：
 
@@ -31,8 +31,11 @@
 - `POST /chat/stream` 已接入 DeepSeek 真实流式输出；终端验证文本逐块到达，流结束后完整消息保存到 PostgreSQL。
 - 无参数时间工具 `get_current_time`。
 - 一次完整的 Tool Calling 执行闭环。
+- `apps/web` BFF 流代理已跑通：`/api/chat/stream` Route Handler 转发 `response.body`，浏览器逐块渲染，API Key 不出现在客户端。
+- 停止生成：前端 `AbortController` + 「停止生成」按钮；BFF 用 `signal` 转发；后端 `stream_chat_reply` 捕获 `asyncio.CancelledError` 撤销未完成的一轮。
+- `interview-questions/` AI 全栈面试题库已建立（算法 / 前端 / 后端 / AI / 系统设计 / 项目 / 行为 七维度，与 `LEARNING_CURRICULUM.md` 第 4 章互补）。
 
-尚未完成：带参数工具、通用工具调度、多工具循环。这些内容不会删除，统一放到第 7 周 Agent Runtime 阶段完成。
+尚未完成：带参数工具、通用工具调度、多工具循环。这些内容不会删除，统一放到第 7 周 Agent Runtime 阶段完成。Day 4 的验收清单（点击停止后后端日志显示已中断、不再继续消耗 token）尚未逐条跑通确认。
 
 ## 当前文件
 
@@ -49,7 +52,10 @@
 | `docs/architecture.md` | 当前服务职责与请求、数据流向图 |
 | `docs/agent-ui-events.md` | Agent 流式事件与前端状态映射 |
 | `apps/web/` | 持续演进的 Next.js Agent 前端 |
+| `apps/web/src/app/api/chat/stream/route.ts` | Next.js BFF 流代理 Route Handler |
+| `apps/web/src/features/chat/components/chat-panel.tsx` | 流式聊天面板（含停止生成） |
 | `infra/compose.yaml` | 跨平台 PostgreSQL + pgvector、Redis 本地服务 |
+| `interview-questions/` | AI 全栈面试题库（算法/前端/后端/AI/系统设计/项目/行为） |
 | `ENVIRONMENT.md` | 安装、启动和常见问题 |
 
 ## 当前接口
@@ -60,24 +66,23 @@
 | `GET /chat` | 提示使用 POST |
 | `POST /chat` | 带 PostgreSQL 记忆的 DeepSeek 对话 |
 | `POST /chat/stream` | 逐块返回 DeepSeek 文本；流结束后保存完整对话 |
+| `POST /api/chat/stream`（Next.js BFF） | 同源转发 FastAPI 流，浏览器只请求前端地址 |
 | `GET /sessions/{session_id}/messages` | 查询 PostgreSQL 会话历史 |
 | `POST /tool-test` | 测试时间工具调用 |
 
 ## 下一课
 
-第 3 周 Day 3：**Next.js BFF 流代理。**
+第 3 周 Day 4 收尾 → Day 5。
 
-本课先完成一个小目标：用 Next.js Route Handler 转发 FastAPI 的流式响应；浏览器只访问前端同源地址，不直接暴露后端或模型配置。学习顺序：
+Day 4（停止生成）代码已就位，先按验收清单确认：点击「停止生成」后前端立即停、后端日志显示已中断、不再继续消耗 token；确认后端 `stream_chat_reply` 的 `CancelledError` 分支真正触发（可用长文本验证中途停止）。
 
-1. BFF 的职责与浏览器直接请求 FastAPI 的风险。
-2. Route Handler 如何转发 `response.body`，而不是调用 `response.json()`。
-3. 区分 Server Component 与需要实时读取流的 Client Component。
+随后进入 Day 5：**前端六态状态机（idle / thinking / streaming / done / aborted / error）与异常提示、重试。**
 
 验收标准：
 
-- 浏览器只请求 `/api/chat/stream`。
-- 前端代理不读取完整正文，流仍能逐块到达浏览器。
-- API Key 不出现在浏览器网络请求和前端环境变量中。
+- 六种状态都能手动触发（含超时、断网、500、限流）。
+- 断网后可重试且不产生重复消息。
+- 500 与限流给出可读提示，而不是把后端原文直接甩给用户。
 
 ## 换电脑后恢复
 
@@ -107,6 +112,17 @@ python -m uvicorn app.main:app --reload
 ```
 
 打开 <http://127.0.0.1:8000/docs>。不要复制其他操作系统生成的 `.venv`。
+
+前端（需后端已启动）：
+
+```powershell
+cd apps\web
+pnpm install
+Copy-Item .env.example .env   # 确认 API_BASE_URL 指向 http://127.0.0.1:8000
+pnpm dev
+```
+
+打开 <http://localhost:3000>。
 
 ## 每次学习结束只更新这里
 
