@@ -1,9 +1,10 @@
 from unittest.mock import AsyncMock
 
-import app.routers.chat as chat_router_module
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from openai import OpenAIError
+
+import app.routers.chat as chat_router_module
 
 
 def test_chat_rejects_request_missing_required_fields():

@@ -37,3 +37,22 @@
 | 项目 | 方向 | 状态 |
 | --- | --- | --- |
 | `apps/api` Agent 后端（FastAPI + pgvector + RAG + Tool Calling） | AI 全栈 | 待复盘 |
+
+<!-- ORGANIZED-INTERVIEW-IMPORT:START -->
+
+## ChatSearch 项目材料
+
+| 项目材料 | 方向 | 状态 |
+| --- | --- | --- |
+| [ChatSearch 项目总览与全链路](chatsearch-overview.md) | ChatSearch AI | 已整理 |
+| [ChatSearch：SSE 选型与流解析](chatsearch-sse-vs-websocket.md) | ChatSearch AI | 已整理 |
+| [ChatSearch：双答案对比一致性](chatsearch-ab-consistency.md) | ChatSearch AI | 已整理 |
+| [ChatSearch：SSE 中断与断点续传](chatsearch-sse-reconnect.md) | ChatSearch AI | 已整理 |
+| [ChatSearch：流式渲染背压](chatsearch-render-backpressure.md) | ChatSearch AI | 已整理 |
+| [ChatSearch：Hybrid 离线包与首屏优化](chatsearch-hybrid.md) | ChatSearch AI | 已整理 |
+| [ChatSearch：Vite/Rolldown 构建优化](chatsearch-vite-rolldown.md) | ChatSearch AI | 已整理 |
+| [ChatSearch：双答案代码级状态机](chatsearch-ab-state-machine-code.md) | ChatSearch AI | 已整理 |
+| [ChatSearch：Checkpoint 语义与一致性](chatsearch-checkpoint-semantics.md) | ChatSearch AI | 已整理 |
+| [ChatSearch：面试速查](chatsearch-interview-cheatsheet.md) | ChatSearch AI | 已整理 |
+
+<!-- ORGANIZED-INTERVIEW-IMPORT:END -->

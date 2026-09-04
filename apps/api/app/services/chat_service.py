@@ -132,6 +132,11 @@ async def stream_chat_reply(
         max_saved_message = MAX_ROUNDS * 2
         if len(history) > max_saved_message + 1:
             del history[1:-max_saved_message]
+
+    except asyncio.CancelledError:
+        # 客户端停止生成时，撤销尚未完成的一轮，并继续传播取消信号。
+        history.pop()
+        raise
     except OpenAIError:
         # 模型建立流或生成中失败时，撤销本轮尚未完成的用户消息。
         history.pop()
