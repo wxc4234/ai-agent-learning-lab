@@ -9,6 +9,7 @@ from app.repositories.conversation_repository import (
     load_conversation,
     save_conversation_turn,
 )
+from app.repositories.run_repository import finish_agent_run, record_run_event
 from app.services.model_client import client, stream_chat_completion
 
 # 内存缓存减少同一会话的重复数据库读取；服务重启后仍可由 PostgreSQL 恢复。
@@ -105,22 +106,32 @@ async def create_chat_reply(session_id: str, prompt: str) -> str:
 async def stream_chat_reply(
     session_id: str,
     prompt: str,
+    run_id: int,
 ) -> AsyncIterator[str]:
-    """逐块返回模型输出，并在完成后持久化完整回答。"""
-    history, message_to_send = await _prepare_chat_messages(
-        session_id=session_id, prompt=prompt
-    )
-
+    """逐块返回模型输出，并记录完整运行事件。"""
+    history = None
     chunks: list[str] = []
 
     try:
+        history, message_to_send = await _prepare_chat_messages(
+            session_id=session_id,
+            prompt=prompt,
+        )
+
         async for delta in stream_chat_completion(message_to_send):
             chunks.append(delta)
+
+            await asyncio.to_thread(
+                record_run_event,
+                run_id,
+                "TEXT_MESSAGE_CONTENT",
+                {"chunk": delta},
+            )
+
             yield delta
 
         reply = "".join(chunks)
 
-        # 流结束后再保存，避免数据库中出现半条 assistant 消息。
         await asyncio.to_thread(
             save_conversation_turn,
             session_id=session_id,
@@ -129,17 +140,48 @@ async def stream_chat_reply(
         )
 
         history.append({"role": "assistant", "content": reply})
+
         max_saved_message = MAX_ROUNDS * 2
         if len(history) > max_saved_message + 1:
             del history[1:-max_saved_message]
 
+        await asyncio.to_thread(
+            finish_agent_run,
+            run_id,
+            "done",
+        )
+
     except asyncio.CancelledError:
-        # 客户端停止生成时，撤销尚未完成的一轮，并继续传播取消信号。
-        history.pop()
+        if history is not None:
+            history.pop()
+
+        await asyncio.to_thread(
+            finish_agent_run,
+            run_id,
+            "aborted",
+        )
         raise
+
     except OpenAIError:
-        # 模型建立流或生成中失败时，撤销本轮尚未完成的用户消息。
-        history.pop()
+        if history is not None:
+            history.pop()
+
+        await asyncio.to_thread(
+            finish_agent_run,
+            run_id,
+            "error",
+        )
+        raise
+
+    except Exception:
+        if history is not None:
+            history.pop()
+
+        await asyncio.to_thread(
+            finish_agent_run,
+            run_id,
+            "error",
+        )
         raise
 
 

@@ -1,6 +1,6 @@
 # AI Agent 学习交接
 
-更新时间：2026-09-04（Asia/Shanghai）
+更新时间：2026-09-06（Asia/Shanghai）
 
 这份文件只记录**当前进度、恢复方式和下一课**。完整路线统一查看 [LEARNING_PLAN.md](LEARNING_PLAN.md)，逐日任务与验收标准查看 [LEARNING_CURRICULUM.md](LEARNING_CURRICULUM.md)。
 
@@ -12,7 +12,7 @@
 
 ## 当前进度
 
-第 1 周与第 2 周已完成；第 3 周 Day 1～Day 3 已完成，Day 4（停止生成）代码已就位。下一课是 Day 4 验收收尾 → Day 5：**前端六态状态机与异常提示、重试。**
+第 1 周与第 2 周已完成；第 3 周 Day 1～Day 6 已完成。Day 6 已接入 `run_id`、运行事件落库、时间线查询接口，并由 Next.js BFF 转发到前端。下一课是 Day 7：**5 条固定冒烟评测与复盘。**
 
 当前代码已经具备：
 
@@ -35,7 +35,7 @@
 - 停止生成：前端 `AbortController` + 「停止生成」按钮；BFF 用 `signal` 转发；后端 `stream_chat_reply` 捕获 `asyncio.CancelledError` 撤销未完成的一轮。
 - `interview-questions/` AI 全栈面试题库已建立（算法 / 前端 / 后端 / AI / 系统设计 / 项目 / 行为 七维度，与 `LEARNING_CURRICULUM.md` 第 4 章互补）。
 
-尚未完成：带参数工具、通用工具调度、多工具循环。这些内容不会删除，统一放到第 7 周 Agent Runtime 阶段完成。Day 4 的验收清单（点击停止后后端日志显示已中断、不再继续消耗 token）尚未逐条跑通确认。
+尚未完成：5 条冒烟评测、事件流图和第 3 周复盘；前端真实环境下的断网/限流手动验收仍待补充。带参数工具、通用工具调度、多工具循环统一放到第 7 周 Agent Runtime 阶段完成。
 
 ## 当前文件
 
@@ -45,6 +45,7 @@
 | `apps/api/app/database.py` | SQLAlchemy Engine、Session 和 ORM 基类 |
 | `apps/api/app/models.py` | 用户、会话、消息、Agent Run 与事件模型 |
 | `apps/api/app/repositories/` | PostgreSQL 用户、会话与消息数据访问层 |
+| `apps/api/app/repositories/run_repository.py` | Agent Run 创建、事件记录、终态更新与时间线查询 |
 | `apps/api/migrations/` | Alembic 表结构迁移历史 |
 | `apps/api/alembic.ini` | Alembic 配置入口 |
 | `apps/api/tests/` | pytest 自动化测试：工具、仓储与接口契约 |
@@ -72,17 +73,15 @@
 
 ## 下一课
 
-第 3 周 Day 4 收尾 → Day 5。
+第 3 周 Day 7：**5 条固定冒烟评测与复盘。**
 
-Day 4（停止生成）代码已就位，先按验收清单确认：点击「停止生成」后前端立即停、后端日志显示已中断、不再继续消耗 token；确认后端 `stream_chat_reply` 的 `CancelledError` 分支真正触发（可用长文本验证中途停止）。
-
-随后进入 Day 5：**前端六态状态机（idle / thinking / streaming / done / aborted / error）与异常提示、重试。**
+Day 6 已完成：运行仓储、流式事件记录、`GET /runs/{run_id}`、前端 `X-Run-ID` 读取均已验证。下一步创建一条命令可运行的 5 条固定冒烟评测，并补齐事件流图和第 3 周复盘。
 
 验收标准：
 
-- 六种状态都能手动触发（含超时、断网、500、限流）。
-- 断网后可重试且不产生重复消息。
-- 500 与限流给出可读提示，而不是把后端原文直接甩给用户。
+- 六种状态都能通过 reducer 和界面路径触发（含超时、断网、500、限流）。
+- 错误重试会清空半截回答并复用同一问题/会话标识，UI 不追加重复消息。
+- 500、502 与限流给出可读提示，而不是把后端原文直接甩给用户。
 
 ## 换电脑后恢复
 

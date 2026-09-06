@@ -2,7 +2,7 @@
 
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, String, Text, func
+from sqlalchemy import JSON, DateTime, ForeignKey, String, Text, func
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -155,7 +155,7 @@ class AgentRunEvent(Base):
 
     # JSONB 可保存不同事件各自的结构化数据，并支持 PostgreSQL 内部查询。
     payload: Mapped[dict[str, object]] = mapped_column(
-        JSONB,
+        JSON().with_variant(JSONB, "postgresql"),
         default=dict,
     )
 

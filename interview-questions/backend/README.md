@@ -45,5 +45,6 @@
 | 主题 | 题目 | 频率 | 状态 |
 | --- | --- | --- | --- |
 | network | [Koa BFF 如何流式转发上游 SSE，并处理背压与连接取消？](network/koa-sse-proxy.md) | 中 | 已写 |
+| web | [一次 Agent 运行需要记录什么，如何按 `run_id` 还原时间线？](web/agent-run-observability.md) | 高 | 已写 |
 
 <!-- ORGANIZED-INTERVIEW-IMPORT:END -->

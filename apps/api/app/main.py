@@ -7,6 +7,7 @@ from app.repositories.conversation_repository import init_db
 from app.routers.chat import router as chat_router
 from app.routers.conversation import router as conversation_router
 from app.routers.health import router as health_router
+from app.routers.runs import router as runs_router
 from app.routers.tools import router as tools_router
 
 
@@ -27,4 +28,5 @@ app.include_router(health_router)
 app.include_router(chat_router)
 app.include_router(conversation_router)
 app.include_router(tools_router)
+app.include_router(runs_router)
 """FastAPI 应用装配入口：只负责生命周期和路由注册。"""

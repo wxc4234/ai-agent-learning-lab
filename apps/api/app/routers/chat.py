@@ -1,7 +1,10 @@
+import asyncio
+
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 from openai import OpenAIError
 
+from app.repositories.run_repository import create_agent_run
 from app.schemas import ChatRequest, ChatResponse
 from app.services.chat_service import create_chat_reply, stream_chat_reply
 
@@ -40,11 +43,22 @@ async def chat(request: ChatRequest):
 
 @router.post("/chat/stream")
 async def chat_stream(request: ChatRequest) -> StreamingResponse:
+
+    run_id = await asyncio.to_thread(
+        create_agent_run,
+        session_id=request.session_id,
+        prompt=request.prompt,
+    )
+
     return StreamingResponse(
         stream_chat_reply(
             session_id=request.session_id,
             prompt=request.prompt,
+            run_id=run_id,
         ),
         media_type="text/plain; charset=utf-8",
-        headers={"Cache-Control": "no-cache"},
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Run-ID": str(run_id),
+        },
     )

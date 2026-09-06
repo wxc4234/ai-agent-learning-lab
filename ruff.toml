@@ -1,0 +1,4 @@
+[lint]
+# 关闭 import 排序相关的诊断（I001 等），避免编辑器里出现
+# "Import block is un-sorted or un-formatted" 的波浪线。
+ignore = ["I"]

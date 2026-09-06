@@ -398,7 +398,7 @@ Day 7 是本周新增的关键内容。第 6 周的命中率、MRR、引用正�
 ### Agent 前端
 
 1. Agent UI 和普通聊天 UI 的本质区别是什么？
-2. 模型 token、tool call、approval、error 分别对应前端哪些状态？状态机怎么画？
+2. [模型 token、tool call、approval、error 分别对应前端哪些状态？状态机怎么画？](interview-questions/frontend/agent-ui/chat-state-machine.md)
 3. 为什么选 SSE 而不是 WebSocket？什么时候必须换成 WebSocket？
 4. 你的事件协议和 AG-UI 有什么异同？为什么这样选？
 5. 用户点击「停止生成」，从浏览器到后端到模型分别发生了什么？
@@ -408,7 +408,7 @@ Day 7 是本周新增的关键内容。第 6 周的命中率、MRR、引用正�
 
 ### 后端与工程
 
-1. 一次 Agent 运行需要落库哪些数据？表怎么设计？
+1. [一次 Agent 运行需要记录什么，如何按 `run_id` 还原时间线？](interview-questions/backend/web/agent-run-observability.md)
 2. 用户重复点击发送，如何保证不产生两条消息？
 3. Redis 在这个项目里存什么，丢了会怎样？
 4. 数据库迁移在多人多环境下如何避免冲突？
