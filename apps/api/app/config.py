@@ -38,6 +38,11 @@ class Settings(BaseSettings):
         validation_alias="DATABASE_URL",
     )
 
+    redis_url: str = Field(
+        default="redis://127.0.0.1:6379/0",
+        validation_alias="REDIS_URL",
+    )
+
     # 统一从根目录 .env 读取，并忽略暂未定义的环境变量，方便逐步扩展配置。
     model_config = SettingsConfigDict(
         env_file=PROJECT_ROOT / ".env",

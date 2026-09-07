@@ -267,6 +267,6 @@ Agent 与数据能力（第 5 ～ 9 周产出）：
 - [环境安装与启动](ENVIRONMENT.md)
 - [岗位与开源项目校准依据](SKILL_GAP_ANALYSIS.md)
 - [当前进度与跨电脑交接](LEARNING_HANDOFF.md)
-- [第 1 周完成记录](week-01/README.md)
+- [第 1 周完成记录](week-learning/week-01/README.md)
 
 目录约束：`week-XX/` 只保存单周记录和一次性练习；跨周持续演进的应用、配置、测试、环境文档与基础设施不得放入周目录。

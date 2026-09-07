@@ -5,6 +5,84 @@ from openai import OpenAIError
 from app.services import chat_service
 
 
+async def never_receive_cancellation(_: int) -> str:
+    await asyncio.Future[None]()
+    raise AssertionError("取消等待协程不应自行结束")
+
+
+def test_redis_cancellation_signal_aborts_stream(monkeypatch):
+    history = [
+        {"role": "system", "content": "system"},
+        {"role": "user", "content": "生成一段长回答"},
+    ]
+    cancellation_ready = asyncio.Event()
+    stream_blocker = asyncio.Event()
+    finished_runs: list[tuple[int, str, dict[str, object]]] = []
+
+    async def fake_prepare_messages(session_id, prompt):
+        return history, []
+
+    async def fake_stream_completion(messages):
+        yield "第一段"
+        await stream_blocker.wait()
+
+    async def fake_wait_for_cancellation(run_id: int) -> str:
+        await cancellation_ready.wait()
+        return "user"
+
+    monkeypatch.setattr(
+        chat_service,
+        "_prepare_chat_messages",
+        fake_prepare_messages,
+    )
+    monkeypatch.setattr(
+        chat_service,
+        "stream_chat_completion",
+        fake_stream_completion,
+    )
+    monkeypatch.setattr(chat_service, "record_run_event", lambda *args: None)
+    monkeypatch.setattr(
+        chat_service,
+        "get_run_cancellation_reason",
+        lambda run_id: "user",
+    )
+    monkeypatch.setattr(
+        chat_service,
+        "wait_for_run_cancellation",
+        fake_wait_for_cancellation,
+    )
+    monkeypatch.setattr(
+        chat_service,
+        "finish_agent_run",
+        lambda run_id, status, payload=None: finished_runs.append(
+            (run_id, status, payload or {}),
+        ),
+    )
+
+    async def consume_until_cancelled():
+        stream = chat_service.stream_chat_reply(
+            session_id="redis-cancel-test",
+            prompt="生成一段长回答",
+            run_id=505,
+        )
+
+        assert await anext(stream) == "第一段"
+        await asyncio.sleep(0)
+        cancellation_ready.set()
+
+        try:
+            await anext(stream)
+        except asyncio.CancelledError:
+            pass
+        else:
+            raise AssertionError("Redis 取消通知没有中断流任务")
+
+    asyncio.run(consume_until_cancelled())
+
+    assert history == [{"role": "system", "content": "system"}]
+    assert finished_runs == [(505, "aborted", {"reason": "user"})]
+
+
 def test_cancelled_stream_rolls_back_pending_user_message(monkeypatch):
     history = [
         {"role": "system", "content": "system"},
@@ -29,8 +107,26 @@ def test_cancelled_stream_rolls_back_pending_user_message(monkeypatch):
         "stream_chat_completion",
         fake_stream_completion,
     )
+    monkeypatch.setattr(
+        chat_service,
+        "get_run_cancellation_reason",
+        lambda run_id: "user",
+    )
+    monkeypatch.setattr(
+        chat_service,
+        "wait_for_run_cancellation",
+        never_receive_cancellation,
+    )
     monkeypatch.setattr(chat_service, "record_run_event", lambda *args: None)
-    monkeypatch.setattr(chat_service, "finish_agent_run", lambda *args: None)
+    finished_runs: list[tuple[int, str, dict[str, object]]] = []
+
+    monkeypatch.setattr(
+        chat_service,
+        "finish_agent_run",
+        lambda run_id, status, payload=None: finished_runs.append(
+            (run_id, status, payload or {}),
+        ),
+    )
 
     async def run_cancel():
         stream = chat_service.stream_chat_reply(
@@ -58,6 +154,7 @@ def test_cancelled_stream_rolls_back_pending_user_message(monkeypatch):
     asyncio.run(run_cancel())
 
     assert history == [{"role": "system", "content": "system"}]
+    assert finished_runs == [(101, "aborted", {"reason": "user"})]
 
 
 def test_completed_stream_records_chunks_and_finished_status(monkeypatch):
@@ -87,6 +184,11 @@ def test_completed_stream_records_chunks_and_finished_status(monkeypatch):
 
     monkeypatch.setattr(chat_service, "_prepare_chat_messages", fake_prepare_messages)
     monkeypatch.setattr(chat_service, "stream_chat_completion", fake_stream_completion)
+    monkeypatch.setattr(
+        chat_service,
+        "wait_for_run_cancellation",
+        never_receive_cancellation,
+    )
     monkeypatch.setattr(
         chat_service,
         "record_run_event",
@@ -143,6 +245,11 @@ def test_model_error_finishes_run_as_error_and_rolls_back_user_message(monkeypat
 
     monkeypatch.setattr(chat_service, "_prepare_chat_messages", fake_prepare_messages)
     monkeypatch.setattr(chat_service, "stream_chat_completion", fake_stream_completion)
+    monkeypatch.setattr(
+        chat_service,
+        "wait_for_run_cancellation",
+        never_receive_cancellation,
+    )
     monkeypatch.setattr(chat_service, "record_run_event", lambda *args: None)
     monkeypatch.setattr(
         chat_service,
@@ -158,3 +265,76 @@ def test_model_error_finishes_run_as_error_and_rolls_back_user_message(monkeypat
         raise AssertionError("模型异常应该继续向上传播")
 
     assert finished_runs == [(303, "error")]
+
+
+def test_timed_out_stream_finishes_as_error(monkeypatch):
+    history = [
+        {"role": "system", "content": "system"},
+        {"role": "user", "content": "生成一段长回答"},
+    ]
+    blocker = asyncio.Event()
+    finished_runs: list[tuple[int, str, dict[str, object]]] = []
+
+    async def fake_prepare_messages(session_id, prompt):
+        return history, []
+
+    async def fake_stream_completion(messages):
+        yield "第一段"
+        await blocker.wait()
+
+    monkeypatch.setattr(
+        chat_service,
+        "_prepare_chat_messages",
+        fake_prepare_messages,
+    )
+    monkeypatch.setattr(
+        chat_service,
+        "stream_chat_completion",
+        fake_stream_completion,
+    )
+    monkeypatch.setattr(chat_service, "record_run_event", lambda *args: None)
+    monkeypatch.setattr(
+        chat_service,
+        "get_run_cancellation_reason",
+        lambda run_id: "timeout",
+    )
+    monkeypatch.setattr(
+        chat_service,
+        "wait_for_run_cancellation",
+        never_receive_cancellation,
+    )
+    monkeypatch.setattr(
+        chat_service,
+        "finish_agent_run",
+        lambda run_id, status, payload=None: finished_runs.append(
+            (run_id, status, payload or {}),
+        ),
+    )
+
+    async def cancel_stream():
+        stream = chat_service.stream_chat_reply(
+            session_id="timeout-test",
+            prompt="生成一段长回答",
+            run_id=404,
+        )
+
+        assert await anext(stream) == "第一段"
+
+        async def read_next_chunk() -> str:
+            return await anext(stream)
+
+        next_chunk = asyncio.create_task(read_next_chunk())
+        await asyncio.sleep(0)
+        next_chunk.cancel()
+
+        try:
+            await next_chunk
+        except asyncio.CancelledError:
+            pass
+        else:
+            raise AssertionError("取消信号没有继续向上传播")
+
+    asyncio.run(cancel_stream())
+
+    assert history == [{"role": "system", "content": "system"}]
+    assert finished_runs == [(404, "error", {"reason": "timeout"})]

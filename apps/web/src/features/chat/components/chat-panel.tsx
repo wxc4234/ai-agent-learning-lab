@@ -9,6 +9,7 @@ import {
 } from "../chat-state";
 
 const REQUEST_TIMEOUT_MS = 30_000;
+type CancelReason = "user" | "timeout";
 
 function statusLabel(status: string): string {
 	switch (status) {
@@ -37,16 +38,21 @@ export default function ChatPanel() {
 
 	const controllerRef = useRef<AbortController | null>(null);
 	const sessionIdRef = useRef<string | null>(null);
+	const activeRunIdRef = useRef<string | null>(null);
+	const cancellationPendingRef = useRef(false);
 
 	const isBusy =
 		chatState.status === "thinking" || chatState.status === "streaming";
 
 	async function startRequest(requestPrompt: string, isRetry = false) {
+		activeRunIdRef.current = null;
+		cancellationPendingRef.current = false;
+		setActiveRunId(null);
 		const controller = new AbortController();
 		let didTimeout = false;
 		const timeoutId = window.setTimeout(() => {
 			didTimeout = true;
-			controller.abort();
+			void requestCancellation("timeout");
 		}, REQUEST_TIMEOUT_MS);
 
 		controllerRef.current = controller;
@@ -71,6 +77,7 @@ export default function ChatPanel() {
 			});
 
 			const runId = res.headers.get("X-Run-ID");
+			activeRunIdRef.current = runId;
 			setActiveRunId(runId);
 			if (!res.ok) {
 				throw res;
@@ -94,10 +101,14 @@ export default function ChatPanel() {
 					hasStartedStreaming = true;
 					dispatch({ type: "stream-start" });
 				}
-				dispatch({ type: "append", chunk: value });
+				if (!cancellationPendingRef.current) {
+					dispatch({ type: "append", chunk: value });
+				}
 			}
 
-			dispatch({ type: "complete" });
+			if (!cancellationPendingRef.current) {
+				dispatch({ type: "complete" });
+			}
 		} catch (error) {
 			if (error instanceof DOMException && error.name === "AbortError") {
 				if (didTimeout) {
@@ -120,6 +131,31 @@ export default function ChatPanel() {
 		}
 	}
 
+    async function requestCancellation(reason: CancelReason) {
+		if (cancellationPendingRef.current) {
+			return;
+		}
+
+		cancellationPendingRef.current = true;
+		const runId = activeRunIdRef.current;
+
+		try {
+			if (runId) {
+				await fetch(`/api/runs/${runId}/cancel`, {
+					method: "POST",
+					headers: {
+						"Content-Type": "application/json",
+					},
+					body: JSON.stringify({ reason }),
+				});
+			}
+		} catch {
+			// 运行事件记录失败时，仍需停止流，不能让请求继续占用资源。
+		} finally {
+			controllerRef.current?.abort();
+		}
+	}
+
 	async function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
 		event.preventDefault();
 		const trimmedPrompt = prompt.trim();
@@ -139,7 +175,7 @@ export default function ChatPanel() {
 	}
 
 	function handleStop() {
-		controllerRef.current?.abort();
+		void requestCancellation("user");
 	}
 
 	return (

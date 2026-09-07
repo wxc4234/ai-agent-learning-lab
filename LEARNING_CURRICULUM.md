@@ -11,7 +11,7 @@
 | `LEARNING_CURRICULUM.md`（本文） | 逐日任务、可验证验收、官方资料、常见坑、面试题 | 修改路线和周目标 |
 | `LEARNING_HANDOFF.md` | 今天学到哪、下一课是什么 | 完整路线和完整大纲 |
 
-第 1 周记录见 [week-01/README.md](week-01/README.md)，第 2 周逐日计划在 `LEARNING_PLAN.md` 第 8 节。本文从第 3 周开始展开。
+第 1 周记录见 [week-learning/week-01/README.md](week-learning/week-01/README.md)，第 2 周逐日计划在 `LEARNING_PLAN.md` 第 8 节。本文从第 3 周开始展开。
 
 本文第 3 ～ 12 周内容已按 2026-08-31 的岗位调研调整过，调研依据与差距分析见 [SKILL_GAP_ANALYSIS.md](SKILL_GAP_ANALYSIS.md) 第 10 节。
 
@@ -470,8 +470,8 @@ Day 7 是本周新增的关键内容。第 6 周的命中率、MRR、引用正�
 
 每周末对照勾选，用于判断是否可以进入下一周。连续两周有未完成项时，优先补齐而不是继续推进。
 
-- [ ] 第 2 周：分层、配置、PostgreSQL、Alembic、pytest、Docker Compose 全部落地
-- [ ] 第 3 周：流式渲染 + 停止 + 六态状态机 + **run_id 事件落库 + 5 条冒烟评测**
+- [x] 第 2 周：分层、配置、PostgreSQL、Alembic、pytest、Docker Compose 全部落地
+- [x] 第 3 周：流式渲染 + 停止 + 六态状态机 + **run_id 事件落库 + 5 条冒烟评测**
 - [ ] 第 4 周：登录、会话恢复、Redis、权限、上传、工具卡片、**成本看板**
 - [ ] 第 5 周：文档问答可用且带引用
 - [ ] 第 6 周：三种检索策略可对比，评测脚本可运行
@@ -511,7 +511,5 @@ Day 7 是本周新增的关键内容。第 6 周的命中率、MRR、引用正�
 - [环境安装与启动](ENVIRONMENT.md)
 - [岗位与技能校准](SKILL_GAP_ANALYSIS.md)
 - [当前进度与交接](LEARNING_HANDOFF.md)
-
-
 
 

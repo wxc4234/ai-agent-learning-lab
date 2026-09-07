@@ -1,4 +1,5 @@
 import asyncio
+from contextlib import suppress
 from collections.abc import AsyncIterator
 
 from openai import OpenAIError
@@ -9,14 +10,29 @@ from app.repositories.conversation_repository import (
     load_conversation,
     save_conversation_turn,
 )
-from app.repositories.run_repository import finish_agent_run, record_run_event
+from app.repositories.run_repository import (
+    finish_agent_run,
+    get_run_cancellation_reason,
+    record_run_event,
+)
 from app.services.model_client import client, stream_chat_completion
+from app.services.run_cancellation import wait_for_run_cancellation
 
 # 内存缓存减少同一会话的重复数据库读取；服务重启后仍可由 PostgreSQL 恢复。
 conversations: dict[str, list[ChatCompletionMessageParam]] = {}
 
 # 只发送最近 5 轮，控制上下文长度、延迟和模型调用成本。
 MAX_ROUNDS = 5
+
+
+async def _cancel_stream_when_requested(
+    run_id: int,
+    stream_task: asyncio.Task[object],
+) -> None:
+    """收到跨实例取消通知后，中断承载流的协程任务。"""
+
+    await wait_for_run_cancellation(run_id)
+    stream_task.cancel()
 
 
 async def _prepare_chat_messages(
@@ -111,6 +127,13 @@ async def stream_chat_reply(
     """逐块返回模型输出，并记录完整运行事件。"""
     history = None
     chunks: list[str] = []
+    stream_task = asyncio.current_task()
+    if stream_task is None:
+        raise RuntimeError("流式回复必须在 asyncio Task 中执行")
+
+    cancellation_monitor = asyncio.create_task(
+        _cancel_stream_when_requested(run_id, stream_task)
+    )
 
     try:
         history, message_to_send = await _prepare_chat_messages(
@@ -155,10 +178,17 @@ async def stream_chat_reply(
         if history is not None:
             history.pop()
 
+        cancel_reason = await asyncio.to_thread(
+            get_run_cancellation_reason,
+            run_id,
+        )
+        final_status = "error" if cancel_reason == "timeout" else "aborted"
+
         await asyncio.to_thread(
             finish_agent_run,
             run_id,
-            "aborted",
+            final_status,
+            {"reason": cancel_reason or "unknown"},
         )
         raise
 
@@ -183,6 +213,10 @@ async def stream_chat_reply(
             "error",
         )
         raise
+    finally:
+        cancellation_monitor.cancel()
+        with suppress(asyncio.CancelledError):
+            await cancellation_monitor
 
 
 """一轮聊天的业务编排：记忆恢复、模型调用和消息持久化。"""

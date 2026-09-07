@@ -23,5 +23,7 @@ pytest==9.1.1
 httpx==0.28.1
 # ASGI 服务器（启动 FastAPI 应用用）
 uvicorn==0.52.4
+# Redis 异步客户端：跨进程传递 Agent Run 的取消信号
+redis==8.1.0
 # 代码格式化工具（VS Code 已配置为默认格式化器）
 ruff==0.16.4

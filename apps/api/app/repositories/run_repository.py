@@ -1,7 +1,7 @@
 """Agent Run 与运行事件的持久化实现。"""
 
 from datetime import datetime, timezone
-from typing import TypedDict
+from typing import Literal, TypedDict
 
 from sqlalchemy import select
 
@@ -71,13 +71,17 @@ def record_run_event(
         )
 
 
-def finish_agent_run(run_id: int, status: str) -> None:
-    """结束一次运行并记录最终状态。"""
-    event_type_by_status = {
-        "done": "RUN_FINISHED",
-        "aborted": "RUN_ABORTED",
-        "error": "RUN_ERROR",
+def request_run_cancellation(
+    run_id: int,
+    reason: Literal["user", "timeout"],
+) -> bool:
+    """原子地记录取消意图和终态，返回本次是否实际取消了运行。"""
+
+    terminal_state_by_reason = {
+        "user": ("aborted", "RUN_ABORTED"),
+        "timeout": ("error", "RUN_ERROR"),
     }
+    status, terminal_event_type = terminal_state_by_reason[reason]
 
     with SessionLocal.begin() as session:
         run = session.get(AgentRun, run_id)
@@ -85,14 +89,82 @@ def finish_agent_run(run_id: int, status: str) -> None:
         if run is None:
             raise ValueError(f"run_id: {run_id} 不存在")
 
+        if run.status != "running":
+            return False
+
+        session.add(
+            AgentRunEvent(
+                run_id=run_id,
+                event_type="RUN_CANCELLATION_REQUESTED",
+                payload={"reason": reason},
+            )
+        )
+        run.status = status
+        run.finished_at = datetime.now(timezone.utc)
+        session.add(
+            AgentRunEvent(
+                run_id=run_id,
+                event_type=terminal_event_type,
+                payload={"reason": reason},
+            )
+        )
+
+        return True
+
+
+def get_run_cancellation_reason(
+    run_id: int,
+) -> Literal["user", "timeout"] | None:
+    """读取最近一次取消意图的原因。"""
+    with SessionLocal() as session:
+        event = session.scalars(
+            select(AgentRunEvent)
+            .where(
+                AgentRunEvent.run_id == run_id,
+                AgentRunEvent.event_type == "RUN_CANCELLATION_REQUESTED",
+            )
+            .order_by(AgentRunEvent.id.desc())
+        ).first()
+
+    if event is None:
+        return None
+
+    reason = event.payload.get("reason")
+    if reason in ("user", "timeout"):
+        return reason
+
+    return None
+
+
+def finish_agent_run(
+    run_id: int, status: str, payload: dict[str, object] | None = None
+) -> None:
+    """结束一次运行并记录最终状态。"""
+    event_type_by_status = {
+        "done": "RUN_FINISHED",
+        "aborted": "RUN_ABORTED",
+        "error": "RUN_ERROR",
+    }
+    event_type = event_type_by_status[status]
+
+    with SessionLocal.begin() as session:
+        run = session.get(AgentRun, run_id)
+
+        if run is None:
+            raise ValueError(f"run_id: {run_id} 不存在")
+
+        # 取消接口已在自己的事务中写入终态时，流任务清理不得覆盖它。
+        if run.status != "running":
+            return
+
         run.status = status
         run.finished_at = datetime.now(timezone.utc)
 
         session.add(
             AgentRunEvent(
                 run_id=run.id,
-                event_type=event_type_by_status[status],
-                payload={},
+                event_type=event_type,
+                payload=payload or {},
             )
         )
 

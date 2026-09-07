@@ -76,3 +76,30 @@ def test_finish_run_rejects_unknown_status(monkeypatch):
         pass
     else:
         raise AssertionError("未知运行状态应该被拒绝")
+
+
+def test_cancelling_a_running_run_records_its_terminal_event(monkeypatch):
+    engine = create_engine("sqlite://")
+    Base.metadata.create_all(engine)
+
+    test_session_local = sessionmaker(
+        bind=engine,
+        autoflush=False,
+        expire_on_commit=False,
+    )
+    monkeypatch.setattr(run_repository, "SessionLocal", test_session_local)
+
+    run_id = run_repository.create_agent_run("cancel-run-session")
+
+    assert run_repository.request_run_cancellation(run_id, "user") is True
+    assert run_repository.request_run_cancellation(run_id, "timeout") is False
+
+    timeline = run_repository.load_run_timeline(run_id)
+
+    assert timeline["status"] == "aborted"
+    assert [event["event_type"] for event in timeline["events"]] == [
+        "RUN_STARTED",
+        "RUN_CANCELLATION_REQUESTED",
+        "RUN_ABORTED",
+    ]
+    assert timeline["events"][-1]["payload"] == {"reason": "user"}

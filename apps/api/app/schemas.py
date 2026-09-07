@@ -37,3 +37,9 @@ class ConversationHistoryResponse(BaseModel):
     session_id: str
     total: int
     messages: list[ConversationMessage]
+
+
+class CancelRunRequest(BaseModel):
+    """请求停止一次运行时携带的原因。"""
+
+    reason: Literal["user", "timeout"]

@@ -77,3 +77,23 @@ test("server failures are converted into readable retry guidance", () => {
     "服务暂时出错，请稍后重试。",
   );
 });
+
+test("a timeout becomes an error rather than an aborted run", () => {
+  let state = chatReducer(initialChatState, {
+    type: "submit",
+    prompt: "写一段较长的回答",
+  });
+
+  state = chatReducer(state, {type: "stream-start"});
+  state = chatReducer(state, {type: "append", chunk: "已生成的部分内容"});
+
+  state = chatReducer(state, {
+    type: "fail",
+    message: "请求超时了，请稍后重试。",
+  });
+
+  assert.equal(state.status, "error");
+  assert.equal(state.reply, "已生成的部分内容");
+  assert.equal(state.errorMessage, "请求超时了，请稍后重试。");
+  assert.notEqual(state.status, "aborted");
+});

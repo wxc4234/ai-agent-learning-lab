@@ -64,3 +64,31 @@ def test_get_missing_run_returns_404(monkeypatch):
     assert response.json() == {
         "detail": "run_id: 999 不存在",
     }
+
+
+def test_cancel_run_records_reason(monkeypatch):
+    recorded: list[tuple[int, str]] = []
+    published: list[tuple[int, str]] = []
+
+    async def fake_publish(run_id: int, reason: str) -> None:
+        published.append((run_id, reason))
+
+    monkeypatch.setattr(
+        runs_router_module,
+        "request_run_cancellation",
+        lambda run_id, reason: recorded.append((run_id, reason)) or True,
+    )
+    monkeypatch.setattr(
+        runs_router_module,
+        "publish_run_cancellation",
+        fake_publish,
+    )
+
+    response = create_test_client().post(
+        "/runs/17/cancel",
+        json={"reason": "timeout"},
+    )
+
+    assert response.status_code == 204
+    assert recorded == [(17, "timeout")]
+    assert published == [(17, "timeout")]

@@ -19,3 +19,4 @@
 遇到下列变更前，先读取对应 `SKILL.md`；它们记录本项目的非通用工程约束，而不是替代正常的设计判断。
 
 - FastAPI、Next.js BFF、浏览器流式渲染或 Agent 运行状态相关改动：`skills/agent-streaming/SKILL.md`。
+- 工具定义、参数校验、工具调度或 Agent Loop 相关改动：`skills/agent-runtime/SKILL.md`。
