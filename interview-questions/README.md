@@ -2,6 +2,10 @@
 
 面向「AI 全栈工程师」社招面试的系统化题库，覆盖算法、前端、后端、AI / LLM、系统设计、项目复盘、行为面试七个维度。
 
+## 总体作战手册
+
+开始刷题前，先看 [AI Agent 岗位面试作战手册：准备路线与 Codex 模拟面试](interview-action-plan-and-codex-mock.md)。它负责把目标岗位、ChatSearch 项目证据、学习计划、投递门槛、模拟面试提示词和评分复盘串成一套执行闭环；各子目录继续负责具体题目和答案。
+
 ## 与 LEARNING_CURRICULUM.md 的关系
 
 本目录与 [`LEARNING_CURRICULUM.md`](../LEARNING_CURRICULUM.md) 第 4 章「面试题库」**互补，不重复**：
@@ -18,6 +22,7 @@
 ```text
 interview-questions/
 ├── README.md          # 本文件
+├── interview-action-plan-and-codex-mock.md # 总体准备路线与 Codex 模拟面试手册
 ├── algorithms/        # 力扣算法（编码能力）
 ├── frontend/          # 前端（HTML/CSS/JS/TS/框架/浏览器/工程化）
 ├── backend/           # 后端（语言/数据库/网络/OS/分布式）
