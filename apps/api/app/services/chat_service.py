@@ -1,4 +1,5 @@
 import asyncio
+import json
 from contextlib import suppress
 from collections.abc import AsyncIterator
 
@@ -15,14 +16,48 @@ from app.repositories.run_repository import (
     get_run_cancellation_reason,
     record_run_event,
 )
-from app.services.model_client import client, stream_chat_completion
+from app.services.model_client import client
 from app.services.run_cancellation import wait_for_run_cancellation
+from app.services.agent_runtime import (
+    AgentLoopCompleted,
+    ToolCallStarted,
+    ToolCallSucceeded,
+    ToolCallFailed,
+    stream_agent_loop,
+)
+from app.services.model_decision import (
+    DEFAULT_SYSTEM_PROMPT,
+    DeepSeekDecisionMaker,
+    ModelDecisionError,
+)
 
 # 内存缓存减少同一会话的重复数据库读取；服务重启后仍可由 PostgreSQL 恢复。
 conversations: dict[str, list[ChatCompletionMessageParam]] = {}
 
 # 只发送最近 5 轮，控制上下文长度、延迟和模型调用成本。
 MAX_ROUNDS = 5
+
+
+def encode_stream_event(
+    event_type: str, payload: dict[str, object] | None = None
+) -> str:
+    """将一个 Agent 事件编码为一行完整 JSON。"""
+    event: dict[str, object] = {"type": event_type}
+
+    if payload is not None:
+        event.update(payload)
+
+    return json.dumps(event, ensure_ascii=False) + "\n"
+
+
+def rollback_pending_turn(
+    history: list[ChatCompletionMessageParam] | None, history_checkpoint: int | None
+) -> None:
+    """删除本轮开始后追加的 user 和可能存在的 assistant 消息。"""
+    if history is None or history_checkpoint is None:
+        return
+
+    del history[history_checkpoint:]
 
 
 async def _cancel_stream_when_requested(
@@ -42,7 +77,7 @@ async def _prepare_chat_messages(
         conversations[session_id] = [
             {
                 "role": "system",
-                "content": "你是一个贴心并且简洁的 AI 助手。",
+                "content": DEFAULT_SYSTEM_PROMPT,
             }
         ]
 
@@ -119,14 +154,20 @@ async def create_chat_reply(session_id: str, prompt: str) -> str:
         raise
 
 
+# ===== 本课修改：正式聊天改为 Agent Runtime 结构化事件流 =====
+
+
 async def stream_chat_reply(
     session_id: str,
     prompt: str,
     run_id: int,
 ) -> AsyncIterator[str]:
-    """逐块返回模型输出，并记录完整运行事件。"""
-    history = None
-    chunks: list[str] = []
+    """运行 Agent Loop，并逐行返回结构化 NDJSON 事件。"""
+
+    history: list[ChatCompletionMessageParam] | None = None
+    history_checkpoint: int | None = None
+    turn_persisted = False
+
     stream_task = asyncio.current_task()
     if stream_task is None:
         raise RuntimeError("流式回复必须在 asyncio Task 中执行")
@@ -136,47 +177,200 @@ async def stream_chat_reply(
     )
 
     try:
-        history, message_to_send = await _prepare_chat_messages(
+        history, messages_to_send = await _prepare_chat_messages(
             session_id=session_id,
             prompt=prompt,
         )
 
-        async for delta in stream_chat_completion(message_to_send):
-            chunks.append(delta)
+        # _prepare_chat_messages 已把当前 user 追加到 history。
+        # 因此最后一个元素的位置就是本轮开始点
+        history_checkpoint = len(history) - 1
 
-            await asyncio.to_thread(
-                record_run_event,
-                run_id,
-                "TEXT_MESSAGE_CONTENT",
-                {"chunk": delta},
-            )
-
-            yield delta
-
-        reply = "".join(chunks)
-
-        await asyncio.to_thread(
-            save_conversation_turn,
-            session_id=session_id,
-            user_content=prompt,
-            assistant_content=reply,
+        decision_maker = DeepSeekDecisionMaker(
+            client=client,
+            model=settings.deepseek_model,
+            messages=messages_to_send,
         )
 
-        history.append({"role": "assistant", "content": reply})
+        async for event in stream_agent_loop(
+            decision_maker,
+            max_steps=5,
+        ):
+            if isinstance(event, ToolCallStarted):
+                payload: dict[str, object] = {
+                    "tool_call_id": event.action.tool_call_id,
+                    "tool_name": event.action.tool_name,
+                    "arguments": event.action.arguments,
+                }
 
-        max_saved_message = MAX_ROUNDS * 2
-        if len(history) > max_saved_message + 1:
-            del history[1:-max_saved_message]
+                await asyncio.to_thread(
+                    record_run_event,
+                    run_id,
+                    "TOOL_CALL_START",
+                    payload,
+                )
 
-        await asyncio.to_thread(
-            finish_agent_run,
-            run_id,
-            "done",
-        )
+                yield encode_stream_event(
+                    "TOOL_CALL_START",
+                    payload,
+                )
+                continue
+
+            if isinstance(event, ToolCallSucceeded):
+                payload = {
+                    "tool_call_id": event.observation.tool_call_id,
+                    "tool_name": event.observation.tool_name,
+                    "result": event.observation.result,
+                }
+
+                await asyncio.to_thread(
+                    record_run_event,
+                    run_id,
+                    "TOOL_CALL_RESULT",
+                    payload,
+                )
+
+                yield encode_stream_event(
+                    "TOOL_CALL_RESULT",
+                    payload,
+                )
+                continue
+
+            if isinstance(event, ToolCallFailed):
+                payload = {
+                    "tool_call_id": event.observation.tool_call_id,
+                    "tool_name": event.observation.tool_name,
+                    "code": event.observation.code,
+                    "message": event.observation.message,
+                }
+
+                if event.observation.details is not None:
+                    payload["details"] = event.observation.details
+
+                await asyncio.to_thread(
+                    record_run_event,
+                    run_id,
+                    "TOOL_CALL_ERROR",
+                    payload,
+                )
+
+                yield encode_stream_event(
+                    "TOOL_CALL_ERROR",
+                    payload,
+                )
+                continue
+
+            if isinstance(event, AgentLoopCompleted):
+                result = event.result
+
+                if result.status == "max_steps_exceeded":
+                    rollback_pending_turn(
+                        history,
+                        history_checkpoint,
+                    )
+                    history = None
+
+                    error_payload: dict[str, object] = {
+                        "code": "max_steps_exceeded",
+                        "message": "Agent 达到最大执行步数",
+                    }
+
+                    await asyncio.to_thread(
+                        finish_agent_run,
+                        run_id,
+                        "error",
+                        error_payload,
+                    )
+
+                    yield encode_stream_event(
+                        "RUN_ERROR",
+                        error_payload,
+                    )
+                    return
+
+                if result.answer is None:
+                    raise RuntimeError("已完成的 Agent Loop 没有最终答案")
+
+                reply = result.answer
+
+                await asyncio.to_thread(
+                    record_run_event,
+                    run_id,
+                    "TEXT_MESSAGE_START",
+                    {},
+                )
+                yield encode_stream_event("TEXT_MESSAGE_START")
+
+                await asyncio.to_thread(
+                    record_run_event,
+                    run_id,
+                    "TEXT_MESSAGE_CONTENT",
+                    {
+                        "chunk": reply,
+                    },
+                )
+                yield encode_stream_event(
+                    "TEXT_MESSAGE_CONTENT",
+                    {
+                        "chunk": reply,
+                    },
+                )
+
+                await asyncio.to_thread(
+                    record_run_event,
+                    run_id,
+                    "TEXT_MESSAGE_END",
+                    {},
+                )
+                yield encode_stream_event("TEXT_MESSAGE_END")
+
+                await asyncio.to_thread(
+                    save_conversation_turn,
+                    session_id=session_id,
+                    user_content=prompt,
+                    assistant_content=reply,
+                )
+
+                history.append(
+                    {
+                        "role": "assistant",
+                        "content": reply,
+                    }
+                )
+
+                # 数据库和内存历史都已经保存完整 user/assistant，
+                # 后续即使 Run 终态写入失败，也不能只撤销内存。
+                turn_persisted = True
+
+                max_saved_messages = MAX_ROUNDS * 2
+                if len(history) > max_saved_messages + 1:
+                    del history[1:-max_saved_messages]
+
+                finished_payload: dict[str, object] = {
+                    "steps_taken": result.steps_taken,
+                }
+
+                await asyncio.to_thread(
+                    finish_agent_run,
+                    run_id,
+                    "done",
+                    finished_payload,
+                )
+
+                yield encode_stream_event(
+                    "RUN_FINISHED",
+                    finished_payload,
+                )
+                return
+
+        raise RuntimeError("Agent Loop 未产生终态事件")
 
     except asyncio.CancelledError:
-        if history is not None:
-            history.pop()
+        if not turn_persisted:
+            rollback_pending_turn(
+                history,
+                history_checkpoint,
+            )
 
         cancel_reason = await asyncio.to_thread(
             get_run_cancellation_reason,
@@ -188,33 +382,89 @@ async def stream_chat_reply(
             finish_agent_run,
             run_id,
             final_status,
-            {"reason": cancel_reason or "unknown"},
+            {
+                "reason": cancel_reason or "unknown",
+            },
         )
         raise
 
     except OpenAIError:
-        if history is not None:
-            history.pop()
+        if not turn_persisted:
+            rollback_pending_turn(
+                history,
+                history_checkpoint,
+            )
+
+        error_payload = {
+            "code": "model_unavailable",
+            "message": "模型服务暂时不可用",
+        }
 
         await asyncio.to_thread(
             finish_agent_run,
             run_id,
             "error",
+            error_payload,
         )
-        raise
 
-    except Exception:
-        if history is not None:
-            history.pop()
+        # 流开始后不能再修改 HTTP 状态码，所以错误也必须进入事件流。
+        yield encode_stream_event(
+            "RUN_ERROR",
+            error_payload,
+        )
+
+    except ModelDecisionError:
+        if not turn_persisted:
+            rollback_pending_turn(
+                history,
+                history_checkpoint,
+            )
+
+        error_payload = {
+            "code": "invalid_model_decision",
+            "message": "模型返回了无法处理的决策",
+        }
 
         await asyncio.to_thread(
             finish_agent_run,
             run_id,
             "error",
+            error_payload,
         )
-        raise
+
+        yield encode_stream_event(
+            "RUN_ERROR",
+            error_payload,
+        )
+
+    except Exception:  # noqa: BLE001 - 流已开始，只能转换为安全的终态事件。
+        if not turn_persisted:
+            rollback_pending_turn(
+                history,
+                history_checkpoint,
+            )
+
+        # 不把数据库错误、文件路径或执行器异常暴露给浏览器。
+        error_payload = {
+            "code": "agent_runtime_error",
+            "message": "Agent 运行失败",
+        }
+
+        await asyncio.to_thread(
+            finish_agent_run,
+            run_id,
+            "error",
+            error_payload,
+        )
+
+        yield encode_stream_event(
+            "RUN_ERROR",
+            error_payload,
+        )
+
     finally:
         cancellation_monitor.cancel()
+
         with suppress(asyncio.CancelledError):
             await cancellation_monitor
 

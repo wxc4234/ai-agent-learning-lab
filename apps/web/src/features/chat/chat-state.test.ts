@@ -25,6 +25,51 @@ test("a submitted prompt moves from thinking to streaming and then done", () => 
   assert.equal(state.errorMessage, null);
 });
 
+test("tool events update activity without failing the whole run", () => {
+  let state = chatReducer(initialChatState, {
+    type: "submit",
+    prompt: "计算矩形面积",
+  });
+
+  state = chatReducer(state, {
+    type: "tool-start",
+    toolCallId: "call-area",
+    toolName: "calculate_rectangle_area",
+    arguments: '{"width": 3, "height": 4}',
+  });
+  assert.deepEqual(state.tools[0], {
+    toolCallId: "call-area",
+    toolName: "calculate_rectangle_area",
+    arguments: '{"width": 3, "height": 4}',
+    status: "running",
+  });
+
+  state = chatReducer(state, {
+    type: "tool-result",
+    toolCallId: "call-area",
+    result: "12",
+  });
+  assert.equal(state.tools[0]?.status, "succeeded");
+  assert.equal(state.tools[0]?.result, "12");
+
+  state = chatReducer(state, {
+    type: "tool-start",
+    toolCallId: "call-missing",
+    toolName: "unknown_tool",
+    arguments: "{}",
+  });
+  state = chatReducer(state, {
+    type: "tool-error",
+    toolCallId: "call-missing",
+    message: "工具未注册",
+  });
+
+  assert.equal(state.tools[1]?.status, "failed");
+  assert.equal(state.tools[1]?.errorMessage, "工具未注册");
+  assert.equal(state.status, "thinking");
+  assert.equal(state.errorMessage, null);
+});
+
 test("an aborted stream keeps partial output and enters aborted", () => {
   let state = chatReducer(initialChatState, {
     type: "submit",

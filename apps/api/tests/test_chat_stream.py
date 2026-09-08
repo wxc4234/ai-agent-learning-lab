@@ -1,13 +1,28 @@
 import asyncio
+import json
 
 from openai import OpenAIError
 
 from app.services import chat_service
+from app.services.agent_runtime import (
+    AgentLoopCompleted,
+    AgentLoopResult,
+    ToolAction,
+    ToolCallFailed,
+    ToolCallStarted,
+    ToolCallSucceeded,
+    ToolErrorObservation,
+    ToolObservation,
+)
 
 
 async def never_receive_cancellation(_: int) -> str:
     await asyncio.Future[None]()
     raise AssertionError("取消等待协程不应自行结束")
+
+
+def decode_event(line: str) -> dict[str, object]:
+    return json.loads(line)
 
 
 def test_redis_cancellation_signal_aborts_stream(monkeypatch):
@@ -20,10 +35,16 @@ def test_redis_cancellation_signal_aborts_stream(monkeypatch):
     finished_runs: list[tuple[int, str, dict[str, object]]] = []
 
     async def fake_prepare_messages(session_id, prompt):
-        return history, []
+        return history, list(history)
 
-    async def fake_stream_completion(messages):
-        yield "第一段"
+    async def blocked_agent_loop(decide, *, max_steps):
+        yield ToolCallStarted(
+            action=ToolAction(
+                tool_call_id="call-blocked",
+                tool_name="get_current_time",
+                arguments='{"utc_offset_hours": 8}',
+            )
+        )
         await stream_blocker.wait()
 
     async def fake_wait_for_cancellation(run_id: int) -> str:
@@ -37,8 +58,8 @@ def test_redis_cancellation_signal_aborts_stream(monkeypatch):
     )
     monkeypatch.setattr(
         chat_service,
-        "stream_chat_completion",
-        fake_stream_completion,
+        "stream_agent_loop",
+        blocked_agent_loop,
     )
     monkeypatch.setattr(chat_service, "record_run_event", lambda *args: None)
     monkeypatch.setattr(
@@ -66,7 +87,8 @@ def test_redis_cancellation_signal_aborts_stream(monkeypatch):
             run_id=505,
         )
 
-        assert await anext(stream) == "第一段"
+        first_event = decode_event(await anext(stream))
+        assert first_event["type"] == "TOOL_CALL_START"
         await asyncio.sleep(0)
         cancellation_ready.set()
 
@@ -75,7 +97,7 @@ def test_redis_cancellation_signal_aborts_stream(monkeypatch):
         except asyncio.CancelledError:
             pass
         else:
-            raise AssertionError("Redis 取消通知没有中断流任务")
+            raise AssertionError("Redis 取消通知没有中断 Agent 流")
 
     asyncio.run(consume_until_cancelled())
 
@@ -91,10 +113,16 @@ def test_cancelled_stream_rolls_back_pending_user_message(monkeypatch):
     blocker = asyncio.Event()
 
     async def fake_prepare_messages(session_id, prompt):
-        return history, []
+        return history, list(history)
 
-    async def fake_stream_completion(messages):
-        yield "第一段"
+    async def blocked_agent_loop(decide, *, max_steps):
+        yield ToolCallStarted(
+            action=ToolAction(
+                tool_call_id="call-cancelled",
+                tool_name="get_current_time",
+                arguments='{"utc_offset_hours": 8}',
+            )
+        )
         await blocker.wait()
 
     monkeypatch.setattr(
@@ -104,8 +132,8 @@ def test_cancelled_stream_rolls_back_pending_user_message(monkeypatch):
     )
     monkeypatch.setattr(
         chat_service,
-        "stream_chat_completion",
-        fake_stream_completion,
+        "stream_agent_loop",
+        blocked_agent_loop,
     )
     monkeypatch.setattr(
         chat_service,
@@ -135,7 +163,8 @@ def test_cancelled_stream_rolls_back_pending_user_message(monkeypatch):
             run_id=101,
         )
 
-        assert await anext(stream) == "第一段"
+        first_event = decode_event(await anext(stream))
+        assert first_event["type"] == "TOOL_CALL_START"
 
         async def read_next_chunk():
             return await anext(stream)
@@ -160,30 +189,51 @@ def test_cancelled_stream_rolls_back_pending_user_message(monkeypatch):
 def test_completed_stream_records_chunks_and_finished_status(monkeypatch):
     history = [
         {"role": "system", "content": "system"},
-        {"role": "user", "content": "你好"},
+        {"role": "user", "content": "计算矩形面积"},
     ]
+    observation = ToolObservation(
+        tool_call_id="call-area",
+        tool_name="calculate_rectangle_area",
+        result="12",
+    )
     recorded_events: list[tuple[int, str, dict[str, object]]] = []
-    finished_runs: list[tuple[int, str]] = []
+    finished_runs: list[tuple[int, str, dict[str, object]]] = []
+    saved_turns: list[dict[str, str]] = []
 
     async def fake_prepare_messages(session_id, prompt):
-        return history, []
+        return history, list(history)
 
-    async def fake_stream_completion(messages):
-        yield "你好，"
-        yield "有什么可以帮你？"
+    async def fake_agent_loop(decide, *, max_steps):
+        assert max_steps == 5
+        yield ToolCallStarted(
+            action=ToolAction(
+                tool_call_id="call-area",
+                tool_name="calculate_rectangle_area",
+                arguments='{"width": 3, "height": 4}',
+            )
+        )
+        yield ToolCallSucceeded(observation=observation)
+        yield AgentLoopCompleted(
+            result=AgentLoopResult(
+                status="completed",
+                answer="矩形面积是 12。",
+                steps_taken=2,
+                observations=(observation,),
+            )
+        )
 
     async def collect_stream():
         return [
-            chunk
-            async for chunk in chat_service.stream_chat_reply(
-                session_id="done-test",
-                prompt="你好",
+            decode_event(line)
+            async for line in chat_service.stream_chat_reply(
+                session_id="agent-success",
+                prompt="计算矩形面积",
                 run_id=202,
             )
         ]
 
     monkeypatch.setattr(chat_service, "_prepare_chat_messages", fake_prepare_messages)
-    monkeypatch.setattr(chat_service, "stream_chat_completion", fake_stream_completion)
+    monkeypatch.setattr(chat_service, "stream_agent_loop", fake_agent_loop)
     monkeypatch.setattr(
         chat_service,
         "wait_for_run_cancellation",
@@ -199,25 +249,49 @@ def test_completed_stream_records_chunks_and_finished_status(monkeypatch):
     monkeypatch.setattr(
         chat_service,
         "finish_agent_run",
-        lambda run_id, status: finished_runs.append((run_id, status)),
+        lambda run_id, status, payload=None: finished_runs.append(
+            (run_id, status, payload or {})
+        ),
     )
     monkeypatch.setattr(
         chat_service,
         "save_conversation_turn",
-        lambda **kwargs: None,
+        lambda **kwargs: saved_turns.append(kwargs),
     )
 
-    chunks = asyncio.run(collect_stream())
+    events = asyncio.run(collect_stream())
 
-    assert chunks == ["你好，", "有什么可以帮你？"]
-    assert recorded_events == [
-        (202, "TEXT_MESSAGE_CONTENT", {"chunk": "你好，"}),
-        (202, "TEXT_MESSAGE_CONTENT", {"chunk": "有什么可以帮你？"}),
+    assert [event["type"] for event in events] == [
+        "TOOL_CALL_START",
+        "TOOL_CALL_RESULT",
+        "TEXT_MESSAGE_START",
+        "TEXT_MESSAGE_CONTENT",
+        "TEXT_MESSAGE_END",
+        "RUN_FINISHED",
     ]
-    assert finished_runs == [(202, "done")]
+    assert events[0]["tool_call_id"] == "call-area"
+    assert events[1]["result"] == "12"
+    assert events[3]["chunk"] == "矩形面积是 12。"
+    assert events[-1]["steps_taken"] == 2
+
+    assert [event_type for _, event_type, _ in recorded_events] == [
+        "TOOL_CALL_START",
+        "TOOL_CALL_RESULT",
+        "TEXT_MESSAGE_START",
+        "TEXT_MESSAGE_CONTENT",
+        "TEXT_MESSAGE_END",
+    ]
+    assert finished_runs == [(202, "done", {"steps_taken": 2})]
+    assert saved_turns == [
+        {
+            "session_id": "agent-success",
+            "user_content": "计算矩形面积",
+            "assistant_content": "矩形面积是 12。",
+        }
+    ]
     assert history[-1] == {
         "role": "assistant",
-        "content": "你好，有什么可以帮你？",
+        "content": "矩形面积是 12。",
     }
 
 
@@ -226,25 +300,27 @@ def test_model_error_finishes_run_as_error_and_rolls_back_user_message(monkeypat
         {"role": "system", "content": "system"},
         {"role": "user", "content": "测试错误"},
     ]
-    finished_runs: list[tuple[int, str]] = []
+    finished_runs: list[tuple[int, str, dict[str, object]]] = []
 
     async def fake_prepare_messages(session_id, prompt):
-        return history, []
+        return history, list(history)
 
-    async def fake_stream_completion(messages):
-        raise OpenAIError("model unavailable")
-        yield "不会到达"
+    async def failing_agent_loop(decide, *, max_steps):
+        raise OpenAIError("不应暴露的模型错误")
+        yield
 
-    async def consume_stream():
-        async for _chunk in chat_service.stream_chat_reply(
-            session_id="error-test",
-            prompt="测试错误",
-            run_id=303,
-        ):
-            pass
+    async def collect_stream():
+        return [
+            decode_event(line)
+            async for line in chat_service.stream_chat_reply(
+                session_id="agent-model-error",
+                prompt="测试错误",
+                run_id=303,
+            )
+        ]
 
     monkeypatch.setattr(chat_service, "_prepare_chat_messages", fake_prepare_messages)
-    monkeypatch.setattr(chat_service, "stream_chat_completion", fake_stream_completion)
+    monkeypatch.setattr(chat_service, "stream_agent_loop", failing_agent_loop)
     monkeypatch.setattr(
         chat_service,
         "wait_for_run_cancellation",
@@ -254,17 +330,32 @@ def test_model_error_finishes_run_as_error_and_rolls_back_user_message(monkeypat
     monkeypatch.setattr(
         chat_service,
         "finish_agent_run",
-        lambda run_id, status: finished_runs.append((run_id, status)),
+        lambda run_id, status, payload=None: finished_runs.append(
+            (run_id, status, payload or {})
+        ),
     )
 
-    try:
-        asyncio.run(consume_stream())
-    except OpenAIError:
-        pass
-    else:
-        raise AssertionError("模型异常应该继续向上传播")
+    events = asyncio.run(collect_stream())
 
-    assert finished_runs == [(303, "error")]
+    assert events == [
+        {
+            "type": "RUN_ERROR",
+            "code": "model_unavailable",
+            "message": "模型服务暂时不可用",
+        }
+    ]
+    assert "不应暴露" not in str(events)
+    assert history == [{"role": "system", "content": "system"}]
+    assert finished_runs == [
+        (
+            303,
+            "error",
+            {
+                "code": "model_unavailable",
+                "message": "模型服务暂时不可用",
+            },
+        )
+    ]
 
 
 def test_timed_out_stream_finishes_as_error(monkeypatch):
@@ -272,15 +363,21 @@ def test_timed_out_stream_finishes_as_error(monkeypatch):
         {"role": "system", "content": "system"},
         {"role": "user", "content": "生成一段长回答"},
     ]
-    blocker = asyncio.Event()
+    stream_blocker = asyncio.Event()
     finished_runs: list[tuple[int, str, dict[str, object]]] = []
 
     async def fake_prepare_messages(session_id, prompt):
-        return history, []
+        return history, list(history)
 
-    async def fake_stream_completion(messages):
-        yield "第一段"
-        await blocker.wait()
+    async def blocked_agent_loop(decide, *, max_steps):
+        yield ToolCallStarted(
+            action=ToolAction(
+                tool_call_id="call-timeout",
+                tool_name="get_current_time",
+                arguments='{"utc_offset_hours": 8}',
+            )
+        )
+        await stream_blocker.wait()
 
     monkeypatch.setattr(
         chat_service,
@@ -289,8 +386,8 @@ def test_timed_out_stream_finishes_as_error(monkeypatch):
     )
     monkeypatch.setattr(
         chat_service,
-        "stream_chat_completion",
-        fake_stream_completion,
+        "stream_agent_loop",
+        blocked_agent_loop,
     )
     monkeypatch.setattr(chat_service, "record_run_event", lambda *args: None)
     monkeypatch.setattr(
@@ -318,7 +415,8 @@ def test_timed_out_stream_finishes_as_error(monkeypatch):
             run_id=404,
         )
 
-        assert await anext(stream) == "第一段"
+        first_event = decode_event(await anext(stream))
+        assert first_event["type"] == "TOOL_CALL_START"
 
         async def read_next_chunk() -> str:
             return await anext(stream)
@@ -338,3 +436,150 @@ def test_timed_out_stream_finishes_as_error(monkeypatch):
 
     assert history == [{"role": "system", "content": "system"}]
     assert finished_runs == [(404, "error", {"reason": "timeout"})]
+
+
+def test_tool_error_is_emitted_and_model_can_still_finish(monkeypatch):
+    history = [
+        {"role": "system", "content": "system"},
+        {"role": "user", "content": "调用未知工具"},
+    ]
+    error_observation = ToolErrorObservation(
+        tool_call_id="call-unknown",
+        tool_name="read_secret_file",
+        code="unknown_tool",
+        message="工具未注册：read_secret_file",
+    )
+
+    async def fake_prepare_messages(session_id, prompt):
+        return history, list(history)
+
+    async def fake_agent_loop(decide, *, max_steps):
+        yield ToolCallStarted(
+            action=ToolAction(
+                tool_call_id="call-unknown",
+                tool_name="read_secret_file",
+                arguments="{}",
+            )
+        )
+        yield ToolCallFailed(observation=error_observation)
+        yield AgentLoopCompleted(
+            result=AgentLoopResult(
+                status="completed",
+                answer="该工具不可用。",
+                steps_taken=2,
+                observations=(error_observation,),
+            )
+        )
+
+    monkeypatch.setattr(chat_service, "_prepare_chat_messages", fake_prepare_messages)
+    monkeypatch.setattr(chat_service, "stream_agent_loop", fake_agent_loop)
+    monkeypatch.setattr(
+        chat_service,
+        "wait_for_run_cancellation",
+        never_receive_cancellation,
+    )
+    monkeypatch.setattr(chat_service, "record_run_event", lambda *args: None)
+    monkeypatch.setattr(chat_service, "finish_agent_run", lambda *args: None)
+    monkeypatch.setattr(chat_service, "save_conversation_turn", lambda **kwargs: None)
+
+    async def collect_stream():
+        return [
+            decode_event(line)
+            async for line in chat_service.stream_chat_reply(
+                session_id="agent-tool-error",
+                prompt="调用未知工具",
+                run_id=606,
+            )
+        ]
+
+    events = asyncio.run(collect_stream())
+
+    assert [event["type"] for event in events] == [
+        "TOOL_CALL_START",
+        "TOOL_CALL_ERROR",
+        "TEXT_MESSAGE_START",
+        "TEXT_MESSAGE_CONTENT",
+        "TEXT_MESSAGE_END",
+        "RUN_FINISHED",
+    ]
+    assert events[1]["code"] == "unknown_tool"
+    assert events[3]["chunk"] == "该工具不可用。"
+
+
+def test_max_steps_emits_run_error_and_rolls_back_turn(monkeypatch):
+    history = [
+        {"role": "system", "content": "system"},
+        {"role": "user", "content": "一直调用工具"},
+    ]
+    finished_runs: list[tuple[int, str, dict[str, object]]] = []
+
+    async def fake_prepare_messages(session_id, prompt):
+        return history, list(history)
+
+    async def fake_agent_loop(decide, *, max_steps):
+        yield AgentLoopCompleted(
+            result=AgentLoopResult(
+                status="max_steps_exceeded",
+                answer=None,
+                steps_taken=5,
+                observations=(),
+            )
+        )
+
+    monkeypatch.setattr(chat_service, "_prepare_chat_messages", fake_prepare_messages)
+    monkeypatch.setattr(chat_service, "stream_agent_loop", fake_agent_loop)
+    monkeypatch.setattr(
+        chat_service,
+        "wait_for_run_cancellation",
+        never_receive_cancellation,
+    )
+    monkeypatch.setattr(
+        chat_service,
+        "finish_agent_run",
+        lambda run_id, status, payload=None: finished_runs.append(
+            (run_id, status, payload or {})
+        ),
+    )
+
+    async def collect_stream():
+        return [
+            decode_event(line)
+            async for line in chat_service.stream_chat_reply(
+                session_id="agent-max-steps",
+                prompt="一直调用工具",
+                run_id=707,
+            )
+        ]
+
+    events = asyncio.run(collect_stream())
+
+    assert events == [
+        {
+            "type": "RUN_ERROR",
+            "code": "max_steps_exceeded",
+            "message": "Agent 达到最大执行步数",
+        }
+    ]
+    assert history == [{"role": "system", "content": "system"}]
+    assert finished_runs == [
+        (
+            707,
+            "error",
+            {
+                "code": "max_steps_exceeded",
+                "message": "Agent 达到最大执行步数",
+            },
+        )
+    ]
+
+
+def test_rollback_pending_turn_removes_user_and_partial_assistant():
+    history = [
+        {"role": "system", "content": "system"},
+        {"role": "user", "content": "本轮问题"},
+        {"role": "assistant", "content": "尚未提交的回答"},
+    ]
+
+    chat_service.rollback_pending_turn(history, 1)
+
+    assert history == [{"role": "system", "content": "system"}]

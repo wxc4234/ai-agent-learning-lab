@@ -6,15 +6,33 @@ export type ChatStatus =
 	| "aborted"
 	| "error";
 
+export type ToolActivity = {
+	toolCallId: string;
+	toolName: string;
+	arguments: string;
+	status: "running" | "succeeded" | "failed";
+	result?: string;
+	errorMessage?: string;
+};
+
 export type ChatState = {
 	status: ChatStatus;
 	reply: string;
 	errorMessage: string | null;
 	lastPrompt: string;
+	tools: ToolActivity[];
 };
 
 export type ChatAction =
 	| { type: "submit"; prompt: string }
+	| {
+			type: "tool-start";
+			toolCallId: string;
+			toolName: string;
+			arguments: string;
+	  }
+	| { type: "tool-result"; toolCallId: string; result: string }
+	| { type: "tool-error"; toolCallId: string; message: string }
 	| { type: "stream-start" }
 	| { type: "append"; chunk: string }
 	| { type: "complete" }
@@ -28,6 +46,7 @@ export const initialChatState: ChatState = {
 	reply: "",
 	errorMessage: null,
 	lastPrompt: "",
+	tools: [],
 };
 
 export function chatReducer(state: ChatState, action: ChatAction): ChatState {
@@ -38,6 +57,48 @@ export function chatReducer(state: ChatState, action: ChatAction): ChatState {
 				reply: "",
 				errorMessage: null,
 				lastPrompt: action.prompt,
+				tools: [],
+			};
+		case "tool-start":
+			return {
+				...state,
+				tools: [
+					...state.tools,
+					{
+						toolCallId: action.toolCallId,
+						toolName: action.toolName,
+						arguments: action.arguments,
+						status: "running",
+					},
+				],
+			};
+		case "tool-result":
+			return {
+				...state,
+				tools: state.tools.map((tool) =>
+					tool.toolCallId === action.toolCallId
+						? {
+								...tool,
+								status: "succeeded",
+								result: action.result,
+								errorMessage: undefined,
+							}
+						: tool,
+				),
+			};
+		case "tool-error":
+			return {
+				...state,
+				tools: state.tools.map((tool) =>
+					tool.toolCallId === action.toolCallId
+						? {
+								...tool,
+								status: "failed",
+								errorMessage: action.message,
+								result: undefined,
+							}
+						: tool,
+				),
 			};
 		case "stream-start":
 			return { ...state, status: "streaming", errorMessage: null };
@@ -60,6 +121,7 @@ export function chatReducer(state: ChatState, action: ChatAction): ChatState {
 				status: "thinking",
 				reply: "",
 				errorMessage: null,
+				tools: [],
 			};
 		case "reset":
 			return initialChatState;

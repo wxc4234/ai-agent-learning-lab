@@ -56,7 +56,7 @@ async def chat_stream(request: ChatRequest) -> StreamingResponse:
             prompt=request.prompt,
             run_id=run_id,
         ),
-        media_type="text/plain; charset=utf-8",
+        media_type="application/x-ndjson",
         headers={
             "Cache-Control": "no-cache",
             "X-Run-ID": str(run_id),

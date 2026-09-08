@@ -2,6 +2,7 @@
 
 import { useReducer, useRef, useState, type SubmitEvent } from "react";
 
+import { readAgentStream } from "../agent-stream";
 import {
 	chatReducer,
 	initialChatState,
@@ -86,28 +87,56 @@ export default function ChatPanel() {
 				throw new Error("服务端没有返回流式内容");
 			}
 
-			const reader = res.body
-				.pipeThrough(new TextDecoderStream())
-				.getReader();
-			let hasStartedStreaming = false;
+			let hasTerminalEvent = false;
 
-			while (true) {
-				const { done, value } = await reader.read();
-				if (done) {
-					break;
-				}
-
-				if (!hasStartedStreaming) {
-					hasStartedStreaming = true;
-					dispatch({ type: "stream-start" });
-				}
-				if (!cancellationPendingRef.current) {
-					dispatch({ type: "append", chunk: value });
+			for await (const event of readAgentStream(res.body)) {
+				switch (event.type) {
+					case "TOOL_CALL_START":
+						dispatch({
+							type: "tool-start",
+							toolCallId: event.tool_call_id,
+							toolName: event.tool_name,
+							arguments: event.arguments,
+						});
+						break;
+					case "TOOL_CALL_RESULT":
+						dispatch({
+							type: "tool-result",
+							toolCallId: event.tool_call_id,
+							result: event.result,
+						});
+						break;
+					case "TOOL_CALL_ERROR":
+						dispatch({
+							type: "tool-error",
+							toolCallId: event.tool_call_id,
+							message: event.message,
+						});
+						break;
+					case "TEXT_MESSAGE_START":
+						dispatch({ type: "stream-start" });
+						break;
+					case "TEXT_MESSAGE_CONTENT":
+						if (!cancellationPendingRef.current) {
+							dispatch({ type: "append", chunk: event.chunk });
+						}
+						break;
+					case "TEXT_MESSAGE_END":
+						break;
+					case "RUN_FINISHED":
+						hasTerminalEvent = true;
+						if (!cancellationPendingRef.current) {
+							dispatch({ type: "complete" });
+						}
+						break;
+					case "RUN_ERROR":
+						hasTerminalEvent = true;
+						throw new Error(event.message);
 				}
 			}
 
-			if (!cancellationPendingRef.current) {
-				dispatch({ type: "complete" });
+			if (!hasTerminalEvent && !cancellationPendingRef.current) {
+				throw new Error("响应意外中断，请重试。");
 			}
 		} catch (error) {
 			if (error instanceof DOMException && error.name === "AbortError") {
@@ -253,6 +282,58 @@ export default function ChatPanel() {
 						</button>
 					</div>
 				</form>
+
+				{chatState.tools.length > 0 && (
+					<div className="mt-6 rounded-xl border border-zinc-200 p-4">
+						<p className="text-sm font-medium text-zinc-700">工具执行</p>
+
+						<ul className="mt-3 space-y-3">
+							{chatState.tools.map((tool) => (
+								<li
+									className="rounded-lg bg-zinc-50 p-3 text-sm"
+									key={tool.toolCallId}
+								>
+									<div className="flex items-center justify-between gap-3">
+										<code className="font-medium text-zinc-800">
+											{tool.toolName}
+										</code>
+										<span
+											className={
+												tool.status === "failed"
+													? "text-red-700"
+													: tool.status === "succeeded"
+														? "text-emerald-700"
+														: "text-amber-700"
+											}
+										>
+											{tool.status === "failed"
+												? "失败"
+												: tool.status === "succeeded"
+													? "成功"
+													: "运行中"}
+										</span>
+									</div>
+
+									<p className="mt-2 break-all text-xs text-zinc-500">
+										参数：{tool.arguments}
+									</p>
+
+									{tool.result && (
+										<p className="mt-2 break-words text-zinc-700">
+											结果：{tool.result}
+										</p>
+									)}
+
+									{tool.errorMessage && (
+										<p className="mt-2 text-red-700">
+											错误：{tool.errorMessage}
+										</p>
+									)}
+								</li>
+							))}
+						</ul>
+					</div>
+				)}
 
 				<div className="mt-6 min-h-32 rounded-xl bg-zinc-100 p-4">
 					<p className="text-sm font-medium text-zinc-700">AI 回复</p>

@@ -12,7 +12,7 @@
 6. [第 1 周完成记录](week-learning/week-01/README.md)：已经完成的基础内容。
 7. [面试题库](interview-questions/README.md)：AI 全栈社招面试题库（算法 / 前端 / 后端 / AI / 系统设计 / 项目 / 行为面试）。
 
-当前阶段：**第 3 周已完成，并已进入 Agent Runtime 核心学习。** 当前已具备 Next.js 流式 Agent UI、可跨实例传播的取消协议、`run_id` 事件落库，以及带参数校验、超时和错误观察的安全工具执行循环；下一步接入 DeepSeek 决策适配层，跑通真实多步骤 Tool Calling。
+当前阶段：**第 3 周已完成，并已进入 Agent Runtime 核心学习。** 当前已具备 Next.js 流式 Agent UI、可跨实例传播的取消协议、`run_id` 事件落库，以及由 DeepSeek 驱动、带参数校验和错误观察的多步骤 Tool Calling；正式聊天已通过 NDJSON 显示工具开始、结果、错误与最终回答。
 
 节奏约定：每日 4 ～ 6 小时；作品集先做一个足够深的主项目；**第 8 周开始第一批投递，不等作品集全部完成**。路线于 2026-08-31 按最新岗位调研修正过，依据见 [SKILL_GAP_ANALYSIS.md](SKILL_GAP_ANALYSIS.md) 第 10 节。
 
@@ -29,8 +29,10 @@
 - FastAPI + DeepSeek 流式聊天接口。
 - Next.js Agent 前端与同源 BFF 流代理。
 - Tool Calling 和本地工具白名单。
-- pytest 自动化测试：工具、仓储与接口错误契约。
-- Swagger 测试接口。
+- 有状态 DeepSeek 决策适配层与通用 Agent Loop。
+- 正式聊天的结构化 Agent 事件流与前端工具执行卡片。
+- pytest 自动化测试：模型消息协议、工具、仓储与接口错误契约。
+- Swagger 多步骤 Tool Calling 验证接口。
 
 ## 快速启动
 
