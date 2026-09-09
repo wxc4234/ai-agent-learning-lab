@@ -1,6 +1,6 @@
 # AI Agent 学习交接
 
-更新时间：2026-09-08（Asia/Shanghai）
+更新时间：2026-09-09（Asia/Shanghai）
 
 这份文件只记录**当前进度、恢复方式和下一课**。完整路线统一查看 [LEARNING_PLAN.md](LEARNING_PLAN.md)，逐日任务与验收标准查看 [LEARNING_CURRICULUM.md](LEARNING_CURRICULUM.md)。
 
@@ -18,6 +18,8 @@ Agent Runtime 的非流式闭环已经完成：工具参数模型、JSON Schema 
 
 正式流式聊天的纵向集成也已完成：`stream_agent_loop` 产生领域事件，`POST /chat/stream` 将其编码为 NDJSON、同步写入运行时间线，Next.js BFF 原样转发，前端解析任意网络分块并显示工具参数、结果、失败原因和最终回答。真实 DeepSeek 请求已验证完整事件顺序。
 
+2026-09-09 完成了 Agent 运行成本与延迟的后端可观测链路：从每次 DeepSeek 响应提取 Token usage 和模型耗时，在 Runtime 中跨步骤累计模型指标；记录成功、异常和超时工具调用的执行耗时；按照北京时间工作日高峰/空闲价格估算人民币费用；最终由 `RUN_FINISHED` 同时向数据库与浏览器发送 Token、模型耗时、工具耗时、`estimated_cost_cny` 和当次价格快照。
+
 当前代码已经具备：
 
 - FastAPI + DeepSeek 对话接口。
@@ -29,7 +31,7 @@ Agent Runtime 的非流式闭环已经完成：工具参数模型、JSON Schema 
 - `/chat` 与会话查询接口已切换为 PostgreSQL 持久化。
 - Alembic 已初始化并接入 SQLAlchemy metadata；初始迁移为 `fed4e53cb0f7_create_agent_schema.py`。
 - 当前 `agent_lab` 已标记到该迁移版本；并已在空数据库执行 `alembic upgrade head`，验证可创建 5 张业务表。
-- 后端 54 个 pytest 测试全部通过：覆盖模型决策消息历史、Observation 去重与防改写、多工具拒绝、Agent Loop 领域事件、结构化聊天流、取消回滚、工具、仓储及接口错误契约；自动化测试不调用模型 API。
+- 后端 83 个 pytest 测试全部通过：覆盖模型决策消息历史、Token 与耗时累计、人民币费用与高峰/空闲边界、Observation 去重与防改写、多工具拒绝、Agent Loop 领域事件、结构化聊天流、取消回滚、工具、仓储及接口错误契约；自动化测试不调用模型 API。
 - `apps/web` 已初始化 Next.js + TypeScript + Tailwind + App Router，`pnpm dev` 可启动。
 - 已按 AG-UI 事件模型设计前端状态映射，见 `docs/agent-ui-events.md`。
 - `POST /chat/stream` 已接入 Agent Loop，并以 `application/x-ndjson` 输出工具和文本事件；完整一轮结束后保存消息到 PostgreSQL。
@@ -40,6 +42,10 @@ Agent Runtime 的非流式闭环已经完成：工具参数模型、JSON Schema 
 - `DeepSeekDecisionMaker` 维护 system/user/assistant/tool 历史，保留 assistant `tool_calls`，并只追加新的 Observation；当前顺序策略会显式拒绝一轮多个工具调用。
 - `POST /tool-test` 已接入通用 Agent Loop；Mock 与真实 DeepSeek 均验证了两步工具调用闭环。
 - `stream_agent_loop` 在工具开始、成功、失败和循环终止时产生领域事件；原有 `run_agent_loop` 保持兼容。
+- `DeepSeekDecisionMaker` 使用高精度单调时钟测量每次模型请求，并把 prompt/completion、缓存命中/未命中 Token 映射为通用 `ModelUsage`。
+- Agent Runtime 会累计多步模型 usage、模型耗时和实际工具执行耗时；任一步缺失模型指标时保留 `None`，不把不完整数据伪装成 0。
+- `model_pricing.py` 使用 `Decimal` 估算人民币费用，按照北京时间工作日 09:00-12:00、14:00-18:00 选择高峰价格，其余时段选择空闲价格。
+- DeepSeek 人民币单价集中在 `Settings` 与 `.env.example`，`RUN_FINISHED` 保存 `estimated_cost_cny` 和当次模型、时段、单价快照，历史费用可以解释和复核。
 - `apps/web` BFF 流代理已跑通：`/api/chat/stream` Route Handler 转发 `response.body`，浏览器逐块渲染，API Key 不出现在客户端。
 - 前端 NDJSON 解析器可以处理半条、多条和最后一条无换行事件；工具卡片区分运行中、成功和失败，工具失败不会提前结束整次运行。
 - 停止生成：前端 `AbortController` + 「停止生成」按钮；BFF 用 `signal` 转发；后端 `stream_chat_reply` 捕获 `asyncio.CancelledError` 撤销未完成的一轮。
@@ -48,7 +54,7 @@ Agent Runtime 的非流式闭环已经完成：工具参数模型、JSON Schema 
 
 已完成：8 条前端状态/协议测试、Agent 事件流图和第 3 周复盘，分别见 `apps/web/src/features/chat/*.test.ts`、`docs/architecture.md` 与 `week-learning/week-03/REVIEW.md`。
 
-仍待补充：前端真实环境下的断网/限流手动验收；单次 Agent 运行还没有汇总模型 token、费用与分阶段延迟。
+仍待补充：前端真实环境下的断网/限流手动验收；前端尚未解析和展示新的运行指标，工具结果/错误事件也尚未携带单次工具耗时。
 
 ## 当前文件
 
@@ -62,6 +68,7 @@ Agent Runtime 的非流式闭环已经完成：工具参数模型、JSON Schema 
 | `apps/api/app/services/run_cancellation.py` | Redis 取消信号发布、订阅与资源关闭 |
 | `apps/api/app/services/agent_runtime.py` | Agent 决策、工具执行、Observation 与最大步数控制 |
 | `apps/api/app/services/model_decision.py` | DeepSeek 消息历史与 `ToolAction` / `FinalAnswer` 决策适配 |
+| `apps/api/app/services/model_pricing.py` | DeepSeek 高峰/空闲价格选择与人民币费用估算 |
 | `apps/api/app/services/chat_service.py` | 会话上下文、Agent 事件到 NDJSON/运行事件的映射与完整一轮持久化 |
 | `apps/api/app/tools/registry.py` | 工具参数模型、模型 Schema、执行器和显式白名单 |
 | `apps/api/migrations/` | Alembic 表结构迁移历史 |
@@ -96,17 +103,17 @@ Agent Runtime 的非流式闭环已经完成：工具参数模型、JSON Schema 
 
 ## 下一课
 
-为单次 Agent 运行加入成本与延迟可观测性：从每次模型响应收集 prompt/completion token，在 Runtime 中累计模型耗时和工具耗时，最终写入 `RUN_FINISHED`，并在前端运行摘要中展示总 token、估算费用和总耗时。
+在 Windows 上继续完成成本与延迟可观测性的前端闭环：扩展 `AgentStreamEvent` 对 `RUN_FINISHED.metrics` 的运行时校验和 TypeScript 类型，把指标保存进聊天状态，并在完成态摘要中展示总 Token、人民币估算费用、模型耗时、工具耗时和步骤数。同时让 `TOOL_CALL_RESULT` / `TOOL_CALL_ERROR` 携带并展示单次工具耗时。
 
-这是“能运行”走向“可运营”的第一步。核心难点是设计不依赖 DeepSeek 的通用 Usage/Timing 数据结构，以及在多步循环中正确累计；这部分由学习者亲自实现。数据库字段/事件接线、Mock、前端展示和文档同步等机械工作由 Codex 协助完成。
+后端已经拥有完整数据，下一课的重点是协议边界和前端状态建模：不能直接信任网络 JSON，不能把缺失的 usage 或费用显示成 0，也不能让新增指标改变现有 done/error/aborted 终态语义。
 
 验收标准：
 
-- 一次包含两轮模型调用和一次工具调用的运行，token 与耗时只累计一次且数值可解释。
-- 费用计算使用集中配置的模型单价，不把价格散落在路由或 UI。
-- `RUN_FINISHED` 与 `GET /runs/{run_id}` 能返回同一份运行摘要。
-- 前端完成后显示总 token、估算费用、总耗时和步骤数；缺少 usage 时显示“暂无数据”，不伪造 0。
-- Mock 覆盖多步累计与 usage 缺失路径；后端检查以及前端 lint、类型检查、状态测试和生产构建继续通过。
+- 浏览器能解析完整指标和 `model_usage: null` 两条路径，非法嵌套字段会被协议解析器拒绝。
+- 完成态显示总 Token、人民币估算费用、模型耗时、工具耗时和步骤数；缺少 usage 或费用时显示“暂无数据”。
+- 工具成功、执行异常和超时卡片显示单次耗时；未知工具和参数校验错误不伪造执行耗时。
+- `RUN_FINISHED` 仍只触发一次 `done` 终态，停止生成和错误路径行为保持不变。
+- 前端状态测试、lint、类型检查和生产构建全部通过，后端 83 个测试继续通过。
 
 ## 换电脑后恢复
 

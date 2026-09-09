@@ -9,8 +9,10 @@ import pytest
 from openai import AsyncOpenAI
 from openai.types.chat import ChatCompletionMessageParam
 
+import app.services.model_decision as model_decision_module
 from app.services.agent_runtime import (
     FinalAnswer,
+    ModelUsage,
     ToolAction,
     ToolErrorObservation,
     ToolObservation,
@@ -18,8 +20,33 @@ from app.services.agent_runtime import (
 from app.services.model_decision import DeepSeekDecisionMaker, ModelDecisionError
 
 
-def build_text_response(content: str | None) -> SimpleNamespace:
+def build_usage(
+    *,
+    prompt_tokens: int,
+    completion_tokens: int,
+    cache_hit_tokens: int,
+    cache_miss_tokens: int,
+) -> SimpleNamespace:
+    payload = {
+        "prompt_tokens": prompt_tokens,
+        "completion_tokens": completion_tokens,
+        "total_tokens": prompt_tokens + completion_tokens,
+        "prompt_cache_hit_tokens": cache_hit_tokens,
+        "prompt_cache_miss_tokens": cache_miss_tokens,
+    }
     return SimpleNamespace(
+        **payload,
+        model_dump=lambda: payload,
+    )
+
+
+def build_text_response(
+    content: str | None,
+    *,
+    usage: SimpleNamespace | None = None,
+) -> SimpleNamespace:
+    return SimpleNamespace(
+        usage=usage,
         choices=[
             SimpleNamespace(
                 message=SimpleNamespace(
@@ -27,14 +54,16 @@ def build_text_response(content: str | None) -> SimpleNamespace:
                     tool_calls=None,
                 )
             )
-        ]
+        ],
     )
 
 
 def build_tool_response(
     *tool_calls: tuple[str, str, str],
+    usage: SimpleNamespace | None = None,
 ) -> SimpleNamespace:
     return SimpleNamespace(
+        usage=usage,
         choices=[
             SimpleNamespace(
                 message=SimpleNamespace(
@@ -52,7 +81,7 @@ def build_tool_response(
                     ],
                 )
             )
-        ]
+        ],
     )
 
 
@@ -105,6 +134,44 @@ def test_decision_maker_returns_direct_final_answer():
         {"role": "system", "content": "你是测试助手。"},
         {"role": "user", "content": "请解决这个问题。"},
     ]
+
+
+def test_decision_maker_maps_provider_usage_to_runtime_model():
+    usage = build_usage(
+        prompt_tokens=20,
+        completion_tokens=5,
+        cache_hit_tokens=8,
+        cache_miss_tokens=12,
+    )
+    decision_maker, _, _ = build_decision_maker(
+        build_text_response("回答。", usage=usage),
+    )
+
+    decision = asyncio.run(decision_maker(()))
+
+    assert decision.model_usage == ModelUsage(
+        input_tokens=20,
+        output_tokens=5,
+        total_tokens=25,
+        cache_hit_input_tokens=8,
+        cache_miss_input_tokens=12,
+    )
+
+
+def test_decision_maker_measures_model_duration_in_milliseconds(monkeypatch):
+    clock_values = iter([1_000_000_000, 1_012_900_000])
+    monkeypatch.setattr(
+        model_decision_module,
+        "perf_counter_ns",
+        lambda: next(clock_values),
+    )
+    decision_maker, _, _ = build_decision_maker(
+        build_text_response("回答。"),
+    )
+
+    decision = asyncio.run(decision_maker(()))
+
+    assert decision.model_duration_ms == 12
 
 
 def test_decision_maker_copies_existing_chat_history():

@@ -7,7 +7,7 @@ from openai import OpenAIError
 
 from app.config import settings
 from app.schemas import ToolTestRequest
-from app.services.agent_runtime import run_agent_loop
+from app.services.agent_runtime import AgentObservation, run_agent_loop
 from app.services.model_client import client
 from app.services.model_decision import (
     DEFAULT_SYSTEM_PROMPT,
@@ -16,6 +16,14 @@ from app.services.model_decision import (
 )
 
 router = APIRouter(tags=["tools"])
+
+
+def _serialize_observation(observation: AgentObservation) -> dict[str, object]:
+    """保持 /tool-test 原有响应契约，不暴露 Runtime 内部计时字段。"""
+
+    return {
+        key: value for key, value in asdict(observation).items() if key != "duration_ms"
+    }
 
 
 @router.post("/tool-test")
@@ -46,5 +54,7 @@ async def tool_test(request: ToolTestRequest):
         ),
         "reply": result.answer,
         "steps_taken": result.steps_taken,
-        "observations": [asdict(observation) for observation in result.observations],
+        "observations": [
+            _serialize_observation(observation) for observation in result.observations
+        ],
     }

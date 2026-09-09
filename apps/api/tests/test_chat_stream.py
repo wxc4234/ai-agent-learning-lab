@@ -1,18 +1,60 @@
 import asyncio
 import json
+from datetime import datetime
+from decimal import Decimal
 
+import pytest
 from openai import OpenAIError
 
 from app.services import chat_service
 from app.services.agent_runtime import (
     AgentLoopCompleted,
     AgentLoopResult,
+    ModelUsage,
     ToolAction,
     ToolCallFailed,
     ToolCallStarted,
     ToolCallSucceeded,
     ToolErrorObservation,
     ToolObservation,
+)
+from app.services.model_pricing import (
+    BEIJING_TIMEZONE,
+    DeepSeekPricingSchedule,
+    ModelPricing,
+)
+from openai.types.chat import ChatCompletionMessageParam
+
+
+TEST_PEAK_PRICING = ModelPricing(
+    cache_hit_input_cny_per_million=Decimal("0.10"),
+    cache_miss_input_cny_per_million=Decimal("3.0"),
+    output_cny_per_million=Decimal("9.0"),
+)
+TEST_OFF_PEAK_PRICING = ModelPricing(
+    cache_hit_input_cny_per_million=Decimal("0.05"),
+    cache_miss_input_cny_per_million=Decimal("1.5"),
+    output_cny_per_million=Decimal("4.5"),
+)
+TEST_PRICING_SCHEDULE = DeepSeekPricingSchedule(
+    peak=TEST_PEAK_PRICING,
+    off_peak=TEST_OFF_PEAK_PRICING,
+)
+PEAK_PRICED_AT = datetime(
+    2026,
+    9,
+    9,
+    10,
+    0,
+    tzinfo=BEIJING_TIMEZONE,
+)
+OFF_PEAK_PRICED_AT = datetime(
+    2026,
+    9,
+    9,
+    20,
+    0,
+    tzinfo=BEIJING_TIMEZONE,
 )
 
 
@@ -23,6 +65,111 @@ async def never_receive_cancellation(_: int) -> str:
 
 def decode_event(line: str) -> dict[str, object]:
     return json.loads(line)
+
+
+def test_build_run_finished_payload_preserves_missing_usage(monkeypatch):
+    monkeypatch.setattr(
+        chat_service,
+        "DEEPSEEK_PRICING_SCHEDULE",
+        TEST_PRICING_SCHEDULE,
+    )
+    result = AgentLoopResult(
+        status="completed",
+        answer="直接回答",
+        steps_taken=1,
+        observations=(),
+        model_usage=None,
+        model_duration_ms=480,
+        tool_duration_ms=0,
+    )
+
+    assert chat_service.build_run_finished_payload(
+        result,
+        priced_at=PEAK_PRICED_AT,
+    ) == {
+        "steps_taken": 1,
+        "metrics": {
+            "model_usage": None,
+            "model_duration_ms": 480,
+            "tool_duration_ms": 0,
+            "estimated_cost_cny": None,
+            "pricing": {
+                "model": chat_service.settings.deepseek_model,
+                "tier": "peak",
+                "cache_hit_input_cny_per_million": "0.10",
+                "cache_miss_input_cny_per_million": "3.0",
+                "output_cny_per_million": "9.0",
+            },
+        },
+    }
+
+
+@pytest.mark.parametrize(
+    ("priced_at", "expected_tier", "expected_cost_cny", "expected_pricing"),
+    [
+        (PEAK_PRICED_AT, "peak", "0.00044300", TEST_PEAK_PRICING),
+        (
+            OFF_PEAK_PRICED_AT,
+            "off_peak",
+            "0.00022150",
+            TEST_OFF_PEAK_PRICING,
+        ),
+    ],
+)
+def test_build_run_finished_payload_uses_selected_cny_pricing(
+    monkeypatch,
+    priced_at,
+    expected_tier,
+    expected_cost_cny,
+    expected_pricing,
+):
+    monkeypatch.setattr(
+        chat_service,
+        "DEEPSEEK_PRICING_SCHEDULE",
+        TEST_PRICING_SCHEDULE,
+    )
+    result = AgentLoopResult(
+        status="completed",
+        answer="矩形面积是 12。",
+        steps_taken=2,
+        observations=(),
+        model_usage=ModelUsage(
+            input_tokens=120,
+            output_tokens=35,
+            total_tokens=155,
+            cache_hit_input_tokens=80,
+            cache_miss_input_tokens=40,
+        ),
+        model_duration_ms=1840,
+        tool_duration_ms=12,
+    )
+
+    payload = chat_service.build_run_finished_payload(
+        result,
+        priced_at=priced_at,
+    )
+    metrics = payload["metrics"]
+    assert isinstance(metrics, dict)
+    assert metrics["estimated_cost_cny"] == expected_cost_cny
+
+    pricing = metrics["pricing"]
+    assert isinstance(pricing, dict)
+    assert pricing == {
+        "model": chat_service.settings.deepseek_model,
+        "tier": expected_tier,
+        "cache_hit_input_cny_per_million": format(
+            expected_pricing.cache_hit_input_cny_per_million,
+            "f",
+        ),
+        "cache_miss_input_cny_per_million": format(
+            expected_pricing.cache_miss_input_cny_per_million,
+            "f",
+        ),
+        "output_cny_per_million": format(
+            expected_pricing.output_cny_per_million,
+            "f",
+        ),
+    }
 
 
 def test_redis_cancellation_signal_aborts_stream(monkeypatch):
@@ -195,10 +342,26 @@ def test_completed_stream_records_chunks_and_finished_status(monkeypatch):
         tool_call_id="call-area",
         tool_name="calculate_rectangle_area",
         result="12",
+        duration_ms=12,
     )
     recorded_events: list[tuple[int, str, dict[str, object]]] = []
     finished_runs: list[tuple[int, str, dict[str, object]]] = []
     saved_turns: list[dict[str, str]] = []
+    loop_result = AgentLoopResult(
+        status="completed",
+        answer="矩形面积是 12。",
+        steps_taken=2,
+        observations=(observation,),
+        model_usage=ModelUsage(
+            input_tokens=120,
+            output_tokens=35,
+            total_tokens=155,
+            cache_hit_input_tokens=80,
+            cache_miss_input_tokens=40,
+        ),
+        model_duration_ms=1840,
+        tool_duration_ms=12,
+    )
 
     async def fake_prepare_messages(session_id, prompt):
         return history, list(history)
@@ -213,14 +376,7 @@ def test_completed_stream_records_chunks_and_finished_status(monkeypatch):
             )
         )
         yield ToolCallSucceeded(observation=observation)
-        yield AgentLoopCompleted(
-            result=AgentLoopResult(
-                status="completed",
-                answer="矩形面积是 12。",
-                steps_taken=2,
-                observations=(observation,),
-            )
-        )
+        yield AgentLoopCompleted(result=loop_result)
 
     async def collect_stream():
         return [
@@ -234,6 +390,20 @@ def test_completed_stream_records_chunks_and_finished_status(monkeypatch):
 
     monkeypatch.setattr(chat_service, "_prepare_chat_messages", fake_prepare_messages)
     monkeypatch.setattr(chat_service, "stream_agent_loop", fake_agent_loop)
+    monkeypatch.setattr(
+        chat_service,
+        "DEEPSEEK_PRICING_SCHEDULE",
+        TEST_PRICING_SCHEDULE,
+    )
+    original_payload_builder = chat_service.build_run_finished_payload
+    monkeypatch.setattr(
+        chat_service,
+        "build_run_finished_payload",
+        lambda result: original_payload_builder(
+            result,
+            priced_at=PEAK_PRICED_AT,
+        ),
+    )
     monkeypatch.setattr(
         chat_service,
         "wait_for_run_cancellation",
@@ -272,7 +442,14 @@ def test_completed_stream_records_chunks_and_finished_status(monkeypatch):
     assert events[0]["tool_call_id"] == "call-area"
     assert events[1]["result"] == "12"
     assert events[3]["chunk"] == "矩形面积是 12。"
-    assert events[-1]["steps_taken"] == 2
+    finished_payload = original_payload_builder(
+        loop_result,
+        priced_at=PEAK_PRICED_AT,
+    )
+    assert events[-1] == {
+        "type": "RUN_FINISHED",
+        **finished_payload,
+    }
 
     assert [event_type for _, event_type, _ in recorded_events] == [
         "TOOL_CALL_START",
@@ -281,7 +458,7 @@ def test_completed_stream_records_chunks_and_finished_status(monkeypatch):
         "TEXT_MESSAGE_CONTENT",
         "TEXT_MESSAGE_END",
     ]
-    assert finished_runs == [(202, "done", {"steps_taken": 2})]
+    assert finished_runs == [(202, "done", finished_payload)]
     assert saved_turns == [
         {
             "session_id": "agent-success",
@@ -574,7 +751,7 @@ def test_max_steps_emits_run_error_and_rolls_back_turn(monkeypatch):
 
 
 def test_rollback_pending_turn_removes_user_and_partial_assistant():
-    history = [
+    history: list[ChatCompletionMessageParam] = [
         {"role": "system", "content": "system"},
         {"role": "user", "content": "本轮问题"},
         {"role": "assistant", "content": "尚未提交的回答"},

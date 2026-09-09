@@ -1,14 +1,18 @@
 """集中读取和校验应用运行配置，避免配置散落在路由与服务代码中。"""
 
+from decimal import Decimal
 from pathlib import Path
 
 from pydantic import Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+
 # 以文件位置定位目录，而不是依赖终端当前所在目录，跨平台启动时更稳定。
 APP_DIR = Path(__file__).resolve().parent
+
 # 应用源码位于 apps/api/app；API_DIR 保留运行时数据和应用级配置的稳定位置。
 API_DIR = APP_DIR.parent
+
 # apps/api 的上两层就是仓库根目录，其中保存了不提交 Git 的 .env。
 PROJECT_ROOT = API_DIR.parents[1]
 
@@ -30,6 +34,46 @@ class Settings(BaseSettings):
     deepseek_model: str = Field(
         default="deepseek-v4-flash",
         validation_alias="DEEPSEEK_MODEL",
+    )
+
+    # DeepSeek 高峰时段人民币价格
+
+    deepseek_peak_cache_hit_input_cny_per_million: Decimal = Field(
+        default=Decimal("0.10"),
+        ge=0,
+        validation_alias="DEEPSEEK_PEAK_CACHE_HIT_INPUT_CNY_PER_MILLION",
+    )
+
+    deepseek_peak_cache_miss_input_cny_per_million: Decimal = Field(
+        default=Decimal("3.0"),
+        ge=0,
+        validation_alias="DEEPSEEK_PEAK_CACHE_MISS_INPUT_CNY_PER_MILLION",
+    )
+
+    deepseek_peak_output_cny_per_million: Decimal = Field(
+        default=Decimal("9.0"),
+        ge=0,
+        validation_alias="DEEPSEEK_PEAK_OUTPUT_CNY_PER_MILLION",
+    )
+
+    # DeepSeek 空闲时段人民币价格
+
+    deepseek_off_peak_cache_hit_input_cny_per_million: Decimal = Field(
+        default=Decimal("0.05"),
+        ge=0,
+        validation_alias="DEEPSEEK_OFF_PEAK_CACHE_HIT_INPUT_CNY_PER_MILLION",
+    )
+
+    deepseek_off_peak_cache_miss_input_cny_per_million: Decimal = Field(
+        default=Decimal("1.5"),
+        ge=0,
+        validation_alias="DEEPSEEK_OFF_PEAK_CACHE_MISS_INPUT_CNY_PER_MILLION",
+    )
+
+    deepseek_off_peak_output_cny_per_million: Decimal = Field(
+        default=Decimal("4.5"),
+        ge=0,
+        validation_alias="DEEPSEEK_OFF_PEAK_OUTPUT_CNY_PER_MILLION",
     )
 
     # 未设置环境变量时使用应用目录的 SQLite 文件，便于首次启动和本地回退。

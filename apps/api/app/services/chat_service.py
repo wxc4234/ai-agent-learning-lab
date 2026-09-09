@@ -1,7 +1,8 @@
 import asyncio
 import json
-from contextlib import suppress
 from collections.abc import AsyncIterator
+from contextlib import suppress
+from datetime import datetime, timezone
 
 from openai import OpenAIError
 from openai.types.chat import ChatCompletionMessageParam
@@ -16,26 +17,53 @@ from app.repositories.run_repository import (
     get_run_cancellation_reason,
     record_run_event,
 )
-from app.services.model_client import client
-from app.services.run_cancellation import wait_for_run_cancellation
 from app.services.agent_runtime import (
     AgentLoopCompleted,
+    AgentLoopResult,
+    ToolCallFailed,
     ToolCallStarted,
     ToolCallSucceeded,
-    ToolCallFailed,
     stream_agent_loop,
 )
+from app.services.model_client import client
 from app.services.model_decision import (
     DEFAULT_SYSTEM_PROMPT,
     DeepSeekDecisionMaker,
     ModelDecisionError,
 )
+from app.services.model_pricing import (
+    DeepSeekPricingSchedule,
+    ModelPricing,
+    estimate_model_cost_cny,
+)
+from app.services.run_cancellation import wait_for_run_cancellation
 
 # 内存缓存减少同一会话的重复数据库读取；服务重启后仍可由 PostgreSQL 恢复。
 conversations: dict[str, list[ChatCompletionMessageParam]] = {}
 
 # 只发送最近 5 轮，控制上下文长度、延迟和模型调用成本。
 MAX_ROUNDS = 5
+# 按北京时间区分高峰/低谷时段，用于估算模型调用费用。
+DEEPSEEK_PRICING_SCHEDULE = DeepSeekPricingSchedule(
+    peak=ModelPricing(
+        cache_hit_input_cny_per_million=(
+            settings.deepseek_peak_cache_hit_input_cny_per_million
+        ),
+        cache_miss_input_cny_per_million=(
+            settings.deepseek_peak_cache_miss_input_cny_per_million
+        ),
+        output_cny_per_million=(settings.deepseek_peak_output_cny_per_million),
+    ),
+    off_peak=ModelPricing(
+        cache_hit_input_cny_per_million=(
+            settings.deepseek_off_peak_cache_hit_input_cny_per_million
+        ),
+        cache_miss_input_cny_per_million=(
+            settings.deepseek_off_peak_cache_miss_input_cny_per_million
+        ),
+        output_cny_per_million=(settings.deepseek_off_peak_output_cny_per_million),
+    ),
+)
 
 
 def encode_stream_event(
@@ -48,6 +76,70 @@ def encode_stream_event(
         event.update(payload)
 
     return json.dumps(event, ensure_ascii=False) + "\n"
+
+
+# 构造稳定的 RUN_FINISHED 公共事件协议
+def build_run_finished_payload(
+    result: AgentLoopResult,
+    *,
+    priced_at: datetime | None = None,
+) -> dict[str, object]:
+    """把 Runtime 终态转换为可持久化、可发送的运行指标。"""
+
+    if priced_at is None:
+        priced_at = datetime.now(timezone.utc)
+
+    pricing_tier, pricing = DEEPSEEK_PRICING_SCHEDULE.select(priced_at)
+
+    estimated_cost_cny = estimate_model_cost_cny(
+        result.model_usage,
+        pricing,
+    )
+
+    model_usage_payload: dict[str, int | None] | None = None
+
+    if result.model_usage is not None:
+        model_usage_payload = {
+            "input_tokens": result.model_usage.input_tokens,
+            "output_tokens": result.model_usage.output_tokens,
+            "total_tokens": result.model_usage.total_tokens,
+            "cache_hit_input_tokens": (result.model_usage.cache_hit_input_tokens),
+            "cache_miss_input_tokens": (result.model_usage.cache_miss_input_tokens),
+        }
+
+    # 保存价格快照，而不是以后用最新价格重新计算历史费用。
+    pricing_payload: dict[str, str] = {
+        "model": settings.deepseek_model,
+        "tier": pricing_tier,
+        "cache_hit_input_cny_per_million": format(
+            pricing.cache_hit_input_cny_per_million,
+            "f",
+        ),
+        "cache_miss_input_cny_per_million": format(
+            pricing.cache_miss_input_cny_per_million,
+            "f",
+        ),
+        "output_cny_per_million": format(
+            pricing.output_cny_per_million,
+            "f",
+        ),
+    }
+
+    metrics_payload: dict[str, object] = {
+        "model_usage": model_usage_payload,
+        "model_duration_ms": result.model_duration_ms,
+        "tool_duration_ms": result.tool_duration_ms,
+        # JSON 不支持 Decimal，使用字符串保留精确小数。
+        "estimated_cost_cny": (
+            format(estimated_cost_cny, "f") if estimated_cost_cny is not None else None
+        ),
+        "pricing": pricing_payload,
+    }
+
+    return {
+        "steps_taken": result.steps_taken,
+        "metrics": metrics_payload,
+    }
 
 
 def rollback_pending_turn(
@@ -346,9 +438,8 @@ async def stream_chat_reply(
                 if len(history) > max_saved_messages + 1:
                     del history[1:-max_saved_messages]
 
-                finished_payload: dict[str, object] = {
-                    "steps_taken": result.steps_taken,
-                }
+                # 数据库和浏览器共用同一份指标 Payload
+                finished_payload: dict[str, object] = build_run_finished_payload(result)
 
                 await asyncio.to_thread(
                     finish_agent_run,

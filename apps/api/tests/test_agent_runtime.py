@@ -4,10 +4,12 @@ from time import sleep
 
 import pytest
 
+import app.services.agent_runtime as agent_runtime_module
 from app.services.agent_runtime import (
     AgentLoopResult,
     AgentObservation,
     FinalAnswer,
+    ModelUsage,
     ToolAction,
     ToolErrorObservation,
     ToolObservation,
@@ -78,6 +80,179 @@ def test_agent_loop_stops_at_max_steps():
     assert result.answer is None
     assert result.steps_taken == 2
     assert len(result.observations) == 2
+
+
+def test_agent_loop_accumulates_model_usage_across_steps():
+    async def decide(
+        observations: tuple[AgentObservation, ...],
+    ) -> ToolAction | FinalAnswer:
+        if not observations:
+            return ToolAction(
+                tool_call_id="call-area",
+                tool_name="calculate_rectangle_area",
+                arguments='{"width": 3, "height": 4}',
+                model_usage=ModelUsage(
+                    input_tokens=20,
+                    output_tokens=4,
+                    total_tokens=24,
+                    cache_hit_input_tokens=8,
+                    cache_miss_input_tokens=12,
+                ),
+            )
+
+        return FinalAnswer(
+            content="矩形面积是 12",
+            model_usage=ModelUsage(
+                input_tokens=30,
+                output_tokens=6,
+                total_tokens=36,
+                cache_hit_input_tokens=20,
+                cache_miss_input_tokens=10,
+            ),
+        )
+
+    result = asyncio.run(run_agent_loop(decide, max_steps=3))
+
+    assert result.model_usage == ModelUsage(
+        input_tokens=50,
+        output_tokens=10,
+        total_tokens=60,
+        cache_hit_input_tokens=28,
+        cache_miss_input_tokens=22,
+    )
+
+
+def test_agent_loop_hides_partial_usage_when_any_step_is_missing():
+    async def decide(
+        observations: tuple[AgentObservation, ...],
+    ) -> ToolAction | FinalAnswer:
+        if not observations:
+            return ToolAction(
+                tool_call_id="call-area",
+                tool_name="calculate_rectangle_area",
+                arguments='{"width": 3, "height": 4}',
+                model_usage=ModelUsage(
+                    input_tokens=20,
+                    output_tokens=4,
+                    total_tokens=24,
+                    cache_hit_input_tokens=8,
+                    cache_miss_input_tokens=12,
+                ),
+            )
+
+        return FinalAnswer(content="矩形面积是 12")
+
+    result = asyncio.run(run_agent_loop(decide, max_steps=3))
+
+    assert result.model_usage is None
+
+
+def test_agent_loop_accumulates_model_duration_across_steps():
+    async def decide(
+        observations: tuple[AgentObservation, ...],
+    ) -> ToolAction | FinalAnswer:
+        if not observations:
+            return ToolAction(
+                tool_call_id="call-area",
+                tool_name="calculate_rectangle_area",
+                arguments='{"width": 3, "height": 4}',
+                model_duration_ms=120,
+            )
+
+        return FinalAnswer(
+            content="矩形面积是 12",
+            model_duration_ms=80,
+        )
+
+    result = asyncio.run(run_agent_loop(decide, max_steps=3))
+
+    assert result.model_duration_ms == 200
+
+
+def test_agent_loop_hides_partial_duration_when_any_step_is_missing():
+    async def decide(
+        observations: tuple[AgentObservation, ...],
+    ) -> ToolAction | FinalAnswer:
+        if not observations:
+            return ToolAction(
+                tool_call_id="call-area",
+                tool_name="calculate_rectangle_area",
+                arguments='{"width": 3, "height": 4}',
+                model_duration_ms=120,
+            )
+
+        return FinalAnswer(content="矩形面积是 12")
+
+    result = asyncio.run(run_agent_loop(decide, max_steps=3))
+
+    assert result.model_duration_ms is None
+
+
+def test_agent_loop_records_and_accumulates_tool_duration(monkeypatch):
+    clock_values = iter(
+        [
+            1_000_000_000,
+            1_010_900_000,
+            2_000_000_000,
+            2_020_400_000,
+        ]
+    )
+    monkeypatch.setattr(
+        agent_runtime_module,
+        "perf_counter_ns",
+        lambda: next(clock_values),
+    )
+
+    async def decide(
+        observations: tuple[AgentObservation, ...],
+    ) -> ToolAction | FinalAnswer:
+        if len(observations) < 2:
+            call_number = len(observations) + 1
+            return ToolAction(
+                tool_call_id=f"call-area-{call_number}",
+                tool_name="calculate_rectangle_area",
+                arguments='{"width": 3, "height": 4}',
+            )
+
+        return FinalAnswer(content="两个矩形的面积都是 12")
+
+    result = asyncio.run(run_agent_loop(decide, max_steps=3))
+
+    assert [observation.duration_ms for observation in result.observations] == [
+        10,
+        20,
+    ]
+    assert result.tool_duration_ms == 30
+
+
+def test_agent_loop_does_not_time_argument_validation(monkeypatch):
+    def fail_if_clock_is_called() -> int:
+        raise AssertionError("参数校验失败时不应开始工具执行计时")
+
+    monkeypatch.setattr(
+        agent_runtime_module,
+        "perf_counter_ns",
+        fail_if_clock_is_called,
+    )
+
+    async def decide(
+        observations: tuple[AgentObservation, ...],
+    ) -> ToolAction | FinalAnswer:
+        if not observations:
+            return ToolAction(
+                tool_call_id="call-invalid",
+                tool_name="calculate_rectangle_area",
+                arguments='{"width": -3, "height": 4}',
+            )
+
+        return FinalAnswer(content="参数错误")
+
+    result = asyncio.run(run_agent_loop(decide, max_steps=2))
+
+    error_observation = result.observations[0]
+    assert isinstance(error_observation, ToolErrorObservation)
+    assert error_observation.duration_ms is None
+    assert result.tool_duration_ms == 0
 
 
 def test_agent_loop_returns_unknown_tool_as_observation():
@@ -174,6 +349,13 @@ def test_agent_loop_rejects_invalid_max_steps():
 
 
 def test_agent_loop_returns_executor_failure_as_observation(monkeypatch):
+    clock_values = iter([1_000_000_000, 1_007_800_000])
+    monkeypatch.setattr(
+        agent_runtime_module,
+        "perf_counter_ns",
+        lambda: next(clock_values),
+    )
+
     def failing_executor(*, utc_offset_hours: int) -> str:
         raise RuntimeError("不应暴露的内部错误")
 
@@ -212,10 +394,19 @@ def test_agent_loop_returns_executor_failure_as_observation(monkeypatch):
     assert error_observation.code == "tool_execution_failed"
     assert error_observation.message == "工具执行失败"
     assert error_observation.details == "RuntimeError"
+    assert error_observation.duration_ms == 7
+    assert result.tool_duration_ms == 7
     assert "不应暴露的内部错误" not in str(error_observation)
 
 
 def test_agent_loop_returns_timeout_as_observation(monkeypatch):
+    clock_values = iter([1_000_000_000, 1_011_900_000])
+    monkeypatch.setattr(
+        agent_runtime_module,
+        "perf_counter_ns",
+        lambda: next(clock_values),
+    )
+
     def slow_executor(*, utc_offset_hours: int) -> str:
         sleep(0.05)
         return "不会及时返回"
@@ -256,6 +447,8 @@ def test_agent_loop_returns_timeout_as_observation(monkeypatch):
     assert error_observation.code == "tool_timeout"
     assert error_observation.message == "工具执行超时"
     assert error_observation.details == "timeout_seconds=0.001"
+    assert error_observation.duration_ms == 11
+    assert result.tool_duration_ms == 11
 
 
 def test_tool_definition_rejects_non_positive_timeout():

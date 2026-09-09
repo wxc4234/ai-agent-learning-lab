@@ -2,8 +2,10 @@
 
 import json
 from collections.abc import Sequence
+from time import perf_counter_ns
 from openai import AsyncOpenAI
 from openai.types.chat import (
+    ChatCompletion,
     ChatCompletionAssistantMessageParam,
     ChatCompletionMessageParam,
     ChatCompletionToolMessageParam,
@@ -16,6 +18,7 @@ from app.services.agent_runtime import (
     ToolAction,
     ToolErrorObservation,
     ToolObservation,
+    ModelUsage,
 )
 from app.tools.registry import TOOLS
 
@@ -82,6 +85,9 @@ class DeepSeekDecisionMaker:
         """追加新的工具观察，调用模型，并返回一次工具动作或最终答案。"""
         self._append_new_observations(observations)
 
+        # 只测量真实模型请求，不包含消息整理和后续解析。
+        model_started_at_ns = perf_counter_ns()
+
         response = await self._client.chat.completions.create(
             model=self._model,
             messages=self._messages,
@@ -93,6 +99,12 @@ class DeepSeekDecisionMaker:
                 }
             },
         )
+        # 纳秒转换成整数毫秒；极快的 Mock 请求可以合法地得到 0。
+        model_duration_ms = max(
+            0,
+            (perf_counter_ns() - model_started_at_ns) // 1_000_000,
+        )
+        model_usage = self._extract_model_usage(response)
 
         if not response.choices:
             raise ModelDecisionError("模型响应中没有可用的 choice")
@@ -139,6 +151,8 @@ class DeepSeekDecisionMaker:
                 tool_call_id=tool_call.id,
                 tool_name=tool_call.function.name,
                 arguments=tool_call.function.arguments,
+                model_usage=model_usage,
+                model_duration_ms=model_duration_ms,
             )
 
         if not message.content:
@@ -151,7 +165,35 @@ class DeepSeekDecisionMaker:
             }
         )
 
-        return FinalAnswer(content=message.content)
+        return FinalAnswer(
+            content=message.content,
+            model_usage=model_usage,
+            model_duration_ms=model_duration_ms,
+        )
+
+    @staticmethod
+    def _extract_model_usage(response: ChatCompletion) -> ModelUsage | None:
+        """把 DeepSeek/OpenAI 兼容 usage 转成 Runtime 通用结构。"""
+        usage = getattr(response, "usage", None)
+        if usage is None:
+            return None
+
+        usage_payload = usage.model_dump()
+
+        cache_hit_tokens = usage_payload.get("prompt_cache_hit_tokens")
+        cache_miss_tokens = usage_payload.get("prompt_cache_miss_tokens")
+
+        return ModelUsage(
+            input_tokens=usage.prompt_tokens,
+            output_tokens=usage.completion_tokens,
+            total_tokens=usage.total_tokens,
+            cache_hit_input_tokens=(
+                cache_hit_tokens if isinstance(cache_hit_tokens, int) else None
+            ),
+            cache_miss_input_tokens=(
+                cache_miss_tokens if isinstance(cache_miss_tokens, int) else None
+            ),
+        )
 
     def _append_new_observations(
         self,
