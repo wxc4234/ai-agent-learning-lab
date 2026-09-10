@@ -1,7 +1,7 @@
 # AI Agent 应用开发岗位与技能校准
 
 目标方向：前端 / 全栈产品工程
-调研日期：2026-08-31（Asia/Shanghai）
+调研日期：2026-08-31；路线复核：2026-09-10（Asia/Shanghai）
 
 这份文档只解释：**目标岗位是什么、市场为什么需要这些能力、路线为什么这样安排。**
 
@@ -142,7 +142,7 @@ MCP / Skills
 → 标准化连接外部工具
 ```
 
-pgvector 不是从 Codex 或 DeepSeek Harness 照搬的。它用于 RAG 知识检索；Harness 项目主要影响 Agent Runtime、工具执行和会话架构。
+pgvector 不是从 Codex 或 DeepSeek Harness 照搬的。它在新主项目中用于代码与仓库文档的语义检索，并与路径、符号和关键词检索组合；Harness 类项目主要影响 Agent Runtime、工具执行、上下文和会话架构。
 
 ## 7. 最终技术选型
 
@@ -151,8 +151,10 @@ pgvector 不是从 Codex 或 DeepSeek Harness 照搬的。它用于 RAG 知识�
 - 状态与数据：PostgreSQL + SQLAlchemy + Alembic + Redis。
 - 向量检索：PostgreSQL + pgvector；Qdrant 只作为后续进阶。
 - Agent 编排：先手写最小循环，再使用 LangGraph。
+- Coding Tools：受控文件/搜索/Shell/Apply Patch/Git/测试工具 + 隔离 Worker/Sandbox。
 - 工具协议：MCP Python SDK。
-- 生产化：pytest + Docker Compose + OpenTelemetry/Langfuse + CI/CD。
+- 扩展机制：仓库指令、Skills、持久审批与有限子 Agent 委派。
+- 生产化：pytest + 前端测试 + 任务 Worker + Docker Compose + OpenTelemetry/Langfuse + CI/CD。
 
 跨平台统一使用 Docker Compose。macOS 与 Windows 运行相同镜像、迁移和命令；本地数据分别保存，需要共享时再连接云数据库。
 
@@ -204,7 +206,7 @@ Python + async、FastAPI、LangGraph、RAG（chunking / hybrid / rerank）、向
 
 ### 10.3 补充的概念级内容
 
-以下在面试中频率高但实现成本与收益不匹配，各留 2 ～ 4 小时达到「能讲清、能画图」即可，不实现：第二个 Agent 框架（JD 常写「≥2 个框架」）、多 Agent 协作与路由、A2A 与 Agent Card、Computer Use / GUI Agent、其他向量库的选型理由。
+以下在面试中频率高但实现成本与收益不匹配，各留 2 ～ 4 小时达到「能讲清、能画图」即可，不作为主线实现：第二个 Agent 框架（JD 常写「≥2 个框架」）、A2A 与 Agent Card、Computer Use / GUI Agent、其他向量库的选型理由。多 Agent 不再只停留在概念层，但仅实现有限、可独立验收的子任务委派，不做通用多 Agent 平台。
 
 保持「只深入一个框架」的判断不变：招聘方明确把 framework name-dropping 列为**被高估**的信号，深度比广度值钱。
 
@@ -214,12 +216,15 @@ Python + async、FastAPI、LangGraph、RAG（chunking / hybrid / rerank）、向
 
 ### 10.5 时间与作品集策略修正
 
-复核日期 08-31，剩余 11 周（至 11-15）。原计划第 10 ～ 11 周各用一周完成一个完整项目不现实。修正为：
+08-31 的第一次复核把两个项目合并为一个。09-10 再次检查实际依赖后，发现“第 3 周先做工具过程 UI、第 7 周才做 Tool Registry 与 Agent Loop”存在依赖倒置，因此进一步修正为：
 
 - 第 3 ～ 9 周的产出全部长在同一套 `apps/api` + `apps/web` 里；第 10 ～ 11 周**只做收尾和包装，不是开始做项目**。
-- 原项目一与项目二合并为一个足够深的主项目（两者共用约 80% 技术栈）。招聘方看的是 `build → measure → refine` 的具体痕迹，一个有真实评测数据、Trace 和失败恢复演示的项目胜过两个只有顺利路径的 Demo。
+- 主项目明确为可观测、可恢复、可安全执行代码任务的 Codex-like Coding Agent；不复刻专有模型和云基础设施。
+- Tool Registry、参数校验、基础 Agent Loop 与结构化工具事件移入第 3 周，作为真实流式工具 UI 的前置能力；第 7 周只保留 Context、Memory、Compaction、Checkpoint、Reflection 与轨迹评测。
+- 第 4 周建立身份、Workspace 和 Task 所有权；第 5 周实现安全 Coding Tools/Sandbox；第 6 周实现代码上下文与混合检索。该顺序保证每周产物都是下一周的真实依赖。
+- 原项目一与项目二继续合并为一个足够深的主项目。招聘方看的是 `build → measure → refine` 的具体痕迹，一个有真实评测数据、Trace 和失败恢复演示的项目胜过两个只有顺利路径的 Demo。
 - 第二项目改为第 9 周末评估后再决定。
-- **第 8 周开始第一批投递**，不等作品集完成。届时已有流式 UI、工具过程、RAG 带引用、ReAct + LangGraph、评测和 Trace，足以支撑面试对话；面试反馈能反向指导第 9 ～ 12 周补什么。
+- **第 8 周开始第一批投递**，不等作品集完成。届时已有流式 UI、安全代码工具、代码上下文、持久 Runtime、MCP/Skills、审批和评测，足以支撑面试对话；面试反馈能反向指导第 9 ～ 12 周补什么。
 - 第 9 周增加云部署，让作品有公网地址。JD 普遍要求 AWS/Azure/GCP 之一，且「能点开就用」与「只能本地跑」在投递时说服力差距明显。
 
 ### 10.6 本次复核来源

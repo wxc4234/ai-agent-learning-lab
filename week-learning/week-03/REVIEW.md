@@ -10,7 +10,7 @@
 - 补充 reducer 冒烟测试、事件流图，并通过 lint、类型检查和生产构建。
 - 区分用户主动停止与请求超时：前者进入 `aborted`，后者进入 `error`，并把取消原因写入运行事件。
 - 使用 Redis Pub/Sub 把取消信号传播到真正承载流任务的 API 实例，避免多实例部署下只能取消本机任务。
-- 提前完成 Agent Runtime 安全执行底座：带参数工具、Pydantic 校验、显式工具注册、结构化 Observation、最大步数、执行超时和取消传播。
+- 完成支撑真实工具过程 UI 的最小 Agent Runtime：带参数工具、Pydantic 校验、显式工具注册、结构化 Observation、最大步数、执行超时和取消传播。该内容已在 2026-09-10 的路线修订中正式归入第 3 周，不再记作第 7 周提前进度。
 - 为 Agent Runtime 补充 9 个循环测试，并让后端完整测试达到 36 个。
 
 ## 这周理解最深的六个概念
@@ -30,7 +30,9 @@
 
 该问题已在本周后续完成：`POST /runs/{run_id}/cancel` 携带 `reason: "user" | "timeout"`，并通过 Redis Pub/Sub 将取消信号发送到承载流的 API 实例。现在前端状态、后端运行状态和数据库事件使用同一份终态语义。
 
-## 当前断点与下一步
+## 复盘时的断点与下一步（历史记录）
+
+以下内容保留第 3 周复盘当时的状态。到 2026-09-10，DeepSeek 决策适配、正式聊天 Agent Loop、工具事件卡片、成本与延迟指标、Token 预算均已在后续提交完成；当前断点请以 [../../LEARNING_HANDOFF.md](../../LEARNING_HANDOFF.md) 为准。
 
 - 补充运行时间线的前端展示。
 - 由学习者实现 DeepSeek 决策适配层，把模型消息转换为 `ToolAction` / `FinalAnswer`，并把工具 Observation 写回上下文。

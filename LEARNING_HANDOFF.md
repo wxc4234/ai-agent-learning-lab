@@ -4,7 +4,7 @@
 
 这份文件只记录**当前进度、恢复方式和下一课**。完整路线统一查看 [LEARNING_PLAN.md](LEARNING_PLAN.md)，逐日任务与验收标准查看 [LEARNING_CURRICULUM.md](LEARNING_CURRICULUM.md)。
 
-目标岗位：**AI Agent 应用开发工程师（偏前端 / 全栈产品工程）**。当前学习后端是为了能够独立交付 Agent 产品，不是转向纯后端或泛化的大模型应用岗位。
+目标岗位：**AI Agent 应用开发工程师（偏前端 / 全栈产品工程）**。主项目目标是可观测、可恢复、可安全执行代码任务的 Codex-like Coding Agent；能力边界见 [docs/codex-like-agent-scope.md](docs/codex-like-agent-scope.md)。当前学习后端、数据和执行隔离是为了独立交付 Agent 产品，不是转向纯后端或模型训练岗位。
 
 ## 目录规则（长期有效）
 
@@ -12,7 +12,22 @@
 
 ## 当前进度
 
-第 1 周、第 2 周与第 3 周已完成。第 3 周已经完成流式 Agent UI、停止生成、六态状态机、`run_id` 事件落库、5 条固定冒烟评测、事件流图与复盘；取消原因协议也已通过 Redis Pub/Sub 完成跨实例传播。
+### 进度口径
+
+当前日期为 2026-09-10，日历处于**第 3 周（09-07 ～ 09-13）**。第 1 周、第 2 周与第 3 周均已通过整周验收，所以正式周进度是 **3 / 12（25%）**。提前完成后继续实现的功能记入对应未来课程，但不会把尚未通过全部验收的周次标记为完成。
+
+| 周次 | 状态 | 已完成与缺口 |
+|---|---|---|
+| 第 1 周 | 已完成 | Python、FastAPI、DeepSeek、SQLite、持久化对话和最小时间工具闭环 |
+| 第 2 周 | 已完成 | 分层配置、PostgreSQL、SQLAlchemy、Alembic、pytest、Docker Compose、跨平台环境文档 |
+| 第 3 周 | 已完成（当前日历周） | 流式 UI、停止/超时/跨实例取消、六态状态机、最小 Runtime（Registry、参数校验、顺序 Agent Loop）、结构化工具事件、`run_id` 落库、冒烟评测与复盘 |
+| 第 4 周 | 部分预完成 | 可观测、成本/延迟摘要和 Token 上限保护已完成；失败摘要展示待收尾。认证、授权、Workspace、Task、会话恢复、Redis 幂等/限流未完成 |
+| 第 5 周 | 未开始 | 安全文件/搜索/Shell/Apply Patch/Git/测试工具、Sandbox 与审批策略尚未开始 |
+| 第 6 周 | 未开始 | 仓库扫描、符号/关键词/向量混合检索、代码引用、Context Builder 与检索评测尚未开始 |
+| 第 7 周 | 未开始 | 高级 Runtime：Plan、Compaction、Memory、LangGraph Checkpoint、暂停/恢复、Reflection 与轨迹评测；基础 Runtime 已归入第 3 周，不重复学习 |
+| 第 8 ～ 12 周 | 未开始 | MCP、Skills、审批、有限子 Agent、生产部署、Codex-like 产品收尾和求职按新路线推进 |
+
+第 3 周已完成流式 Agent UI、停止生成、六态状态机、`run_id` 事件落库、5 条固定冒烟评测、事件流图与复盘；取消原因协议也已通过 Redis Pub/Sub 完成跨实例传播。
 
 Agent Runtime 的非流式闭环已经完成：工具参数模型、JSON Schema 自动生成、显式工具白名单、通用调度循环、结构化错误观察、执行超时、取消传播和 DeepSeek 消息适配均已落地。`POST /tool-test` 已由手写两次调用重构为通用 Agent Loop，并通过真实 DeepSeek 请求验证“模型请求工具 → Runtime 执行 → 结果回传 → 最终回答”。
 
@@ -60,7 +75,7 @@ Agent Runtime 的非流式闭环已经完成：工具参数模型、JSON Schema 
 
 已完成：36 条前端状态/协议/展示数据测试、Agent 事件流图和第 3 周复盘，分别见 `apps/web/test/features/chat/*.test.ts`、`docs/architecture.md` 与 `week-learning/week-03/REVIEW.md`。
 
-仍待补充：前端真实环境下的断网/限流手动验收；浏览器尚未把已经解析的失败运行摘要保存到状态并展示。
+当前收尾缺口：前端真实环境下的断网/限流手动验收；浏览器尚未把已经解析的失败运行摘要保存到状态并展示。Redis 目前只承担取消传播，尚未完成第 4 周要求的幂等、限流和短期状态能力。
 
 ## 当前文件
 
@@ -86,6 +101,8 @@ Agent Runtime 的非流式闭环已经完成：工具参数模型、JSON Schema 
 | `apps/api/scripts/migrate_sqlite_to_postgres.py` | 一次性 SQLite 历史消息迁移脚本 |
 | `docs/architecture.md` | 当前服务职责与请求、数据流向图 |
 | `docs/agent-ui-events.md` | Agent 流式事件与前端状态映射 |
+| `docs/codex-like-agent-scope.md` | Codex-like 主项目能力矩阵、最终端到端验收与明确边界 |
+| `LEARNING_COACH_GUIDE.md` | 新会话恢复上下文、逐课教学、验收与进度维护规则 |
 | `week-learning/` | 每周结束后的学习记录、练习与复盘 |
 | `apps/web/` | 持续演进的 Next.js Agent 前端 |
 | `apps/web/src/app/api/chat/stream/route.ts` | Next.js BFF 流代理 Route Handler |
@@ -128,6 +145,12 @@ Agent Runtime 的非流式闭环已经完成：工具参数模型、JSON Schema 
 - 收到流内终态错误后立即结束消费，不再处理后续事件。
 - 新请求、重试、取消仍会清除旧摘要，正常完成路径保持兼容。
 - 前端类型检查、lint 和相关状态测试通过。
+
+完成这一个小任务后，先补失败摘要卡片和断网/限流的浏览器手工验收；随后进入**第 4 周 Day 1：身份模型与后端认证**。第 4 周将按认证 → 前端登录态 → 授权与所有权 → Workspace/Task/会话恢复 → Redis 幂等/限流 → 可观测复核 → 全栈安全验收的顺序推进。
+
+## 新会话教学入口
+
+新会话先完整阅读 `AGENTS.md`、本文、`LEARNING_PLAN.md`、`LEARNING_CURRICULUM.md`、`docs/codex-like-agent-scope.md` 和 `LEARNING_COACH_GUIDE.md`，再检查 Git 状态与当前代码。不得从第 1 周重讲，也不得因为基础 Runtime 已完成就跳到第 7 周；当前第一课始终以本文“下一课”为准。
 
 ## 换电脑后恢复
 
