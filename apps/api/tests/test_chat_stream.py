@@ -172,6 +172,27 @@ def test_build_run_finished_payload_uses_selected_cny_pricing(
     }
 
 
+def test_run_finished_payload_reuses_shared_metrics_builder(monkeypatch):
+    result = AgentLoopResult(
+        status="completed",
+        answer="直接回答",
+        steps_taken=1,
+        observations=(),
+    )
+    shared_metrics: dict[str, object] = {"source": "shared-builder"}
+
+    monkeypatch.setattr(
+        chat_service,
+        "build_run_metrics_payload",
+        lambda received_result, *, priced_at=None: shared_metrics,
+    )
+
+    assert chat_service.build_run_finished_payload(result) == {
+        "steps_taken": 1,
+        "metrics": shared_metrics,
+    }
+
+
 def test_redis_cancellation_signal_aborts_stream(monkeypatch):
     history = [
         {"role": "system", "content": "system"},
@@ -184,7 +205,7 @@ def test_redis_cancellation_signal_aborts_stream(monkeypatch):
     async def fake_prepare_messages(session_id, prompt):
         return history, list(history)
 
-    async def blocked_agent_loop(decide, *, max_steps):
+    async def blocked_agent_loop(decide, *, max_steps, max_total_tokens):
         yield ToolCallStarted(
             action=ToolAction(
                 tool_call_id="call-blocked",
@@ -262,7 +283,7 @@ def test_cancelled_stream_rolls_back_pending_user_message(monkeypatch):
     async def fake_prepare_messages(session_id, prompt):
         return history, list(history)
 
-    async def blocked_agent_loop(decide, *, max_steps):
+    async def blocked_agent_loop(decide, *, max_steps, max_total_tokens):
         yield ToolCallStarted(
             action=ToolAction(
                 tool_call_id="call-cancelled",
@@ -366,8 +387,9 @@ def test_completed_stream_records_chunks_and_finished_status(monkeypatch):
     async def fake_prepare_messages(session_id, prompt):
         return history, list(history)
 
-    async def fake_agent_loop(decide, *, max_steps):
+    async def fake_agent_loop(decide, *, max_steps, max_total_tokens):
         assert max_steps == 5
+        assert max_total_tokens == chat_service.settings.agent_max_total_tokens
         yield ToolCallStarted(
             action=ToolAction(
                 tool_call_id="call-area",
@@ -440,7 +462,13 @@ def test_completed_stream_records_chunks_and_finished_status(monkeypatch):
         "RUN_FINISHED",
     ]
     assert events[0]["tool_call_id"] == "call-area"
-    assert events[1]["result"] == "12"
+    assert events[1] == {
+        "type": "TOOL_CALL_RESULT",
+        "tool_call_id": "call-area",
+        "tool_name": "calculate_rectangle_area",
+        "result": "12",
+        "duration_ms": 12,
+    }
     assert events[3]["chunk"] == "矩形面积是 12。"
     finished_payload = original_payload_builder(
         loop_result,
@@ -458,6 +486,10 @@ def test_completed_stream_records_chunks_and_finished_status(monkeypatch):
         "TEXT_MESSAGE_CONTENT",
         "TEXT_MESSAGE_END",
     ]
+    assert events[1] == {
+        "type": "TOOL_CALL_RESULT",
+        **recorded_events[1][2],
+    }
     assert finished_runs == [(202, "done", finished_payload)]
     assert saved_turns == [
         {
@@ -482,7 +514,7 @@ def test_model_error_finishes_run_as_error_and_rolls_back_user_message(monkeypat
     async def fake_prepare_messages(session_id, prompt):
         return history, list(history)
 
-    async def failing_agent_loop(decide, *, max_steps):
+    async def failing_agent_loop(decide, *, max_steps, max_total_tokens):
         raise OpenAIError("不应暴露的模型错误")
         yield
 
@@ -546,7 +578,7 @@ def test_timed_out_stream_finishes_as_error(monkeypatch):
     async def fake_prepare_messages(session_id, prompt):
         return history, list(history)
 
-    async def blocked_agent_loop(decide, *, max_steps):
+    async def blocked_agent_loop(decide, *, max_steps, max_total_tokens):
         yield ToolCallStarted(
             action=ToolAction(
                 tool_call_id="call-timeout",
@@ -626,11 +658,12 @@ def test_tool_error_is_emitted_and_model_can_still_finish(monkeypatch):
         code="unknown_tool",
         message="工具未注册：read_secret_file",
     )
+    recorded_events: list[tuple[int, str, dict[str, object]]] = []
 
     async def fake_prepare_messages(session_id, prompt):
         return history, list(history)
 
-    async def fake_agent_loop(decide, *, max_steps):
+    async def fake_agent_loop(decide, *, max_steps, max_total_tokens):
         yield ToolCallStarted(
             action=ToolAction(
                 tool_call_id="call-unknown",
@@ -655,7 +688,13 @@ def test_tool_error_is_emitted_and_model_can_still_finish(monkeypatch):
         "wait_for_run_cancellation",
         never_receive_cancellation,
     )
-    monkeypatch.setattr(chat_service, "record_run_event", lambda *args: None)
+    monkeypatch.setattr(
+        chat_service,
+        "record_run_event",
+        lambda run_id, event_type, payload: recorded_events.append(
+            (run_id, event_type, payload)
+        ),
+    )
     monkeypatch.setattr(chat_service, "finish_agent_run", lambda *args: None)
     monkeypatch.setattr(chat_service, "save_conversation_turn", lambda **kwargs: None)
 
@@ -680,31 +719,85 @@ def test_tool_error_is_emitted_and_model_can_still_finish(monkeypatch):
         "RUN_FINISHED",
     ]
     assert events[1]["code"] == "unknown_tool"
+    assert events[1]["duration_ms"] is None
+    assert events[1] == {
+        "type": "TOOL_CALL_ERROR",
+        **recorded_events[1][2],
+    }
     assert events[3]["chunk"] == "该工具不可用。"
 
 
-def test_max_steps_emits_run_error_and_rolls_back_turn(monkeypatch):
+@pytest.mark.parametrize(
+    ("runtime_status", "expected_message", "usage_is_known"),
+    [
+        ("max_steps_exceeded", "Agent 达到最大执行步数", True),
+        (
+            "token_budget_exhausted",
+            "本次运行已达到 Token 预算上限",
+            True,
+        ),
+        (
+            "token_usage_unknown",
+            "无法确认本次运行的 Token 用量，已停止继续执行",
+            False,
+        ),
+    ],
+)
+def test_non_completed_loop_emits_run_error_and_rolls_back_turn(
+    monkeypatch,
+    runtime_status: str,
+    expected_message: str,
+    usage_is_known: bool,
+):
     history = [
         {"role": "system", "content": "system"},
         {"role": "user", "content": "一直调用工具"},
     ]
     finished_runs: list[tuple[int, str, dict[str, object]]] = []
+    model_usage = (
+        ModelUsage(
+            input_tokens=120,
+            output_tokens=35,
+            total_tokens=155,
+            cache_hit_input_tokens=80,
+            cache_miss_input_tokens=40,
+        )
+        if usage_is_known
+        else None
+    )
+    loop_result = AgentLoopResult(
+        status=runtime_status,  # type: ignore[arg-type]
+        answer=None,
+        steps_taken=5,
+        observations=(),
+        model_usage=model_usage,
+        model_duration_ms=480,
+        tool_duration_ms=12,
+    )
 
     async def fake_prepare_messages(session_id, prompt):
         return history, list(history)
 
-    async def fake_agent_loop(decide, *, max_steps):
-        yield AgentLoopCompleted(
-            result=AgentLoopResult(
-                status="max_steps_exceeded",
-                answer=None,
-                steps_taken=5,
-                observations=(),
-            )
-        )
+    async def fake_agent_loop(decide, *, max_steps, max_total_tokens):
+        assert max_total_tokens == chat_service.settings.agent_max_total_tokens
+        yield AgentLoopCompleted(result=loop_result)
 
     monkeypatch.setattr(chat_service, "_prepare_chat_messages", fake_prepare_messages)
     monkeypatch.setattr(chat_service, "stream_agent_loop", fake_agent_loop)
+    monkeypatch.setattr(
+        chat_service,
+        "DEEPSEEK_PRICING_SCHEDULE",
+        TEST_PRICING_SCHEDULE,
+    )
+    original_metrics_builder = chat_service.build_run_metrics_payload
+    monkeypatch.setattr(
+        chat_service,
+        "build_run_metrics_payload",
+        lambda result: original_metrics_builder(
+            result,
+            priced_at=PEAK_PRICED_AT,
+        ),
+    )
     monkeypatch.setattr(
         chat_service,
         "wait_for_run_cancellation",
@@ -729,23 +822,36 @@ def test_max_steps_emits_run_error_and_rolls_back_turn(monkeypatch):
         ]
 
     events = asyncio.run(collect_stream())
+    expected_metrics = original_metrics_builder(
+        loop_result,
+        priced_at=PEAK_PRICED_AT,
+    )
+    expected_payload: dict[str, object] = {
+        "code": runtime_status,
+        "message": expected_message,
+        "steps_taken": 5,
+        "metrics": expected_metrics,
+    }
 
     assert events == [
         {
             "type": "RUN_ERROR",
-            "code": "max_steps_exceeded",
-            "message": "Agent 达到最大执行步数",
+            **expected_payload,
         }
     ]
+    if usage_is_known:
+        assert expected_metrics["model_usage"] is not None
+        assert expected_metrics["estimated_cost_cny"] is not None
+    else:
+        assert expected_metrics["model_usage"] is None
+        assert expected_metrics["estimated_cost_cny"] is None
+
     assert history == [{"role": "system", "content": "system"}]
     assert finished_runs == [
         (
             707,
             "error",
-            {
-                "code": "max_steps_exceeded",
-                "message": "Agent 达到最大执行步数",
-            },
+            expected_payload,
         )
     ]
 

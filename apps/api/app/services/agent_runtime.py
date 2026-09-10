@@ -8,6 +8,7 @@ from typing import Literal, TypeAlias
 
 from pydantic import ValidationError
 
+from app.services.token_budget import evaluate_token_budget
 from app.tools.registry import TOOL_REGISTRY
 
 
@@ -112,7 +113,12 @@ AgentObservation: TypeAlias = ToolObservation | ToolErrorObservation
 class AgentLoopResult:
     """Agent Loop 的最终状态。"""
 
-    status: Literal["completed", "max_steps_exceeded"]
+    status: Literal[
+        "completed",
+        "max_steps_exceeded",
+        "token_budget_exhausted",
+        "token_usage_unknown",
+    ]
     answer: str | None
     steps_taken: int
     observations: tuple[AgentObservation, ...]
@@ -165,7 +171,7 @@ class ToolCallFailed:
 
 @dataclass(frozen=True, slots=True)
 class AgentLoopCompleted:
-    """Agent Loop 到达最终答案或最大步数终态。"""
+    """Agent Loop 到达最终答案或任一种循环终态。"""
 
     result: AgentLoopResult
 
@@ -236,11 +242,20 @@ async def stream_agent_loop(
     decide: DecisionMaker,
     *,
     max_steps: int = 5,
+    # None 表示保持原有行为，不启用预算
+    max_total_tokens: int | None = None,
 ) -> AsyncIterator[AgentLoopEvent]:
     """逐步执行 Agent Loop，并在关键节点产生领域事件。"""
 
     if max_steps < 1:
         raise ValueError("max_steps 必须大于等于 1")
+
+    # 在第一次模型请求前验证配置，避免花费 Token 后才发现配置非法。
+    if max_total_tokens is not None:
+        evaluate_token_budget(
+            0,
+            max_total_tokens=max_total_tokens,
+        )
 
     observations: list[AgentObservation] = []
 
@@ -289,6 +304,47 @@ async def stream_agent_loop(
                 )
             )
             return
+
+        # 只有 ToolAction 需要后续工具执行和下一次模型调用，因此在这里检查预算。
+        if max_total_tokens is not None:
+            current_total_tokens = (
+                total_model_usage.total_tokens
+                if model_usage_is_complete and total_model_usage is not None
+                else None
+            )
+            budget_status = evaluate_token_budget(
+                current_total_tokens,
+                max_total_tokens=max_total_tokens,
+            )
+
+            # fail-closed：无法确认 usage 时也不能继续产生未知成本。
+            if budget_status != "within_budget":
+                yield AgentLoopCompleted(
+                    result=AgentLoopResult(
+                        status=(
+                            "token_budget_exhausted"
+                            if budget_status == "exhausted"
+                            else "token_usage_unknown"
+                        ),
+                        answer=None,
+                        steps_taken=step_number,
+                        observations=tuple(observations),
+                        model_usage=(
+                            total_model_usage
+                            if model_usage_is_complete
+                            else None
+                        ),
+                        model_duration_ms=(
+                            total_model_duration_ms
+                            if model_duration_is_complete
+                            else None
+                        ),
+                        tool_duration_ms=_sum_tool_duration_ms(
+                            observations,
+                        ),
+                    )
+                )
+                return
 
         yield ToolCallStarted(action=decision)
         tool_definition = TOOL_REGISTRY.get(decision.tool_name)
@@ -398,12 +454,14 @@ async def run_agent_loop(
     decide: DecisionMaker,
     *,
     max_steps: int = 5,
+    max_total_tokens: int | None = None,
 ) -> AgentLoopResult:
     """消费 Agent 事件流，并返回原有的最终结果。"""
 
     async for event in stream_agent_loop(
         decide,
         max_steps=max_steps,
+        max_total_tokens=max_total_tokens,
     ):
         if isinstance(event, AgentLoopCompleted):
             return event.result

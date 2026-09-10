@@ -36,6 +36,13 @@ class Settings(BaseSettings):
         validation_alias="DEEPSEEK_MODEL",
     )
 
+    # 单次 Agent 运行的累计 Token 续跑预算，不是模型上下文窗口大小。
+    agent_max_total_tokens: int = Field(
+        default=8_000,
+        ge=1,
+        validation_alias="AGENT_MAX_TOTAL_TOKENS",
+    )
+
     # DeepSeek 高峰时段人民币价格
 
     deepseek_peak_cache_hit_input_cny_per_million: Decimal = Field(

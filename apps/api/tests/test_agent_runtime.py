@@ -82,6 +82,33 @@ def test_agent_loop_stops_at_max_steps():
     assert len(result.observations) == 2
 
 
+def test_run_agent_loop_forwards_token_budget():
+    async def request_tool(
+        _: tuple[AgentObservation, ...],
+    ) -> ToolAction:
+        return ToolAction(
+            tool_call_id="call-area",
+            tool_name="calculate_rectangle_area",
+            arguments='{"width": 3, "height": 4}',
+            model_usage=ModelUsage(
+                input_tokens=8,
+                output_tokens=2,
+                total_tokens=10,
+            ),
+        )
+
+    result = asyncio.run(
+        run_agent_loop(
+            request_tool,
+            max_total_tokens=10,
+        )
+    )
+
+    assert result.status == "token_budget_exhausted"
+    assert result.steps_taken == 1
+    assert result.observations == ()
+
+
 def test_agent_loop_accumulates_model_usage_across_steps():
     async def decide(
         observations: tuple[AgentObservation, ...],

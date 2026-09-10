@@ -1,3 +1,7 @@
+// 状态机复用协议边界已经校验过的指标类型。
+// import type 不会产生运行时代码或模块依赖。
+import type { AgentRunMetrics } from "./agent-stream";
+
 export type ChatStatus =
 	| "idle"
 	| "thinking"
@@ -13,6 +17,14 @@ export type ToolActivity = {
 	status: "running" | "succeeded" | "failed";
 	result?: string;
 	errorMessage?: string;
+	// undefined 表示仍在运行，null 表示工具尚未执行就失败
+	durationMs?: number | null;
+};
+
+// 把同一个 RUN_FINISHED 中的步骤数和指标组成完整摘要。
+export type CompletedRunSummary = {
+	stepsTaken: number;
+	metrics: AgentRunMetrics;
 };
 
 export type ChatState = {
@@ -21,6 +33,9 @@ export type ChatState = {
 	errorMessage: string | null;
 	lastPrompt: string;
 	tools: ToolActivity[];
+
+	// 只有正常完成的运行才拥有完成摘要。
+	runSummary: CompletedRunSummary | null;
 };
 
 export type ChatAction =
@@ -31,11 +46,26 @@ export type ChatAction =
 			toolName: string;
 			arguments: string;
 	  }
-	| { type: "tool-result"; toolCallId: string; result: string }
-	| { type: "tool-error"; toolCallId: string; message: string }
+	| {
+			type: "tool-result";
+			toolCallId: string;
+			result: string;
+			durationMs: number;
+	  }
+	| {
+			type: "tool-error";
+			toolCallId: string;
+			message: string;
+			durationMs: number | null;
+	  }
 	| { type: "stream-start" }
 	| { type: "append"; chunk: string }
-	| { type: "complete" }
+	// 完成动作必须携带同一个终态事件中的完整数据。
+	| {
+			type: "complete";
+			stepsTaken: number;
+			metrics: AgentRunMetrics;
+	  }
 	| { type: "abort" }
 	| { type: "fail"; message: string }
 	| { type: "retry" }
@@ -47,6 +77,9 @@ export const initialChatState: ChatState = {
 	errorMessage: null,
 	lastPrompt: "",
 	tools: [],
+
+	// 初始状态还没有完成指标。
+	runSummary: null,
 };
 
 export function chatReducer(state: ChatState, action: ChatAction): ChatState {
@@ -58,6 +91,9 @@ export function chatReducer(state: ChatState, action: ChatAction): ChatState {
 				errorMessage: null,
 				lastPrompt: action.prompt,
 				tools: [],
+
+				// 新请求不能继续携带上一轮指标。
+				runSummary: null,
 			};
 		case "tool-start":
 			return {
@@ -82,6 +118,7 @@ export function chatReducer(state: ChatState, action: ChatAction): ChatState {
 								status: "succeeded",
 								result: action.result,
 								errorMessage: undefined,
+								durationMs: action.durationMs,
 							}
 						: tool,
 				),
@@ -96,6 +133,7 @@ export function chatReducer(state: ChatState, action: ChatAction): ChatState {
 								status: "failed",
 								errorMessage: action.message,
 								result: undefined,
+								durationMs: action.durationMs,
 							}
 						: tool,
 				),
@@ -110,11 +148,34 @@ export function chatReducer(state: ChatState, action: ChatAction): ChatState {
 				errorMessage: null,
 			};
 		case "complete":
-			return { ...state, status: "done", errorMessage: null };
+			// 终态和完成摘要在同一次 reducer 更新中写入。
+			return {
+				...state,
+				status: "done",
+				errorMessage: null,
+				runSummary: {
+					stepsTaken: action.stepsTaken,
+					metrics: action.metrics,
+				},
+			};
 		case "abort":
-			return { ...state, status: "aborted", errorMessage: null };
+			return {
+				...state,
+				status: "aborted",
+				errorMessage: null,
+
+				// 取消不属于正常完成，不能留下完成指标。
+				runSummary: null,
+			};
 		case "fail":
-			return { ...state, status: "error", errorMessage: action.message };
+			return {
+				...state,
+				status: "error",
+				errorMessage: action.message,
+
+				// 失败不属于正常完成，不能留下完成指标。
+				runSummary: null,
+			};
 		case "retry":
 			return {
 				...state,
@@ -122,6 +183,9 @@ export function chatReducer(state: ChatState, action: ChatAction): ChatState {
 				reply: "",
 				errorMessage: null,
 				tools: [],
+
+				// 重试是一轮新运行，必须清除旧摘要。
+				runSummary: null,
 			};
 		case "reset":
 			return initialChatState;

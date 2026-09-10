@@ -5,14 +5,14 @@
 | `RUN_STARTED` | `thinking` | 禁用发送按钮，显示“正在思考” |
 | `RUN_CANCELLATION_REQUESTED` | 保持当前状态 | 记录用户停止或超时原因，等待流实际终止 |
 | `TOOL_CALL_START` | `thinking` | 新增工具卡片，显示工具名、参数和“运行中” |
-| `TOOL_CALL_RESULT` | `thinking` | 将对应工具卡片更新为“成功”并显示结果 |
-| `TOOL_CALL_ERROR` | `thinking` | 将对应工具卡片更新为“失败”；允许模型根据错误继续决策 |
+| `TOOL_CALL_RESULT` | `thinking` | 将对应工具卡片更新为“成功”，显示结果与单次耗时 |
+| `TOOL_CALL_ERROR` | `thinking` | 将对应工具卡片更新为“失败”，显示执行耗时或“未进入执行阶段”；允许模型根据错误继续决策 |
 | `TEXT_MESSAGE_START` | `streaming` | 创建空的助手消息气泡 |
 | `TEXT_MESSAGE_CONTENT` | `streaming` | 按到达顺序追加文本片段 |
 | `TEXT_MESSAGE_END` | `streaming` | 结束本条消息的流式显示 |
-| `RUN_FINISHED` | `done` | 恢复输入框，记录本次运行完成 |
+| `RUN_FINISHED` | `done` | 恢复输入框，保存并展示步骤数、Token、费用和耗时摘要 |
 | 用户点击停止或请求被取消 | `aborted` | 保留已生成片段，标记本次运行已停止 |
-| `RUN_ERROR` | `error` | 显示可读错误和重试按钮 |
+| `RUN_ERROR` | `error` | 显示可读错误和重试按钮；预算耗尽与 usage 未知使用稳定错误码 |
 
 ## Day 5 状态约束
 
@@ -25,6 +25,14 @@
 
 `POST /chat/stream` 使用 `application/x-ndjson`：每个事件是一行独立 JSON。前端必须先按换行重组网络分块，再解析事件，不能假设一次 `reader.read()` 恰好得到一条完整事件。
 
+`TOOL_CALL_RESULT.duration_ms` 为单次成功执行的非负整数耗时。`TOOL_CALL_ERROR.duration_ms` 在执行异常或超时时为非负整数，在未知工具或参数校验失败时为 `null`；字段不会省略。浏览器解析器会按错误代码校验这一阶段语义，拒绝缺失字段、非法整数和错误的空值。聊天状态中的 `durationMs` 在工具运行时不存在，结束后原样保存为整数或 `null`。
+
+`max_steps_exceeded`、`token_budget_exhausted`、`token_usage_unknown` 三种 Agent Loop 终态的 `RUN_ERROR` 会额外携带 `steps_taken` 与和成功事件同结构的 `metrics`，用于复核失败前已经产生的成本；其他模型、网络或服务错误仍可只有 `code` 与 `message`。
+
+浏览器解析器要求 `steps_taken` 与 `metrics` 同时出现或同时缺失；完整失败摘要复用 `RUN_FINISHED` 的字段校验。目前解析后的失败摘要尚未写入聊天状态。
+
 ## 错误提示
 
 前端不直接展示后端原始异常：429 显示“请求太频繁了”，502 显示“模型服务暂时不可用”，其他 5xx 显示“服务暂时出错”，网络断开和超时分别给出检查网络、稍后重试的提示。
+
+正式聊天的 Token 续跑预算由后端 `AGENT_MAX_TOTAL_TOKENS` 控制，浏览器不能覆盖。`token_budget_exhausted` 表示已知累计用量达到预算，`token_usage_unknown` 表示模型没有返回 usage，Runtime 为避免未知成本而停止继续执行。

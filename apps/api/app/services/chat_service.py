@@ -37,12 +37,24 @@ from app.services.model_pricing import (
     estimate_model_cost_cny,
 )
 from app.services.run_cancellation import wait_for_run_cancellation
+from app.services.tool_event_payloads import (
+    build_tool_call_error_payload,
+    build_tool_call_result_payload,
+)
 
 # 内存缓存减少同一会话的重复数据库读取；服务重启后仍可由 PostgreSQL 恢复。
 conversations: dict[str, list[ChatCompletionMessageParam]] = {}
 
 # 只发送最近 5 轮，控制上下文长度、延迟和模型调用成本。
 MAX_ROUNDS = 5
+
+# Runtime 只返回稳定状态码，聊天服务负责决定用户可见消息。
+AGENT_LOOP_ERROR_MESSAGES: dict[str, str] = {
+    "max_steps_exceeded": "Agent 达到最大执行步数",
+    "token_budget_exhausted": "本次运行已达到 Token 预算上限",
+    "token_usage_unknown": "无法确认本次运行的 Token 用量，已停止继续执行",
+}
+
 # 按北京时间区分高峰/低谷时段，用于估算模型调用费用。
 DEEPSEEK_PRICING_SCHEDULE = DeepSeekPricingSchedule(
     peak=ModelPricing(
@@ -79,12 +91,12 @@ def encode_stream_event(
 
 
 # 构造稳定的 RUN_FINISHED 公共事件协议
-def build_run_finished_payload(
+def build_run_metrics_payload(
     result: AgentLoopResult,
     *,
     priced_at: datetime | None = None,
 ) -> dict[str, object]:
-    """把 Runtime 终态转换为可持久化、可发送的运行指标。"""
+    """把 Runtime 已产生的指标转换为公共事件 Payload。"""
 
     if priced_at is None:
         priced_at = datetime.now(timezone.utc)
@@ -103,11 +115,15 @@ def build_run_finished_payload(
             "input_tokens": result.model_usage.input_tokens,
             "output_tokens": result.model_usage.output_tokens,
             "total_tokens": result.model_usage.total_tokens,
-            "cache_hit_input_tokens": (result.model_usage.cache_hit_input_tokens),
-            "cache_miss_input_tokens": (result.model_usage.cache_miss_input_tokens),
+            "cache_hit_input_tokens": (
+                result.model_usage.cache_hit_input_tokens
+            ),
+            "cache_miss_input_tokens": (
+                result.model_usage.cache_miss_input_tokens
+            ),
         }
 
-    # 保存价格快照，而不是以后用最新价格重新计算历史费用。
+    # 保存当次运行采用的价格快照，历史费用才能被复核。
     pricing_payload: dict[str, str] = {
         "model": settings.deepseek_model,
         "tier": pricing_tier,
@@ -125,20 +141,36 @@ def build_run_finished_payload(
         ),
     }
 
-    metrics_payload: dict[str, object] = {
+    return {
         "model_usage": model_usage_payload,
         "model_duration_ms": result.model_duration_ms,
         "tool_duration_ms": result.tool_duration_ms,
-        # JSON 不支持 Decimal，使用字符串保留精确小数。
+
+        # JSON 不支持 Decimal，继续用字符串保存精确金额。
         "estimated_cost_cny": (
-            format(estimated_cost_cny, "f") if estimated_cost_cny is not None else None
+            format(estimated_cost_cny, "f")
+            if estimated_cost_cny is not None
+            else None
         ),
         "pricing": pricing_payload,
     }
 
+
+def build_run_finished_payload(
+    result: AgentLoopResult,
+    *,
+    priced_at: datetime | None = None,
+) -> dict[str, object]:
+    """构造正常完成的 RUN_FINISHED Payload。"""
+
     return {
         "steps_taken": result.steps_taken,
-        "metrics": metrics_payload,
+
+        # 正常完成也复用公共指标构造函数。
+        "metrics": build_run_metrics_payload(
+            result,
+            priced_at=priced_at,
+        ),
     }
 
 
@@ -287,6 +319,7 @@ async def stream_chat_reply(
         async for event in stream_agent_loop(
             decision_maker,
             max_steps=5,
+            max_total_tokens=settings.agent_max_total_tokens,
         ):
             if isinstance(event, ToolCallStarted):
                 payload: dict[str, object] = {
@@ -309,11 +342,7 @@ async def stream_chat_reply(
                 continue
 
             if isinstance(event, ToolCallSucceeded):
-                payload = {
-                    "tool_call_id": event.observation.tool_call_id,
-                    "tool_name": event.observation.tool_name,
-                    "result": event.observation.result,
-                }
+                payload = build_tool_call_result_payload(event.observation)
 
                 await asyncio.to_thread(
                     record_run_event,
@@ -329,15 +358,7 @@ async def stream_chat_reply(
                 continue
 
             if isinstance(event, ToolCallFailed):
-                payload = {
-                    "tool_call_id": event.observation.tool_call_id,
-                    "tool_name": event.observation.tool_name,
-                    "code": event.observation.code,
-                    "message": event.observation.message,
-                }
-
-                if event.observation.details is not None:
-                    payload["details"] = event.observation.details
+                payload = build_tool_call_error_payload(event.observation)
 
                 await asyncio.to_thread(
                     record_run_event,
@@ -355,7 +376,7 @@ async def stream_chat_reply(
             if isinstance(event, AgentLoopCompleted):
                 result = event.result
 
-                if result.status == "max_steps_exceeded":
+                if result.status != "completed":
                     rollback_pending_turn(
                         history,
                         history_checkpoint,
@@ -363,8 +384,10 @@ async def stream_chat_reply(
                     history = None
 
                     error_payload: dict[str, object] = {
-                        "code": "max_steps_exceeded",
-                        "message": "Agent 达到最大执行步数",
+                        "code": result.status,
+                        "message": AGENT_LOOP_ERROR_MESSAGES[result.status],
+                        "steps_taken": result.steps_taken,
+                        "metrics": build_run_metrics_payload(result),
                     }
 
                     await asyncio.to_thread(

@@ -1,6 +1,7 @@
 "use client";
 
 import { useReducer, useRef, useState, type SubmitEvent } from "react";
+import { formatToolDuration } from "../tool-duration-view";
 
 import { readAgentStream } from "../agent-stream";
 import {
@@ -8,6 +9,7 @@ import {
 	initialChatState,
 	toUserFacingError,
 } from "../chat-state";
+import RunSummaryCard from "./run-summary-card";
 
 const REQUEST_TIMEOUT_MS = 30_000;
 type CancelReason = "user" | "timeout";
@@ -104,6 +106,7 @@ export default function ChatPanel() {
 							type: "tool-result",
 							toolCallId: event.tool_call_id,
 							result: event.result,
+							durationMs: event.duration_ms,
 						});
 						break;
 					case "TOOL_CALL_ERROR":
@@ -111,6 +114,7 @@ export default function ChatPanel() {
 							type: "tool-error",
 							toolCallId: event.tool_call_id,
 							message: event.message,
+							durationMs: event.duration_ms,
 						});
 						break;
 					case "TEXT_MESSAGE_START":
@@ -126,7 +130,11 @@ export default function ChatPanel() {
 					case "RUN_FINISHED":
 						hasTerminalEvent = true;
 						if (!cancellationPendingRef.current) {
-							dispatch({ type: "complete" });
+							dispatch({
+								type: "complete",
+								stepsTaken: event.steps_taken,
+								metrics: event.metrics,
+							});
 						}
 						break;
 					case "RUN_ERROR":
@@ -288,49 +296,61 @@ export default function ChatPanel() {
 						<p className="text-sm font-medium text-zinc-700">工具执行</p>
 
 						<ul className="mt-3 space-y-3">
-							{chatState.tools.map((tool) => (
-								<li
-									className="rounded-lg bg-zinc-50 p-3 text-sm"
-									key={tool.toolCallId}
-								>
-									<div className="flex items-center justify-between gap-3">
-										<code className="font-medium text-zinc-800">
-											{tool.toolName}
-										</code>
-										<span
-											className={
-												tool.status === "failed"
-													? "text-red-700"
+							{chatState.tools.map((tool) => {
+								// null 返回值表示工具仍在运行，这时不渲染耗时行。
+								const durationLabel = formatToolDuration(tool.durationMs);
+
+								return (
+									<li
+										className="rounded-lg bg-zinc-50 p-3 text-sm"
+										key={tool.toolCallId}
+									>
+										<div className="flex items-center justify-between gap-3">
+											<code className="font-medium text-zinc-800">
+												{tool.toolName}
+											</code>
+											<span
+												className={
+													tool.status === "failed"
+														? "text-red-700"
+														: tool.status === "succeeded"
+															? "text-emerald-700"
+															: "text-amber-700"
+												}
+											>
+												{tool.status === "failed"
+													? "失败"
 													: tool.status === "succeeded"
-														? "text-emerald-700"
-														: "text-amber-700"
-											}
-										>
-											{tool.status === "failed"
-												? "失败"
-												: tool.status === "succeeded"
-													? "成功"
-													: "运行中"}
-										</span>
-									</div>
+														? "成功"
+														: "运行中"}
+											</span>
+										</div>
 
-									<p className="mt-2 break-all text-xs text-zinc-500">
-										参数：{tool.arguments}
-									</p>
-
-									{tool.result && (
-										<p className="mt-2 break-words text-zinc-700">
-											结果：{tool.result}
+										<p className="mt-2 break-all text-xs text-zinc-500">
+											参数：{tool.arguments}
 										</p>
-									)}
 
-									{tool.errorMessage && (
-										<p className="mt-2 text-red-700">
-											错误：{tool.errorMessage}
-										</p>
-									)}
-								</li>
-							))}
+										{/* undefined 不显示，0 ms 仍能正常显示。 */}
+										{durationLabel !== null && (
+											<p className="mt-2 text-xs text-zinc-500">
+												耗时：{durationLabel}
+											</p>
+										)}
+
+										{tool.result && (
+											<p className="mt-2 break-words text-zinc-700">
+												结果：{tool.result}
+											</p>
+										)}
+
+										{tool.errorMessage && (
+											<p className="mt-2 text-red-700">
+												错误：{tool.errorMessage}
+											</p>
+										)}
+									</li>
+								);
+							})}
 						</ul>
 					</div>
 				)}
@@ -352,6 +372,10 @@ export default function ChatPanel() {
 						</p>
 					)}
 				</div>
+
+				{chatState.status === "done" && chatState.runSummary && (
+					<RunSummaryCard summary={chatState.runSummary} />
+				)}
 			</section>
 		</main>
 	);

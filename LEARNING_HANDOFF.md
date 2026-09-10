@@ -1,6 +1,6 @@
 # AI Agent 学习交接
 
-更新时间：2026-09-09（Asia/Shanghai）
+更新时间：2026-09-10（Asia/Shanghai）
 
 这份文件只记录**当前进度、恢复方式和下一课**。完整路线统一查看 [LEARNING_PLAN.md](LEARNING_PLAN.md)，逐日任务与验收标准查看 [LEARNING_CURRICULUM.md](LEARNING_CURRICULUM.md)。
 
@@ -20,6 +20,8 @@ Agent Runtime 的非流式闭环已经完成：工具参数模型、JSON Schema 
 
 2026-09-09 完成了 Agent 运行成本与延迟的后端可观测链路：从每次 DeepSeek 响应提取 Token usage 和模型耗时，在 Runtime 中跨步骤累计模型指标；记录成功、异常和超时工具调用的执行耗时；按照北京时间工作日高峰/空闲价格估算人民币费用；最终由 `RUN_FINISHED` 同时向数据库与浏览器发送 Token、模型耗时、工具耗时、`estimated_cost_cny` 和当次价格快照。
 
+2026-09-10 完成了可观测指标的前端协议边界、状态建模与完成态展示：浏览器会严格校验 `RUN_FINISHED.metrics` 的嵌套结构、可空字段、非负整数、价格时段和人民币十进制字符串；正常完成时把步骤数与指标原子保存到 `runSummary`，并展示总 Token、费用、模型耗时、工具总耗时和步骤数。可空指标显示“暂无数据”，真实的 0 仍显示为 0；新请求、重试、取消和错误路径不保留旧指标。后端也已让 `TOOL_CALL_RESULT` / `TOOL_CALL_ERROR` 在 NDJSON 与运行时间线中共用同一份单次耗时 Payload，浏览器协议解析器会根据工具错误发生阶段严格校验耗时为非负安全整数或显式 `null`，聊天状态会继续保留运行中 `undefined`、执行后整数和执行前失败 `null` 三种语义。工具卡片现在会隐藏尚未产生的耗时、显示真实整数耗时，并把执行前错误解释为“未进入执行阶段”。后端 Token 预算策略已接入 Agent Runtime 与正式聊天服务：达到预算或 usage 未知的 ToolAction 会在工具开始前终止，最终答案优先交付；预算来自后端配置，不能由浏览器覆盖。成功与非成功 Agent 终态现在共用同一指标构造逻辑，预算和最大步数错误会在数据库与 NDJSON 中保留已经产生的步骤数、Token、费用和耗时；浏览器也已安全解析完整失败摘要，同时继续兼容没有摘要的普通错误。
+
 当前代码已经具备：
 
 - FastAPI + DeepSeek 对话接口。
@@ -31,44 +33,51 @@ Agent Runtime 的非流式闭环已经完成：工具参数模型、JSON Schema 
 - `/chat` 与会话查询接口已切换为 PostgreSQL 持久化。
 - Alembic 已初始化并接入 SQLAlchemy metadata；初始迁移为 `fed4e53cb0f7_create_agent_schema.py`。
 - 当前 `agent_lab` 已标记到该迁移版本；并已在空数据库执行 `alembic upgrade head`，验证可创建 5 张业务表。
-- 后端 83 个 pytest 测试全部通过：覆盖模型决策消息历史、Token 与耗时累计、人民币费用与高峰/空闲边界、Observation 去重与防改写、多工具拒绝、Agent Loop 领域事件、结构化聊天流、取消回滚、工具、仓储及接口错误契约；自动化测试不调用模型 API。
+- 后端 123 个 pytest 测试全部通过：覆盖模型决策消息历史、Token 与耗时累计、Token 预算策略、Runtime 与聊天流预算终止、成功/失败共用指标 Payload、人民币费用与高峰/空闲边界、Observation 去重与防改写、多工具拒绝、Agent Loop 领域事件、单次工具耗时 Payload、结构化聊天流、取消回滚、工具、仓储及接口错误契约；自动化测试不调用模型 API。
 - `apps/web` 已初始化 Next.js + TypeScript + Tailwind + App Router，`pnpm dev` 可启动。
 - 已按 AG-UI 事件模型设计前端状态映射，见 `docs/agent-ui-events.md`。
 - `POST /chat/stream` 已接入 Agent Loop，并以 `application/x-ndjson` 输出工具和文本事件；完整一轮结束后保存消息到 PostgreSQL。
 - 无参数时间工具 `get_current_time`。
 - 带参数的时间与矩形面积工具；Pydantic 参数模型同时作为运行时校验和模型 JSON Schema 的唯一来源。
 - `ToolDefinition`、`TOOL_REGISTRY` 与通用 Agent Loop；未知工具、非法参数、执行异常和超时都会转成可追踪的 Observation。
-- Agent Loop 具有最大步数限制，同步工具在线程中执行，并保持 `CancelledError` 向上传播。
+- Agent Loop 具有最大步数和可选 Token 续跑预算限制，同步工具在线程中执行，并保持 `CancelledError` 向上传播。
 - `DeepSeekDecisionMaker` 维护 system/user/assistant/tool 历史，保留 assistant `tool_calls`，并只追加新的 Observation；当前顺序策略会显式拒绝一轮多个工具调用。
 - `POST /tool-test` 已接入通用 Agent Loop；Mock 与真实 DeepSeek 均验证了两步工具调用闭环。
-- `stream_agent_loop` 在工具开始、成功、失败和循环终止时产生领域事件；原有 `run_agent_loop` 保持兼容。
+- `stream_agent_loop` 在工具开始、成功、失败和循环终止时产生领域事件；工具成功、执行异常和超时事件携带非负整数耗时，未知工具和参数错误携带 `null`；原有 `run_agent_loop` 保持兼容。
 - `DeepSeekDecisionMaker` 使用高精度单调时钟测量每次模型请求，并把 prompt/completion、缓存命中/未命中 Token 映射为通用 `ModelUsage`。
 - Agent Runtime 会累计多步模型 usage、模型耗时和实际工具执行耗时；任一步缺失模型指标时保留 `None`，不把不完整数据伪装成 0。
+- `token_budget.py` 已定义续跑预算纯策略：累计 Token 小于上限时允许继续，达到或超过上限时耗尽，usage 缺失时明确返回未知。
+- `stream_agent_loop` 与 `run_agent_loop` 已支持可选 `max_total_tokens`：ToolAction 预算耗尽或 usage 未知时 fail-closed，且不会产生虚假的工具开始事件；FinalAnswer 不需要续跑，会正常完成。
+- `AGENT_MAX_TOTAL_TOKENS` 默认 8000 且必须为正整数；正式聊天会把它传给 Runtime，并把预算耗尽或 usage 未知映射为稳定 `RUN_ERROR`，回滚未完成轮次且不允许浏览器覆盖预算。
+- `build_run_metrics_payload` 是成功与非成功领域终态的公共指标出口；三种 Agent Loop 错误会携带 `steps_taken` 和 `metrics`，usage 未知时 Token 与费用继续保持 `null`。
 - `model_pricing.py` 使用 `Decimal` 估算人民币费用，按照北京时间工作日 09:00-12:00、14:00-18:00 选择高峰价格，其余时段选择空闲价格。
 - DeepSeek 人民币单价集中在 `Settings` 与 `.env.example`，`RUN_FINISHED` 保存 `estimated_cost_cny` 和当次模型、时段、单价快照，历史费用可以解释和复核。
 - `apps/web` BFF 流代理已跑通：`/api/chat/stream` Route Handler 转发 `response.body`，浏览器逐块渲染，API Key 不出现在客户端。
-- 前端 NDJSON 解析器可以处理半条、多条和最后一条无换行事件；工具卡片区分运行中、成功和失败，工具失败不会提前结束整次运行。
+- 前端 NDJSON 解析器可以处理半条、多条和最后一条无换行事件，严格校验 `RUN_FINISHED.metrics`、成对出现的 `RUN_ERROR` 失败摘要及工具事件单次耗时；`ToolActivity` 会保存成功、执行错误和执行前错误的真实耗时语义；完成态把步骤数和指标保存到 `runSummary`，只在 `done` 时显示运行摘要。工具卡片区分运行中、成功和失败，展示单次整数耗时或“未进入执行阶段”，工具失败不会提前结束整次运行。
 - 停止生成：前端 `AbortController` + 「停止生成」按钮；BFF 用 `signal` 转发；后端 `stream_chat_reply` 捕获 `asyncio.CancelledError` 撤销未完成的一轮。
 - 取消原因协议：浏览器通过 BFF 发送 `user` 或 `timeout`，FastAPI 将意图写入 PostgreSQL，并借助 Redis Pub/Sub 取消任意实例上承载该 run 的流任务。
 - `interview-questions/` AI 全栈面试题库已建立（算法 / 前端 / 后端 / AI / 系统设计 / 项目 / 行为 七维度，与 `LEARNING_CURRICULUM.md` 第 4 章互补）。
 
-已完成：8 条前端状态/协议测试、Agent 事件流图和第 3 周复盘，分别见 `apps/web/src/features/chat/*.test.ts`、`docs/architecture.md` 与 `week-learning/week-03/REVIEW.md`。
+已完成：36 条前端状态/协议/展示数据测试、Agent 事件流图和第 3 周复盘，分别见 `apps/web/test/features/chat/*.test.ts`、`docs/architecture.md` 与 `week-learning/week-03/REVIEW.md`。
 
-仍待补充：前端真实环境下的断网/限流手动验收；前端尚未解析和展示新的运行指标，工具结果/错误事件也尚未携带单次工具耗时。
+仍待补充：前端真实环境下的断网/限流手动验收；浏览器尚未把已经解析的失败运行摘要保存到状态并展示。
 
 ## 当前文件
 
 | 文件 | 作用 |
 |---|---|
 | `apps/api/app/main.py` | FastAPI 应用入口，注册路由并初始化数据库 |
+| `apps/api/app/config.py` | DeepSeek、数据库、Redis、价格与 Agent Token 预算配置 |
 | `apps/api/app/database.py` | SQLAlchemy Engine、Session 和 ORM 基类 |
 | `apps/api/app/models.py` | 用户、会话、消息、Agent Run 与事件模型 |
 | `apps/api/app/repositories/` | PostgreSQL 用户、会话与消息数据访问层 |
 | `apps/api/app/repositories/run_repository.py` | Agent Run 创建、事件记录、终态更新与时间线查询 |
 | `apps/api/app/services/run_cancellation.py` | Redis 取消信号发布、订阅与资源关闭 |
-| `apps/api/app/services/agent_runtime.py` | Agent 决策、工具执行、Observation 与最大步数控制 |
+| `apps/api/app/services/agent_runtime.py` | Agent 决策、工具执行、Observation、最大步数与可选 Token 预算控制 |
 | `apps/api/app/services/model_decision.py` | DeepSeek 消息历史与 `ToolAction` / `FinalAnswer` 决策适配 |
 | `apps/api/app/services/model_pricing.py` | DeepSeek 高峰/空闲价格选择与人民币费用估算 |
+| `apps/api/app/services/token_budget.py` | 判断累计 Token 是否允许 Agent 继续下一次模型调用 |
+| `apps/api/app/services/tool_event_payloads.py` | 将 Runtime 工具观察映射为带单次耗时的公共事件 Payload |
 | `apps/api/app/services/chat_service.py` | 会话上下文、Agent 事件到 NDJSON/运行事件的映射与完整一轮持久化 |
 | `apps/api/app/tools/registry.py` | 工具参数模型、模型 Schema、执行器和显式白名单 |
 | `apps/api/migrations/` | Alembic 表结构迁移历史 |
@@ -83,6 +92,10 @@ Agent Runtime 的非流式闭环已经完成：工具参数模型、JSON Schema 
 | `apps/web/src/features/chat/components/chat-panel.tsx` | 流式聊天面板（含停止生成） |
 | `apps/web/src/features/chat/agent-stream.ts` | NDJSON 分块读取、事件校验与前端类型定义 |
 | `apps/web/src/features/chat/chat-state.ts` | 文本、终态与工具执行状态机 |
+| `apps/web/src/features/chat/run-summary-view.ts` | 将完成态指标转换为稳定的展示数据 |
+| `apps/web/src/features/chat/tool-duration-view.ts` | 将工具单次耗时的三态数据转换为展示文本 |
+| `apps/web/src/features/chat/components/run-summary-card.tsx` | 仅在正常完成后渲染运行指标摘要 |
+| `apps/web/test/features/chat/` | 前端状态、协议与展示数据测试 |
 | `infra/compose.yaml` | 跨平台 PostgreSQL + pgvector、Redis 本地服务 |
 | `interview-questions/` | AI 全栈面试题库（算法/前端/后端/AI/系统设计/项目/行为） |
 | `ENVIRONMENT.md` | 安装、启动和常见问题 |
@@ -103,17 +116,18 @@ Agent Runtime 的非流式闭环已经完成：工具参数模型、JSON Schema 
 
 ## 下一课
 
-在 Windows 上继续完成成本与延迟可观测性的前端闭环：扩展 `AgentStreamEvent` 对 `RUN_FINISHED.metrics` 的运行时校验和 TypeScript 类型，把指标保存进聊天状态，并在完成态摘要中展示总 Token、人民币估算费用、模型耗时、工具耗时和步骤数。同时让 `TOOL_CALL_RESULT` / `TOOL_CALL_ERROR` 携带并展示单次工具耗时。
+只扩展聊天状态和事件消费：指标型 `RUN_ERROR` 进入 `error` 时把步骤数与指标保存到 `runSummary`，普通错误继续保存 `null`。暂不修改运行摘要卡片的渲染条件。
 
-后端已经拥有完整数据，下一课的重点是协议边界和前端状态建模：不能直接信任网络 JSON，不能把缺失的 usage 或费用显示成 0，也不能让新增指标改变现有 done/error/aborted 终态语义。
+下一课处理“终态事件不能丢数据”：当前 `chat-panel` 把 `RUN_ERROR` 转成普通 `Error` 后只保留消息，完整摘要会在 catch 中丢失。应直接分发带可选摘要的失败 action，并立即结束本次流消费；HTTP、网络和模型普通错误仍走现有 catch 路径。
 
 验收标准：
 
-- 浏览器能解析完整指标和 `model_usage: null` 两条路径，非法嵌套字段会被协议解析器拒绝。
-- 完成态显示总 Token、人民币估算费用、模型耗时、工具耗时和步骤数；缺少 usage 或费用时显示“暂无数据”。
-- 工具成功、执行异常和超时卡片显示单次耗时；未知工具和参数校验错误不伪造执行耗时。
-- `RUN_FINISHED` 仍只触发一次 `done` 终态，停止生成和错误路径行为保持不变。
-- 前端状态测试、lint、类型检查和生产构建全部通过，后端 83 个测试继续通过。
+- `fail` action 能可选携带完整 `CompletedRunSummary`；未携带时明确保存 `null`。
+- 指标型 `RUN_ERROR` 直接进入 `error` 并原子保存错误消息与摘要，不再通过抛错丢失数据。
+- 普通 `RUN_ERROR`、HTTP、网络与模型错误继续进入 `error`，且不会伪造摘要。
+- 收到流内终态错误后立即结束消费，不再处理后续事件。
+- 新请求、重试、取消仍会清除旧摘要，正常完成路径保持兼容。
+- 前端类型检查、lint 和相关状态测试通过。
 
 ## 换电脑后恢复
 
