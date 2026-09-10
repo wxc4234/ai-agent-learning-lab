@@ -150,7 +150,7 @@ Agent Runtime 的非流式闭环已经完成：工具参数模型、JSON Schema 
 
 ## 新会话教学入口
 
-新会话先完整阅读 `AGENTS.md`、本文、`LEARNING_PLAN.md`、`LEARNING_CURRICULUM.md`、`docs/codex-like-agent-scope.md` 和 `LEARNING_COACH_GUIDE.md`，再检查 Git 状态与当前代码。不得从第 1 周重讲，也不得因为基础 Runtime 已完成就跳到第 7 周；当前第一课始终以本文“下一课”为准。
+新会话先完整阅读 `AGENTS.md`、本文、`LEARNING_PLAN.md`、`LEARNING_CURRICULUM.md`、`docs/codex-like-agent-scope.md` 和 `LEARNING_COACH_GUIDE.md`，再检查 Git 状态与当前代码。不得从第 1 周重讲，也不得因为基础 Runtime 已完成就跳到第 7 周；当前第一课始终以本文“下一课”为准。讲课时不能只给最小片段：开始动手前必须提供当前任务的完整可运行参考实现、全部相关文件、完整测试、验证命令与预期结果，再由学习者参照实现。
 
 ## 换电脑后恢复
 
