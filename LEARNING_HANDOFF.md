@@ -133,6 +133,8 @@ Agent Runtime 的非流式闭环已经完成：工具参数模型、JSON Schema 
 
 ## 下一课
 
+本课配套状态（2026-09-10）：提前创建的 `consume-chat-response.test.ts` 已按用户要求删除。必须等学习者明确说本课“完成了”，教练才检查实际改动、创建对应测试并补齐配套、运行验收。`test:state` 保留用户明确要求的递归通配符优化；当前课程尚未验收，不推进进度。此次交接仅提交教学规则和测试发现脚本优化；未实现失败摘要核心逻辑，新会话应继续本课，不得将“提交并开启新会话”理解为本课已完成。
+
 只扩展聊天状态和事件消费：指标型 `RUN_ERROR` 进入 `error` 时把步骤数与指标保存到 `runSummary`，普通错误继续保存 `null`。暂不修改运行摘要卡片的渲染条件。
 
 下一课处理“终态事件不能丢数据”：当前 `chat-panel` 把 `RUN_ERROR` 转成普通 `Error` 后只保留消息，完整摘要会在 catch 中丢失。应直接分发带可选摘要的失败 action，并立即结束本次流消费；HTTP、网络和模型普通错误仍走现有 catch 路径。
@@ -150,7 +152,7 @@ Agent Runtime 的非流式闭环已经完成：工具参数模型、JSON Schema 
 
 ## 新会话教学入口
 
-新会话先完整阅读 `AGENTS.md`、本文、`LEARNING_PLAN.md`、`LEARNING_CURRICULUM.md`、`docs/codex-like-agent-scope.md` 和 `LEARNING_COACH_GUIDE.md`，再检查 Git 状态与当前代码。不得从第 1 周重讲，也不得因为基础 Runtime 已完成就跳到第 7 周；当前第一课始终以本文“下一课”为准。讲课时不能只给最小片段：开始动手前必须提供当前任务的完整可运行参考实现、全部相关文件、完整测试、验证命令与预期结果，再由学习者参照实现。
+新会话先完整阅读 `AGENTS.md`、本文、`LEARNING_PLAN.md`、`LEARNING_CURRICULUM.md`、`docs/codex-like-agent-scope.md` 和 `LEARNING_COACH_GUIDE.md`，再检查 Git 状态与当前代码。不得从第 1 周重讲，也不得因为基础 Runtime 已完成就跳到第 7 周；当前第一课始终以本文“下一课”为准。讲课时不能只给残缺片段：核心参考实现直接放在对话代码块中，新文件给全文，已有文件只给修改段或完整函数，不给 Diff 或讲义链接。学习者亲手实现核心逻辑并明确说本课“完成了”后，教练才检查其改动、创建对应测试与机械性配套并验收；教练说明验证命令与预期结果。先读 LEARNING_COACH_GUIDE.md 第 7 节纠错记录，后续在已检出 main 的主仓库操作。
 
 ## 换电脑后恢复
 
