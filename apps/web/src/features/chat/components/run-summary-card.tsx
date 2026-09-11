@@ -1,24 +1,41 @@
-// 本课新增：只负责渲染正常完成后的运行指标。
+// 展示成功或失败运行的真实指标，文案区分运行结果
 import type { CompletedRunSummary } from "../chat-state";
 import { createRunSummaryMetrics } from "../run-summary-view";
 
 type RunSummaryCardProps = {
 	summary: CompletedRunSummary;
+	status: "done" | "error";
 };
 
 export default function RunSummaryCard({
 	summary,
+	status,
 }: RunSummaryCardProps) {
 	const metrics = createRunSummaryMetrics(summary);
+	const isFailed = status === "error";
+    const title = isFailed ? "失败运行摘要" : "运行摘要";
 
 	return (
 		<section
-			aria-label="本次运行指标"
+			aria-label={title}
 			className="mt-4 rounded-xl border border-zinc-200 bg-white p-4"
 		>
-			<h2 className="text-sm font-medium text-zinc-700">
-				运行摘要
-			</h2>
+			<h2
+                className={
+                    isFailed
+                        ? "text-sm font-medium text-red-700"
+                        : "text-sm font-medium text-zinc-700"
+                }
+            >
+                {title}
+            </h2>
+
+            {isFailed && (
+                <p className="mt-2 text-xs text-zinc-500">
+                    本次运行未成功完成，以下为失败前已记录的用量与耗时。
+                    未知指标显示“暂无数据”。
+                </p>
+            )}
 
 			<dl className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
 				{metrics.map((metric) => (

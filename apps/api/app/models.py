@@ -2,7 +2,7 @@
 
 from datetime import datetime
 
-from sqlalchemy import JSON, DateTime, ForeignKey, String, Text, func
+from sqlalchemy import JSON, CheckConstraint, DateTime, ForeignKey, String, Text, func
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -14,11 +14,32 @@ class User(Base):
 
     __tablename__ = "users"
 
+    __table_args__ = (
+        CheckConstraint(
+            "(username IS NULL AND password_hash IS NULL) OR "
+            "(username IS NOT NULL AND password_hash IS NOT NULL)",
+            name="ck_users_login_credentials_pair",
+        ),
+    )
+
     # 数据库内部主键，供其他表通过外键关联，不直接暴露为业务身份。
     id: Mapped[int] = mapped_column(primary_key=True)
 
     # 前端或未来认证系统提供的稳定用户标识，查询时也会使用索引。
     external_id: Mapped[str] = mapped_column(String(100), unique=True, index=True)
+
+    # 历史用户允许没有登录身份；新注册用户必须提供完整凭证
+    username: Mapped[str | None] = mapped_column(
+        String(64),
+        unique=True,
+        index=True,
+        nullable=True,
+    )
+    # 保存密码服务生成的完整哈希字符串，绝不保存明文密码
+    password_hash: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True
+    )
 
     # 由数据库生成创建时间，避免依赖应用服务器的本地时钟。
     create_at: Mapped[datetime] = mapped_column(

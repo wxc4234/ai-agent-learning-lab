@@ -9,6 +9,8 @@ pydantic==2.13.4
 pydantic-settings==2.15.0
 # 读取 .env 环境变量
 python-dotenv==1.2.3
+# 密码哈希与验证（Argon2id）
+argon2-cffi==25.1.0
 # 调用 DeepSeek（OpenAI 兼容）LLM API
 openai==3.3.1
 # ORM：先在 SQLite 上练习数据建模，之后可平滑切换到 PostgreSQL

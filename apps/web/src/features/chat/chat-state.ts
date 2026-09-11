@@ -21,7 +21,7 @@ export type ToolActivity = {
 	durationMs?: number | null;
 };
 
-// 把同一个 RUN_FINISHED 中的步骤数和指标组成完整摘要。
+// 保存同一个运行终态事件中的步骤数与指标
 export type CompletedRunSummary = {
 	stepsTaken: number;
 	metrics: AgentRunMetrics;
@@ -34,7 +34,7 @@ export type ChatState = {
 	lastPrompt: string;
 	tools: ToolActivity[];
 
-	// 只有正常完成的运行才拥有完成摘要。
+	// 正常完成或指标型失败时保存摘要；其他路径为 null
 	runSummary: CompletedRunSummary | null;
 };
 
@@ -67,7 +67,11 @@ export type ChatAction =
 			metrics: AgentRunMetrics;
 	  }
 	| { type: "abort" }
-	| { type: "fail"; message: string }
+	| {
+		type: "fail";
+		message: string;
+		summary?: CompletedRunSummary;
+	  }
 	| { type: "retry" }
 	| { type: "reset" };
 
@@ -173,8 +177,8 @@ export function chatReducer(state: ChatState, action: ChatAction): ChatState {
 				status: "error",
 				errorMessage: action.message,
 
-				// 失败不属于正常完成，不能留下完成指标。
-				runSummary: null,
+				// 保存本次失败携带的摘要；未提供时明确清空
+				runSummary: action.summary ?? null,
 			};
 		case "retry":
 			return {

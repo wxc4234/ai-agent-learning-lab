@@ -52,7 +52,7 @@
 | agent-ui | [服务端动态下发画布组件时，前端如何完成协议转换、动态渲染和宿主能力隔离？](agent-ui/dynamic-canvas-components.md) | 高 | 已写 |
 | agent-ui | [服务端长期快于前端渲染时，如何限制队列增长并保证内容完整？](agent-ui/stream-queue-overload.md) | 高 | 已写 |
 | agent-ui | [用户点击发送到第一段 AI 内容真正可见，前端经历了哪些关键步骤？](agent-ui/chatsearch-main-flow.md) | 高 | 已写 |
-| agent-ui | [Agent UI 的六态状态机如何设计？停止、错误和重试分别怎么处理？](agent-ui/chat-state-machine.md) | 高 | 已写 |
+| agent-ui | [Agent UI 六态状态机、失败摘要与终态消费](agent-ui/chat-state-machine.md) | 高 | 答案已整理，尚未模拟；复习优先级高 |
 | agent-ui | [画布组件未抛出渲染完成事件时，如何避免整个流式消费队列永久阻塞？](agent-ui/render-finished-watchdog.md) | 高 | 已写 |
 | browser | [AI 返回的 Markdown 如何防止 XSS，同时保留必要的富文本能力？](browser/markdown-xss.md) | 高 | 已写 |
 | browser | [San `nextTick` 与 `requestAnimationFrame` 分别保证了什么，为什么测量布局和执行滚动时不能只用 `nextTick`？](browser/san-nexttick-raf.md) | 高 | 已写 |

@@ -1,6 +1,6 @@
 # AI Agent 学习交接
 
-更新时间：2026-09-10（Asia/Shanghai）
+更新时间：2026-09-11（Asia/Shanghai）
 
 这份文件只记录**当前进度、恢复方式和下一课**。完整路线统一查看 [LEARNING_PLAN.md](LEARNING_PLAN.md)，逐日任务与验收标准查看 [LEARNING_CURRICULUM.md](LEARNING_CURRICULUM.md)。
 
@@ -21,7 +21,7 @@
 | 第 1 周 | 已完成 | Python、FastAPI、DeepSeek、SQLite、持久化对话和最小时间工具闭环 |
 | 第 2 周 | 已完成 | 分层配置、PostgreSQL、SQLAlchemy、Alembic、pytest、Docker Compose、跨平台环境文档 |
 | 第 3 周 | 已完成（当前日历周） | 流式 UI、停止/超时/跨实例取消、六态状态机、最小 Runtime（Registry、参数校验、顺序 Agent Loop）、结构化工具事件、`run_id` 落库、冒烟评测与复盘 |
-| 第 4 周 | 部分预完成 | 可观测、成本/延迟摘要和 Token 上限保护已完成；失败摘要展示待收尾。认证、授权、Workspace、Task、会话恢复、Redis 幂等/限流未完成 |
+| 第 4 周 | 部分预完成 | 可观测、成功/失败成本与延迟摘要和 Token 上限保护已完成。认证、授权、Workspace、Task、会话恢复、Redis 幂等/限流未完成 |
 | 第 5 周 | 未开始 | 安全文件/搜索/Shell/Apply Patch/Git/测试工具、Sandbox 与审批策略尚未开始 |
 | 第 6 周 | 未开始 | 仓库扫描、符号/关键词/向量混合检索、代码引用、Context Builder 与检索评测尚未开始 |
 | 第 7 周 | 未开始 | 高级 Runtime：Plan、Compaction、Memory、LangGraph Checkpoint、暂停/恢复、Reflection 与轨迹评测；基础 Runtime 已归入第 3 周，不重复学习 |
@@ -73,9 +73,13 @@ Agent Runtime 的非流式闭环已经完成：工具参数模型、JSON Schema 
 - 取消原因协议：浏览器通过 BFF 发送 `user` 或 `timeout`，FastAPI 将意图写入 PostgreSQL，并借助 Redis Pub/Sub 取消任意实例上承载该 run 的流任务。
 - `interview-questions/` AI 全栈面试题库已建立（算法 / 前端 / 后端 / AI / 系统设计 / 项目 / 行为 七维度，与 `LEARNING_CURRICULUM.md` 第 4 章互补）。
 
-已完成：36 条前端状态/协议/展示数据测试、Agent 事件流图和第 3 周复盘，分别见 `apps/web/test/features/chat/*.test.ts`、`docs/architecture.md` 与 `week-learning/week-03/REVIEW.md`。
+已完成：71 条前端状态/协议/展示数据与卡片测试、Agent 事件流图和第 3 周复盘，分别见 `apps/web/test/features/chat/*.test.ts`、`docs/architecture.md` 与 `week-learning/week-03/REVIEW.md`。
 
-当前收尾缺口：前端真实环境下的断网/限流手动验收；浏览器尚未把已经解析的失败运行摘要保存到状态并展示。Redis 目前只承担取消传播，尚未完成第 4 周要求的幂等、限流和短期状态能力。
+2026-09-11：失败终态保存摘要课程已完成。指标型 RUN_ERROR 原子保存错误消息、步骤数和指标，普通错误明确清空摘要，成功/失败终态立即停止消费；取消捕获当次 controller。前端共 57 条测试、类型检查及 lint 通过。重要面试题与参考答案已归档至 [Agent UI 状态机题解](interview-questions/frontend/agent-ui/chat-state-machine.md)，不再要求当堂答题。正式周进度仍为 3/12（25%）。
+
+失败摘要卡片课程也已完成：done 或携带摘要的 error 显示卡片，失败时使用独立标题和说明；普通错误、取消与运行中不显示摘要。新增 `run-summary-card.test.ts` 的 14 条测试，通过真实 React 服务端渲染与父组件条件表达式验证状态传递、文案、零值和未知值；前端共 71 条测试、类型检查、lint 与差异空白检查通过。该简单展示课程不单独收入题库。
+
+当前收尾缺口：前端真实环境下的断网/限流手动验收。自动化渲染测试不等于浏览器端到端验收。Redis 目前只承担取消传播，尚未完成第 4 周要求的幂等、限流和短期状态能力。
 
 ## 当前文件
 
@@ -111,7 +115,7 @@ Agent Runtime 的非流式闭环已经完成：工具参数模型、JSON Schema 
 | `apps/web/src/features/chat/chat-state.ts` | 文本、终态与工具执行状态机 |
 | `apps/web/src/features/chat/run-summary-view.ts` | 将完成态指标转换为稳定的展示数据 |
 | `apps/web/src/features/chat/tool-duration-view.ts` | 将工具单次耗时的三态数据转换为展示文本 |
-| `apps/web/src/features/chat/components/run-summary-card.tsx` | 仅在正常完成后渲染运行指标摘要 |
+| `apps/web/src/features/chat/components/run-summary-card.tsx` | 展示成功或指标型失败的运行摘要，区分终态文案 |
 | `apps/web/test/features/chat/` | 前端状态、协议与展示数据测试 |
 | `infra/compose.yaml` | 跨平台 PostgreSQL + pgvector、Redis 本地服务 |
 | `interview-questions/` | AI 全栈面试题库（算法/前端/后端/AI/系统设计/项目/行为） |
@@ -133,28 +137,40 @@ Agent Runtime 的非流式闭环已经完成：工具参数模型、JSON Schema 
 
 ## 下一课
 
-本课配套状态（2026-09-10）：提前创建的 `consume-chat-response.test.ts` 已按用户要求删除。必须等学习者明确说本课“完成了”，教练才检查实际改动、创建对应测试并补齐配套、运行验收。`test:state` 保留用户明确要求的递归通配符优化；当前课程尚未验收，不推进进度。此次交接仅提交教学规则和测试发现脚本优化；未实现失败摘要核心逻辑，新会话应继续本课，不得将“提交并开启新会话”理解为本课已完成。
+当前课程已完成：第 4 周 Day 1 的第二个小任务——User 登录身份字段与成对约束。学习者已修复单元素元组缺少逗号的问题；username 唯一且可空，password_hash 可空，两者必须同时为空或同时非空。教练补齐迁移 a91c42e7d603 与 7 条测试；后端共 137 条测试通过（1.34s），Ruff 通过。
 
-只扩展聊天状态和事件消费：指标型 `RUN_ERROR` 进入 `error` 时把步骤数与指标保存到 `runSummary`，普通错误继续保存 `null`。暂不修改运行摘要卡片的渲染条件。
+本机 PostgreSQL agent_lab 已从 fed4e53cb0f7 升级到 a91c42e7d603，1 个用户、26 个会话、40 条消息的历史内容逐条比对不变。真实数据库已验证多条空凭证、完整凭证、重复用户名与两种半凭证；测试记录全部回滚，未推进业务主键序列。users 表定向 schema 比对通过。降级/重新升级仅在临时 SQLite 测试库演练，没有降级真实数据库；降级会丢失新增凭证字段，不应随意执行。
 
-下一课处理“终态事件不能丢数据”：当前 `chat-panel` 把 `RUN_ERROR` 转成普通 `Error` 后只保留消息，完整摘要会在 catch 中丢失。应直接分发带可选摘要的失败 action，并立即结束本次流消费；HTTP、网络和模型普通错误仍走现有 catch 路径。
+会话表结构差异已按用户授权修复：新增兼容迁移 b62d19f804ae，先确保 ix_conversations_external_id 唯一索引存在且有效，再移除旧 uq_conversations_external_id 约束；从原始迁移建立的新库已有正确索引，升级不重复创建。异常索引定义会拒绝修复。downgrade 有意不改变结构，因为上一版本的声明结构本就要求独立唯一索引，不能回退到历史漂移状态。本机 PostgreSQL 已升级，全库 alembic check 通过。5 条隔离 PostgreSQL 测试覆盖旧约束、新索引、两者共存、异常索引与重复数据，使用事务回滚临时 schema；完整后端 142 条测试通过（1.33s），Ruff 与 git diff --check 通过。5 张业务表逐条核对不变：1 个用户、26 个会话、40 条消息、18 个运行、1239 条运行事件。
 
-验收标准：
+复核命令（apps/api）：`RUN_POSTGRES_MIGRATION_TESTS=1 ../../.venv/bin/python -m pytest -q`、`../../.venv/bin/python -m alembic check`。PostgreSQL 测试默认跳过，显式开启才访问本机数据库；迁移要求在线 PostgreSQL，不支持离线 SQL 生成。普通建索引会持有写入相关锁，本课小型本机库适用，不能直接当作大表无停机迁移方案。
 
-- `fail` action 能可选携带完整 `CompletedRunSummary`；未携带时明确保存 `null`。
-- 指标型 `RUN_ERROR` 直接进入 `error` 并原子保存错误消息与摘要，不再通过抛错丢失数据。
-- 普通 `RUN_ERROR`、HTTP、网络与模型错误继续进入 `error`，且不会伪造摘要。
-- 收到流内终态错误后立即结束消费，不再处理后续事件。
-- 新请求、重试、取消仍会清除旧摘要，正常完成路径保持兼容。
-- 前端类型检查、lint 和相关状态测试通过。
+注册请求模型课程已验收：学习者已实现 SecretStr 与空白拒绝逻辑，教练修正 RegisterReqest 类名拼写、校验器方法名和过期描述，未修改核心校验逻辑。密码按用户选择为 8～128 个字符，禁止 str.isspace 识别的所有空白，不自动 trim；用户名去首尾空白、验证 3～64 个 ASCII 字母/数字/下划线并转小写。新增 test_register_request.py 共 58 条测试，覆盖边界、8 类空白在首/中/尾、类型、必填、额外字段、遮罩与 JSON 输入。本轮普通后端测试 195 passed、5 skipped（显式开启的 PostgreSQL 迁移测试本轮未运行），Ruff 通过。此课不独立建面试题，敏感数据边界补入已有密码题解。尚无注册路由，不能将模型测试视为接口验收。
 
-完成这一个小任务后，先补失败摘要卡片和断网/限流的浏览器手工验收；随后进入**第 4 周 Day 1：身份模型与后端认证**。第 4 周将按认证 → 前端登录态 → 授权与所有权 → Workspace/Task/会话恢复 → Redis 幂等/限流 → 可观测复核 → 全栈安全验收的顺序推进。
+注册用户仓储课程已验收：学习者核心逻辑正确，教练仅将 create_register_user 统一命名为 create_registered_user，整理导入和格式。新增 test_registered_user_repository.py 的 7 条测试，使用临时 SQLite 文件与独立 Session 验证提交后查询、真实哈希往返、UUID4、重复用户名不覆盖已有用户、显式回滚、后续失败回滚整个事务和旧用户兼容。本轮后端 202 passed、5 skipped（PostgreSQL 专项测试本轮未开启），Ruff 通过；没有访问或修改真实业务数据库。事务边界的重要题解已补充到已有密码题解，参考答案已整理、尚未模拟。
+
+下一课（尚未布置）：注册服务的事务编排与用户名冲突分类。仓储继续只 add/flush，不 commit、不吞 IntegrityError；调用方负责校验、哈希和事务提交/回滚。接入注册接口前必须设计验证错误响应脱敏，不直接暴露原始 ValidationError.errors() 或请求体；SecretStr 不是密码哈希或完整日志脱敏方案。当前没有注册/登录 HTTP 接口。
+
+上一课验收进展：Chrome 152 中已复现发送前离线、旧摘要清除、恢复后真实重试、模拟 HTTP 429 及移除模拟后的真实重试，均通过。文本出现后终态前断网仍未确认；当前模型适配器使用 `stream=False`，完整答案一次进入文本事件，不能记成逐 Token 输出。详见 [浏览器故障验收记录](docs/chat-browser-fault-validation.md)。2026-09-11 用户明确要求直接继续下一课，因此该项保留待补，不再阻塞认证学习，也不标记通过。
+
+浏览器待补验收标准：
+
+- 浏览器中验证请求前断网和流式生成中断网：进入可重试错误状态，不展示虚假摘要。
+- 验证 HTTP 429 的友好提示、输入恢复和重试；当前尚无真实限流器，模拟响应须明确标记，不能宣称 Redis 限流已实现。
+- 恢复网络后可重试成功，没有旧文本拼接或旧摘要残留。
+- 记录实际浏览器、复现方式、观察结果和未覆盖边界。
+
+密码服务已于 2026-09-11 验收完成：学习者核心逻辑正确，教练仅规范缩进与空行，安装并固定 argon2-cffi==25.1.0、新增 7 条测试。后端共 130 条测试通过（1.79s），Ruff 通过。覆盖正确/错误密码、随机盐、空格与 Unicode、损坏哈希及验证故障；不依赖模型 API。重要题解已归档到 interview-questions/backend/web/password-hashing.md，参考答案已整理、尚未模拟。正式周进度仍为 3/12，不能将独立密码服务视为认证闭环完成。
+
+第 4 周按认证 → 前端登录态 → 授权与所有权 → Workspace/Task/会话恢复 → Redis 幂等/限流 → 可观测复核 → 全栈安全验收的顺序推进，每次只布置一个小任务。
 
 ## 新会话教学入口
 
 新会话先完整阅读 `AGENTS.md`、本文、`LEARNING_PLAN.md`、`LEARNING_CURRICULUM.md`、`docs/codex-like-agent-scope.md` 和 `LEARNING_COACH_GUIDE.md`，再检查 Git 状态与当前代码。不得从第 1 周重讲，也不得因为基础 Runtime 已完成就跳到第 7 周；当前第一课始终以本文“下一课”为准。讲课时不能只给残缺片段：核心参考实现直接放在对话代码块中，新文件给全文，已有文件只给修改段或完整函数，不给 Diff 或讲义链接。学习者亲手实现核心逻辑并明确说本课“完成了”后，教练才检查其改动、创建对应测试与机械性配套并验收；教练说明验证命令与预期结果。先读 LEARNING_COACH_GUIDE.md 第 7 节纠错记录，后续在已检出 main 的主仓库操作。
 
 ## 换电脑后恢复
+
+2026-09-11 Windows 同步专项步骤已记录在 [ENVIRONMENT.md](ENVIRONMENT.md) 的“Windows 已有环境：同步本次认证字段与索引修复”一节。Windows 拉取包含本次代码与迁移的 main 后更新依赖，并在本机 PostgreSQL 执行 `alembic upgrade head` 和 `alembic check`；不要只拉代码就启动新 ORM。该节包含两条迁移版本、PowerShell 命令、测试开关和数据保护事项，尚未进行 Windows 实机验收。
 
 Windows 首次使用：
 

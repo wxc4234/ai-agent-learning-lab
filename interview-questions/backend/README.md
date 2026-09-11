@@ -37,6 +37,7 @@
 | 主题 | 题目 | 频率 | 状态 |
 | --- | --- | --- | --- |
 | - | （示例）MySQL 索引原理 | 高 | 待做 |
+| web | [为什么密码要用专用哈希，验证失败应如何分类？](web/password-hashing.md) | 复习优先级：高 | 参考答案已整理、尚未模拟 |
 
 <!-- ORGANIZED-INTERVIEW-IMPORT:START -->
 

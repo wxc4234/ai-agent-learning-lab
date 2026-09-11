@@ -17,7 +17,7 @@
 | `idle` | 页面初始，或上一轮已经收口 | 等待提问 | 可以发送 |
 | `thinking` | 请求已发出，但还没收到首个文本分块 | 显示“正在思考”，禁用重复发送 | 可以停止 |
 | `streaming` | 收到首个文本分块，回答仍在持续 | 逐块追加回答，显示“正在生成” | 可以停止 |
-| `done` | 流正常结束 | 显示完整回答，恢复输入 | 可以发送新问题 |
+| `done` | 收到 RUN_FINISHED | 显示完整回答，恢复输入 | 可以发送新问题 |
 | `aborted` | 用户点击停止，或请求被主动取消 | 保留已生成片段，标记已停止 | 可以重新生成 |
 | `error` | 超时、断网、500、502、429 等失败 | 显示可读错误和重试入口 | 可以重试 |
 
@@ -41,11 +41,43 @@ error/aborted → thinking（重试或重新生成）
 
 ## 结合项目怎么讲
 
-当前项目通过 Next.js BFF 发起流式请求，浏览器端使用 `AbortController` 负责停止。请求发出后先处于 `thinking`，读取到首个文本分块时进入 `streaming`，读取完成进入 `done`。用户点击停止时调用 `abort()`，进入 `aborted`；网络异常、超时或 BFF 返回 500/502/429 时进入 `error`，显示可读提示和重试按钮。
+当前项目通过 Next.js BFF 发起 NDJSON 流式请求。请求发出后进入 thinking，收到文本开始或内容事件后进入 streaming，只有收到 RUN_FINISHED 才进入 done；未收到终态就 EOF 属于意外中断。用户停止通过取消通知和 AbortController 进入 aborted；网络异常、超时或 BFF 返回 500/502/429 时进入 error。
 
-状态由一个 reducer 统一更新，而不是同时维护 `isStreaming`、`hasError`、`isAborted` 等多个布尔值。这样可以保证一次运行最终只进入一个终态：`done`、`aborted` 或 `error`。
+状态由一个 reducer 统一更新，而不是同时维护多个布尔值。reducer 本身不自动拒绝所有终态后的 action；当前消费函数通过终态后立即返回，阻止后续事件再次修改状态。
 
 ## 追问清单
+
+### 课程归档：失败摘要与终态消费（2026-09-11）
+
+复习优先级：高（Agent 前端岗位相关性）；状态：参考答案已整理、尚未模拟。以下为教练整理，不是学习者的模拟面试作答。
+
+**问题：为什么运行失败仍要保存步骤数和指标？如何避免摘要丢失？**
+
+失败不代表没有资源消耗。预算耗尽或 usage 未知时，已有步骤和耗时仍是运行事实。解析器校验 `steps_taken` 和 `metrics` 成对出现，消费函数将错误消息与完整摘要放入同一个 `fail` action，reducer 一次性更新状态、错误消息和摘要。普通错误无摘要时明确写入 `null`，不能沿用旧数据。将事件转成 `new Error(event.message)` 只保留消息，会丢掉摘要；自定义异常也可以携带数据，但会增加异常类型和 catch 分支，本项目直接分发领域终态即可。
+
+**问题：收到 RUN_ERROR 后漏掉 return，为什么摘要又变成 null？**
+
+第一次 fail 已保存摘要，但消费仍在继续。流到 EOF 后，循环后的“响应意外中断”进入 catch，再分发一次不带摘要的 fail，`action.summary ?? null` 清空摘要并覆盖原错误。若后面有文本或非法 JSON，也会污染状态或触发新异常。应在终态后退出消费，而不是让普通错误保留上一轮摘要。
+
+**问题：为什么不能用 break 代替 return？finally 还执行吗？**
+
+switch 内无标签的 break 只退出 switch，外层 for await 仍会请求下一事件。return 退出请求函数并结束异步迭代，生成器的 finally 释放 reader 锁，请求函数的 finally 清理计时器和 controller 引用。有标签的 break 能退出外层循环，但仍需避免执行后面的意外中断分支；当前函数终态后没有其他业务步骤，return 更清晰。releaseLock 只释放读锁，不等于取消底层流或向后端发送取消通知。
+
+**问题：工具失败、文本结束、EOF 能否作为运行成功的依据？**
+
+不能。TOOL_CALL_ERROR 是一次工具调用的结果，Agent 仍可能依据错误观察继续决策。TEXT_MESSAGE_END 只结束一条消息。EOF 是传输结束，未收到运行终态就 EOF 应报告意外中断；只有 RUN_FINISHED 才进入 done。
+
+**问题：取消与终态竞争时如何处理，为什么要提前捕获 controller？**
+
+当前浏览器策略是取消已发起时保留本地取消原因：用户停止进入 aborted，超时进入 error，两者均无摘要。取消函数在 await 前捕获当次 controller，通知结束后只中止它；否则 ref 可能已经指向重试请求，旧取消操作会误伤新请求。本地状态不证明服务端已经回滚，服务端结果还要依据取消协议和运行记录。
+
+**问题：怎么证明修复有效？**
+
+本课新增 21 条测试，执行组件实际请求函数、真实解析器和 reducer，以模拟响应替代模型调用。先复现 10 条失败，学习者补齐 return 后共 57 条测试全通过，类型检查与 lint 通过。覆盖终态后的文本、重复终态、非法 JSON、普通错误、取消、超时和延迟取消的 controller 隔离。测试不渲染 React，也不代表浏览器断网/限流验收已完成。失败摘要已经保存到状态，失败卡片展示仍待下一课。
+
+项目证据：[`chat-panel.tsx`](../../../apps/web/src/features/chat/components/chat-panel.tsx)、[`chat-state.ts`](../../../apps/web/src/features/chat/chat-state.ts)、[`run-terminal.test.ts`](../../../apps/web/test/features/chat/run-terminal.test.ts)。
+
+### 其他追问
 
 1. 为什么不能只用一个 `isLoading`？
 2. 首个文本分块迟迟不来时，如何区分模型慢和网络断开？

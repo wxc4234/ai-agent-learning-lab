@@ -112,6 +112,84 @@ python -m ensurepip --upgrade
 python -m pip install -r requirements.txt
 ```
 
+### Windows 已有环境：同步本次认证字段与索引修复（2026-09-11）
+
+本次更新包含 `argon2-cffi==25.1.0`、用户登录字段迁移 `a91c42e7d603`、会话唯一索引修复迁移 `b62d19f804ae`。代码同步不会同步两台电脑的数据库，Windows 需要在自己的 PostgreSQL 上执行升级。
+
+**同步前提：Windows 必须拉取包含本节所列代码和迁移的远程 main，不能只复制部分源码。下方 Test-Path 用于确认迁移已同步。不要提交 `.env` 或复制 Mac 的 `.venv`。**
+
+以下针对已有 Windows 仓库与虚拟环境。先启动 Docker Desktop，停止正在运行的 FastAPI（对应终端 Ctrl+C），在项目根目录打开 PowerShell。命令分步执行，任一步报错就停止，不要继续迁移或启动服务。
+
+1. 检查分支和未提交修改，再同步代码：
+
+```powershell
+git status --short --branch
+```
+
+应在 `main` 且工作区干净。有本地修改先保留并处理；不要用强制 reset 覆盖学习代码。确认后执行：
+
+```powershell
+git pull --ff-only origin main
+Test-Path apps\api\migrations\versions\b62d19f804ae_normalize_conversation_unique_index.py
+```
+
+`Test-Path` 必须输出 `True`。如果是 `False`，说明尚未拿到本次迁移，先解决同步问题。
+
+2. 更新 Windows 自己的依赖并启动基础服务。直接调用解释器，无需激活脚本：
+
+```powershell
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+docker compose -f infra/compose.yaml up -d
+docker compose -f infra/compose.yaml ps
+```
+
+确认 PostgreSQL 和 Redis 均为 `healthy`，根目录已有本机 `.env`，`DATABASE_URL` 指向自己的学习数据库。不要用 `.env.example` 覆盖已有 `.env`。若数据重要，先做数据库备份。
+
+3. 在后端目录检查版本并升级：
+
+```powershell
+cd apps\api
+..\..\.venv\Scripts\python.exe -m alembic current
+..\..\.venv\Scripts\python.exe -m alembic heads
+..\..\.venv\Scripts\python.exe -m alembic upgrade head
+..\..\.venv\Scripts\python.exe -m alembic current
+..\..\.venv\Scripts\python.exe -m alembic check
+```
+
+本记录对应版本的 head 是 `b62d19f804ae`，升级后应显示该版本和 `(head)`；后续新增课程迁移时以 `alembic heads` 为准。结构检查预期输出 `No new upgrade operations detected.`。
+
+- 从 `fed4e53cb0f7` 升级会依次应用两条新迁移；从 `a91c42e7d603` 只执行索引修复。
+- Windows 如果原本已有正确的唯一索引，修复迁移会保留它，不重复创建。
+- 空数据库可从初始迁移升级；若表已存在却没有迁移版本，停止并排查，不要盲目 `stamp head`。
+- 不执行 `downgrade`、删表或 `docker compose down -v`。用户字段迁移的回退会丢失凭证字段，删除卷会丢失本机数据。
+- 此修复要求在线 PostgreSQL；不要加 `--sql`，不要针对旧 `chat.db` 操作。
+
+4. 验收后启动后端（仍在 `apps\api`）：
+
+```powershell
+..\..\.venv\Scripts\python.exe -m pytest -q
+..\..\.venv\Scripts\python.exe -m ruff check app tests
+```
+
+当前普通测试预期 `202 passed, 5 skipped`。5 条 PostgreSQL 迁移测试需显式开启，在独立 schema 中执行并最终回滚，要求本机数据库账号有创建 schema 权限：
+
+```powershell
+$env:RUN_POSTGRES_MIGRATION_TESTS = "1"
+try {
+    ..\..\.venv\Scripts\python.exe -m pytest -q
+} finally {
+    Remove-Item Env:RUN_POSTGRES_MIGRATION_TESTS -ErrorAction SilentlyContinue
+}
+```
+
+当前完整验收预期 `207 passed`；后续新增测试时数量会增加。以上 Windows 命令已按仓库路径整理，尚未在 Windows 实机执行，不能把 Mac 的测试结果当作 Windows 已验收。
+
+```powershell
+..\..\.venv\Scripts\python.exe -m uvicorn app.main:app --reload
+```
+
+前端另开终端，在仓库根目录执行 `pnpm install --dir apps/web --frozen-lockfile`，再进入 `apps/web` 执行 `pnpm dev`。
+
 ## 3. 配置 DeepSeek API Key
 
 在项目根目录找到刚复制出来的 `.env`，填写：

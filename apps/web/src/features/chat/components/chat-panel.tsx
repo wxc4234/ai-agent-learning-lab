@@ -89,9 +89,15 @@ export default function ChatPanel() {
 				throw new Error("服务端没有返回流式内容");
 			}
 
-			let hasTerminalEvent = false;
-
 			for await (const event of readAgentStream(res.body)) {
+
+				const isTerminalEvent = event.type === "RUN_ERROR" || event.type === "RUN_FINISHED";
+				// 取消已经发起时，保留用户停止或超时的语义。
+                // 交给下方现有的 AbortError 分支完成状态更新。
+                if (isTerminalEvent && cancellationPendingRef.current) {
+                    throw new DOMException("请求已取消", "AbortError");
+                }
+
 				switch (event.type) {
 					case "TOOL_CALL_START":
 						dispatch({
@@ -128,7 +134,6 @@ export default function ChatPanel() {
 					case "TEXT_MESSAGE_END":
 						break;
 					case "RUN_FINISHED":
-						hasTerminalEvent = true;
 						if (!cancellationPendingRef.current) {
 							dispatch({
 								type: "complete",
@@ -136,16 +141,34 @@ export default function ChatPanel() {
 								metrics: event.metrics,
 							});
 						}
-						break;
+
+						return;
 					case "RUN_ERROR":
-						hasTerminalEvent = true;
-						throw new Error(event.message);
+						if (event.steps_taken !== undefined && event.metrics !== undefined) {
+							dispatch({
+								type: "fail",
+								message: event.message,
+								summary: {
+									stepsTaken: event.steps_taken,
+									metrics: event.metrics
+								}
+							})
+						}
+						else {
+							dispatch({
+								type: "fail",
+								message: event.message,
+							});
+						}
+						return;
 				}
 			}
+			// 能走到这里，说明流已经结束，但没有收到运行终态。
+            if (cancellationPendingRef.current) {
+                throw new DOMException("请求已取消", "AbortError");
+            }
 
-			if (!hasTerminalEvent && !cancellationPendingRef.current) {
-				throw new Error("响应意外中断，请重试。");
-			}
+			throw new Error("响应意外中断，请重试。");
 		} catch (error) {
 			if (error instanceof DOMException && error.name === "AbortError") {
 				if (didTimeout) {
@@ -175,6 +198,7 @@ export default function ChatPanel() {
 
 		cancellationPendingRef.current = true;
 		const runId = activeRunIdRef.current;
+		const controller = controllerRef.current;
 
 		try {
 			if (runId) {
@@ -189,7 +213,7 @@ export default function ChatPanel() {
 		} catch {
 			// 运行事件记录失败时，仍需停止流，不能让请求继续占用资源。
 		} finally {
-			controllerRef.current?.abort();
+			controller?.abort();
 		}
 	}
 
@@ -373,8 +397,12 @@ export default function ChatPanel() {
 					)}
 				</div>
 
-				{chatState.status === "done" && chatState.runSummary && (
-					<RunSummaryCard summary={chatState.runSummary} />
+				{(chatState.status === "done" || chatState.status === "error")
+					&& chatState.runSummary !== null && (
+					<RunSummaryCard
+						summary={chatState.runSummary}
+						status={chatState.status}
+					/>
 				)}
 			</section>
 		</main>
