@@ -171,18 +171,15 @@ cd apps\api
 ..\..\.venv\Scripts\python.exe -m ruff check app tests
 ```
 
-当前普通测试预期 `202 passed, 5 skipped`。5 条 PostgreSQL 迁移测试需显式开启，在独立 schema 中执行并最终回滚，要求本机数据库账号有创建 schema 权限：
+2026-09-13 Windows 验证：后端 `335 passed`，Ruff 通过（含中文用户名、登录凭证服务、21 条注册 HTTP 接口测试及 29 条登录会话仓储/迁移测试）。数据库测试统一使用 PostgreSQL + psycopg，迁移与注册测试默认执行，不再需要 `RUN_POSTGRES_MIGRATION_TESTS` 或 `RUN_POSTGRES_REGISTRATION_TESTS` 开关，也不回退 SQLite。
 
-```powershell
-$env:RUN_POSTGRES_MIGRATION_TESTS = "1"
-try {
-    ..\..\.venv\Scripts\python.exe -m pytest -q
-} finally {
-    Remove-Item Env:RUN_POSTGRES_MIGRATION_TESTS -ErrorAction SilentlyContinue
-}
-```
+登录会话课的最新迁移为 `c83f20a915bd`，父版本为 `b62d19f804ae`；沿用上面的 `alembic upgrade head` 与 `alembic check` 命令。该迁移新增 `login_sessions`，不重建已有业务表。本机已升级至新 head，结构检查通过，原五张业务表升级前后逐行一致；其他电脑仍需各自执行升级。
 
-当前完整验收预期 `207 passed`；后续新增测试时数量会增加。以上 Windows 命令已按仓库路径整理，尚未在 Windows 实机执行，不能把 Mac 的测试结果当作 Windows 已验收。
+`tests/conftest.py` 从本机 `DATABASE_URL` 取得服务器与账号信息，连接 `postgres` 维护库，每轮自动创建一个随机命名的 `agent_lab_test_<uuid>` 独立数据库。每个测试使用独立 schema，允许真实 commit/rollback；测试结束后自动删除本次创建的 schema 和数据库，不复用、清空或删除开发库，不生成 `.test-tmp-*` 目录。
+
+账号需要连接维护库及 `CREATEDB` 权限；本项目本地 Compose 的初始化账号可用于这一流程。其他环境可通过环境变量 `TEST_DATABASE_ADMIN_URL` 指定测试服务器的 `postgresql+psycopg` 管理连接，勿将含密码的 URL 提交到仓库。该变量只用于测试配置，不改变应用 `DATABASE_URL`。权限或连接不满足时测试会报错，不静默跳过。
+
+正常失败也会执行清理；若进程被强制终止，可能残留随机测试库。清理时先核实具体库名和用途，仅删除已确认属于中断测试的库，不批量删除其他数据库。纯逻辑测试未请求数据库 fixture 时，不会创建测试库。
 
 ```powershell
 ..\..\.venv\Scripts\python.exe -m uvicorn app.main:app --reload

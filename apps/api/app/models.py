@@ -36,10 +36,7 @@ class User(Base):
         nullable=True,
     )
     # 保存密码服务生成的完整哈希字符串，绝不保存明文密码
-    password_hash: Mapped[str | None] = mapped_column(
-        Text,
-        nullable=True
-    )
+    password_hash: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     # 由数据库生成创建时间，避免依赖应用服务器的本地时钟。
     create_at: Mapped[datetime] = mapped_column(
@@ -48,6 +45,55 @@ class User(Base):
 
     # 一个用户可以拥有多个会话；数据库关联字段实际保存在 Conversation.user_id。
     conversations: Mapped[list["Conversation"]] = relationship(back_populates="user")
+
+
+class LoginSession(Base):
+    """某次登录的服务端记录；不保存原始会话令牌。"""
+
+    __tablename__ = "login_sessions"
+
+    __table_args__ = (
+        CheckConstraint(
+            "token_hash ~ '^[0-9a-f]{64}$'",
+            name="ck_login_sessions_token_hash",
+        ),
+        CheckConstraint(
+            "expires_at > created_at",
+            name="ck_login_sessions_expiration",
+        ),
+        CheckConstraint(
+            "revoked_at IS NULL OR revoked_at >= created_at",
+            name="ck_login_sessions_revocation",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id"),
+        index=True,
+    )
+
+    token_hash: Mapped[str] = mapped_column(
+        String(64),
+        unique=True,
+        index=True,
+    )
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+    )
+
+    expires_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        index=True,
+    )
+
+    revoked_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
 
 
 class Conversation(Base):

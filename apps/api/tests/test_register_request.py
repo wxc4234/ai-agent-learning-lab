@@ -20,7 +20,7 @@ def test_username_length_boundaries(length):
 
 
 @pytest.mark.parametrize(
-    "username", ["", "  ", "ab", "a" * 65, "a b", "a-b", "用户名称", "Ａgent", "ab\ncd"]
+    "username", ["", "  ", "ab", "a" * 65, "a b", "a-b", "用户🙂", "Ａgent", "ab\ncd"]
 )
 def test_invalid_username_rejected(username):
     with pytest.raises(ValidationError):

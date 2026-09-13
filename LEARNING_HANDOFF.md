@@ -1,6 +1,6 @@
 # AI Agent 学习交接
 
-更新时间：2026-09-12（Asia/Shanghai）
+更新时间：2026-09-13（Asia/Shanghai）
 
 本文件是新学习会话唯一必须主动读取的动态进度入口。长期仓库与教学规则由自动加载的 [AGENTS.md](AGENTS.md) 提供；完整路线、大纲、架构和历史材料只按当前任务读取相关章节，不在启动时整篇加载。
 
@@ -27,45 +27,55 @@
 ### 第 4 周已预完成的认证基础
 
 - `User` 已支持成对出现的可空 `username` / `password_hash`；历史无凭证用户继续兼容。
-- Alembic 已包含 `a91c42e7d603` 用户凭证迁移与 `b62d19f804ae` 会话唯一索引兼容修复；当前 head 为 `b62d19f804ae`。
+- Alembic 已包含用户凭证与会话唯一索引兼容修复，以及登录会话迁移 `c83f20a915bd`；当前 head 为 `c83f20a915bd`。
 - 密码服务使用 Argon2id；正确密码、错误密码、随机盐、Unicode、空白和损坏哈希行为已验收。
-- `RegisterRequest` 已完成：用户名去首尾空白、限制为 3～64 个 ASCII 字母/数字/下划线并转小写；密码为 8～128 字符、禁止所有 `str.isspace` 空白、不自动 trim，并用 `SecretStr` 承载。
+- `RegisterRequest` 已完成：用户名去首尾空白、允许 3～64 个汉字（Unicode 统一汉字含扩展及〇）、ASCII 字母/数字/下划线，英文转小写；注册与登录共用规范，拒绝内部空白、emoji、标点、全角字母，不做 NFKC 转换；密码为 8～128 字符、禁止所有 `str.isspace` 空白、不自动 trim，并用 `SecretStr` 承载。
 - `create_registered_user` 已完成：生成 UUID4 `external_id`，只 `add/flush`，不 `commit`、不吞 `IntegrityError`；`get_user_by_username` 已存在。
-- 当前还没有注册或登录 HTTP 接口，不能把模型或仓储测试当作接口验收。
+- `register_user` 注册服务已验收：服务拥有事务，拒绝已有活动事务，成功提交、失败回滚；仅将 PostgreSQL `users.ix_users_username` 的唯一冲突转为业务错误，其他异常保留分类。返回身份结果，不包含凭证；业务冲突使用 `from None` 抑制默认异常链展示。
+- `POST /auth/register` 已通过 HTTP 验收：201 安全身份结果，409 用户名冲突，422 输入校验失败，400 解析失败，500 通用内部故障；局部 APIRoute 包装校验与执行，错误 JSON 为对象，日志不记录异常详情。同步路由在线程池执行，每次独立 Session 并关闭。
+- `LoginRequest` 与 `authenticate_user` 已验收：密码原样保留 1～128 字符；未知用户名/无凭证/密码错误统一业务错误，未知用户执行一次虚拟哈希验证，哈希损坏与数据库故障保留分类。只读、不 autoflush、不提交或回滚调用方写入，返回安全身份。
+- 尚无登录 HTTP、登出或 Cookie 会话；凭证验证通过不等于建立登录态。
+- `LoginSession` 与仓储已验收：只保存唯一的 64 位小写十六进制令牌摘要，关联用户，使用带时区时间；有效区间为创建时间含端点、过期时间不含端点。撤销只更新尚未撤销的记录，重复调用不覆盖时间，允许撤销过期记录；仓储只 flush，不提交调用方事务。
 
 ### 最近验证结果
 
-- 后端普通测试：`202 passed, 5 skipped`；Ruff 通过。
-- 显式启用隔离 PostgreSQL 迁移测试：`207 passed`。
+- 2026-09-13 后端数据库测试已统一 PostgreSQL + psycopg：默认运行 `335 passed`，无数据库测试跳过项；Ruff 通过。注册服务 10 条测试覆盖成功提交、事务所有权、失败回滚、真实约束分类、Session 恢复与回溯脱敏。
+- `tests/conftest.py` 自动创建随机独立 PostgreSQL 测试库，每例独立 schema，允许真实提交并自动清理；不连接开发业务表、不使用 SQLite 或 `.test-tmp-*`。通过 `ENVIRONMENT.md` 中的普通 pytest 命令运行，不再使用两个旧的 `RUN_POSTGRES_*` 开关。
+- 本课新增 51 条输入模型测试、15 条凭证服务测试（含中文注册 HTTP → 凭证校验联通）；schemas、authentication_service 及两个新测试文件 Pyright 零错误、零警告。Docker 曾停止导致首次测试中断，恢复现有容器后完整重跑通过。
+- 注册 HTTP 新增 21 条测试，验证真实持久化、冲突/输入/内部错误安全响应、故障恢复、日志脱敏、Session 关闭、线程执行及既有聊天校验行为。
+- 新增 2 条隔离测试验证测试库/私有 schema 及不同物理 PostgreSQL 连接间的真实 commit/rollback 可见性，不再以保存点替代注册服务提交；不宣称已做并发压测。数据库测试连接要求见 `ENVIRONMENT.md`。
 - 前端：`71 passed`，TypeScript 类型检查和 ESLint 通过。
-- 本机 PostgreSQL 已升级至 `b62d19f804ae (head)`，`alembic check` 返回 `No new upgrade operations detected.`。
+- 登录会话新增 29 条 PostgreSQL 测试，覆盖时间边界、约束、幂等撤销、真实提交/回滚及迁移升降级；模型、仓储、迁移及两个测试文件 Pyright 零错误、零警告。测试结束无遗留临时测试库。
+- 本机 PostgreSQL 已升级至 `c83f20a915bd (head)`，`alembic check` 返回 `No new upgrade operations detected.`。升级前后原五张业务表逐行比较一致（用户 1、聊天 3、消息 4、运行 3、事件 46）。
 - 2026-09-12 已在 Windows 验证 Python 3.12、`pnpm 10.34.1`、PostgreSQL/pgvector 与 Redis 环境；现有 `.env` 和命名卷数据未被覆盖或删除。
 
 测试数量只用于确认当前基线；新增课程后应以实际测试输出为准，不因数字变化误判回归。
 
 ## 唯一下一课
 
-**第 4 周：注册服务的事务编排与用户名冲突分类。**
+**第 4 周：登录会话签发服务与事务编排。**
 
-本课目标是在服务层串联已经完成的请求模型、密码哈希和用户仓储，形成清晰的事务边界。开始授课前先检查以下文件的实际内容：
+登录会话模型与持久化已验收（2026-09-13），学习者已修正撤销条件。测试、迁移和重要面试题已补齐，参考答案已整理、尚未模拟。正式进度仍为 3 / 12；不要重复注册、凭证验证或会话存储课程。
 
-- `apps/api/app/schemas.py`
-- `apps/api/app/services/password_service.py`
-- `apps/api/app/repositories/user_repository.py`
-- `apps/api/app/models.py`
-- `apps/api/tests/test_register_request.py`
-- `apps/api/tests/test_registered_user_repository.py`
+下一课目标：组合凭证验证、安全随机令牌生成、SHA-256 摘要入库与事务提交；提交成功后才返回受保护的原始令牌及安全身份信息。一次只实现签发服务，不同时接入 HTTP、Cookie、前端或授权体系。
+
+开始前按需读取：
+
+- `apps/api/app/models.py`、`apps/api/app/database.py`
+- `apps/api/app/services/authentication_service.py`
+- `apps/api/app/repositories/login_session_repository.py`
+- `apps/api/app/services/registration_service.py` 的事务所有权模式
+- `apps/api/tests/conftest.py`、`apps/api/tests/test_authentication_service.py`、`apps/api/tests/test_login_session_repository.py`
 
 必须保持的设计边界：
 
-- 仓储层继续只负责 `add/flush`，不提交事务，也不把所有 `IntegrityError` 都解释成用户名重复。
-- 注册服务负责密码哈希、仓储调用以及成功提交、失败回滚。
-- 只有能够确认是用户名唯一性冲突时，才转换成稳定的业务冲突；其他数据库完整性错误必须保留真实分类并向上传播。
-- 密码明文、完整哈希、原始数据库异常和请求体不得进入日志或对外错误。
-- `SecretStr` 只降低意外展示风险，不等于密码哈希，也不是完整的日志脱敏方案。
-- 本课先完成服务层，不提前接入 HTTP 路由；接入注册接口前必须单独设计 Pydantic 验证错误与业务错误的脱敏响应。
+- 区分数据库 Session、聊天 Conversation 和登录会话；已有 external_id 是业务身份，不是认证凭证。
+- 会话凭证必须使用密码学安全随机值，数据库只存令牌摘要并关联用户，明确过期时间、撤销方式及事务所有权；不能把密码或随机令牌明文写进日志。
+- 保留中文用户名规范和已有历史用户；不得通过会话迁移重建或清空开发数据。
+- 注册、凭证验证、会话签发分层；Cookie 的 HttpOnly/Secure/SameSite、BFF 转发、CSRF 与登录/登出接口在接入时分别落实，不能把存储模型视为完整登录闭环。
+- PostgreSQL 测试使用独立测试库；只有学习者明确说“完成了”后才补齐迁移/测试等配套并验收。
 
-学习者明确说“完成了”后，教练再检查实际实现并补齐测试。验收至少覆盖成功提交、重复用户名的稳定冲突与回滚、非用户名数据库错误不被误分类，以及事务失败后 Session 可继续使用。
+验收范围在下一课开场落实：至少覆盖成功签发且数据库无明文令牌、中文用户名、错误凭证不写入、过期时间、随机令牌不重复、真实提交/失败回滚及事务所有权；错误与日志不泄露凭证。
 
 ## 保留但不阻塞当前课程的问题
 

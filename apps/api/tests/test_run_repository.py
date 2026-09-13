@@ -1,14 +1,9 @@
-from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from app.database import Base
 from app.repositories import run_repository
 
 
-def test_run_repository_records_and_loads_timeline(monkeypatch):
-    engine = create_engine("sqlite://")
-    Base.metadata.create_all(engine)
-
+def test_run_repository_records_and_loads_timeline(monkeypatch, engine):
     test_session_local = sessionmaker(
         bind=engine,
         autoflush=False,
@@ -54,10 +49,7 @@ def test_run_repository_records_and_loads_timeline(monkeypatch):
     assert events[2]["payload"] == {"chunk": "第二段"}
 
 
-def test_finish_run_rejects_unknown_status(monkeypatch):
-    engine = create_engine("sqlite://")
-    Base.metadata.create_all(engine)
-
+def test_finish_run_rejects_unknown_status(monkeypatch, engine):
     test_session_local = sessionmaker(
         bind=engine,
         autoflush=False,
@@ -78,10 +70,7 @@ def test_finish_run_rejects_unknown_status(monkeypatch):
         raise AssertionError("未知运行状态应该被拒绝")
 
 
-def test_cancelling_a_running_run_records_its_terminal_event(monkeypatch):
-    engine = create_engine("sqlite://")
-    Base.metadata.create_all(engine)
-
+def test_cancelling_a_running_run_records_its_terminal_event(monkeypatch, engine):
     test_session_local = sessionmaker(
         bind=engine,
         autoflush=False,

@@ -37,7 +37,8 @@
 | 主题 | 题目 | 频率 | 状态 |
 | --- | --- | --- | --- |
 | - | （示例）MySQL 索引原理 | 高 | 待做 |
-| web | [为什么密码要用专用哈希，验证失败应如何分类？](web/password-hashing.md) | 复习优先级：高 | 参考答案已整理、尚未模拟 |
+| web | [密码哈希、注册事务、登录凭证与 HTTP 脱敏](web/password-hashing.md) | 复习优先级：高 | 参考答案已整理、尚未模拟；含中文用户名及凭证校验证据 |
+| web | [服务端登录会话：摘要、过期、撤销与事务](web/login-sessions.md) | 复习优先级：高 | 参考答案已整理、尚未模拟；含 PostgreSQL 仓储及迁移证据 |
 
 <!-- ORGANIZED-INTERVIEW-IMPORT:START -->
 

@@ -1,7 +1,6 @@
-"""Opt-in PostgreSQL migration tests; all DDL/data live in a rolled-back schema."""
+"""PostgreSQL migration tests in the dedicated temporary test database."""
 
 import importlib.util
-import os
 from pathlib import Path
 from uuid import uuid4
 
@@ -11,24 +10,17 @@ from alembic.migration import MigrationContext
 from alembic.operations import Operations
 from sqlalchemy.exc import IntegrityError
 
-from app.database import engine
-
-pytestmark = pytest.mark.skipif(
-    os.environ.get("RUN_POSTGRES_MIGRATION_TESTS") != "1",
-    reason="Set RUN_POSTGRES_MIGRATION_TESTS=1 for isolated PostgreSQL DDL tests",
-)
-
-
 @pytest.mark.parametrize("state", ["legacy", "fresh", "both", "invalid", "duplicates"])
-def test_normalize_conversation_index(state):
+def test_normalize_conversation_index(state, empty_engine):
     path = (
         Path(__file__).resolve().parents[1]
         / "migrations/versions/b62d19f804ae_normalize_conversation_unique_index.py"
     )
     spec = importlib.util.spec_from_file_location("index_migration", path)
+    assert spec is not None and spec.loader is not None
     migration = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(migration)
-    with engine.connect() as conn:
+    with empty_engine.connect() as conn:
         transaction = conn.begin()
         try:
             schema = "qa_index_" + uuid4().hex

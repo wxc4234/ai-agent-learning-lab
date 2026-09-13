@@ -1,7 +1,7 @@
 from uuid import UUID
 
 import pytest
-from sqlalchemy import create_engine, func, select
+from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -15,16 +15,10 @@ from app.schemas import RegisterRequest
 from app.services.password_service import hash_password, verify_password
 
 
-@pytest.fixture
-def engine(tmp_path):
-    database = create_engine(f"sqlite:///{tmp_path / 'users.db'}")
-    User.__table__.create(database)
-    yield database
-    database.dispose()
-
-
 def test_commit_persists_normalized_username_and_real_hash(engine):
-    request = RegisterRequest(username=" Agent_User ", password="Learning-Agent-2026!")
+    request = RegisterRequest.model_validate(
+        {"username": " Agent_User ", "password": "Learning-Agent-2026!"}
+    )
     encoded = hash_password(request.password.get_secret_value())
     with Session(engine) as session, session.begin():
         user = create_registered_user(
@@ -35,6 +29,8 @@ def test_commit_persists_normalized_username_and_real_hash(engine):
         user_id = user.id
     with Session(engine) as session:
         stored = get_user_by_username(session, "agent_user")
+        assert stored is not None
+        assert stored.password_hash is not None
         assert stored.id == user_id
         assert stored.password_hash == encoded
         assert verify_password(
@@ -74,6 +70,7 @@ def test_duplicate_username_does_not_modify_existing_user(engine):
         )
     with Session(engine) as session:
         stored = get_user_by_username(session, "agent")
+        assert stored is not None
         assert (stored.id, stored.external_id) == original_identity
         assert stored.password_hash == "original-hash"
         assert session.scalar(select(func.count()).select_from(User)) == 1
