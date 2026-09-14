@@ -9,6 +9,10 @@ import {
 	initialChatState,
 	toUserFacingError,
 } from "../chat-state";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { Card } from "@/components/ui/card";
 import RunSummaryCard from "./run-summary-card";
 
 const REQUEST_TIMEOUT_MS = 30_000;
@@ -240,41 +244,41 @@ export default function ChatPanel() {
 	}
 
 	return (
-		<main className="flex min-h-screen items-center justify-center bg-zinc-50 px-6">
-			<section className="w-full max-w-2xl rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
-				<h1 className="text-2xl font-semibold text-zinc-900">
+		<main className="flex min-h-screen items-center justify-center bg-background px-4 py-10 sm:px-6">
+			<Card className="w-full max-w-2xl gap-0 p-5 shadow-sm sm:p-6">
+				<h1 className="text-2xl font-semibold text-foreground">
 					AI Agent
 				</h1>
 
-				<p className="mt-2 text-sm text-zinc-500">
-					通过 Next.js BFF 流式调用 FastAPI。
+				<p className="mt-2 text-sm text-muted-foreground">
+					描述你的问题，查看回答与工具执行进度。
 				</p>
 
                 <div
                     aria-live="polite"
-                    className="mt-4 text-sm text-zinc-500"
+                    className="mt-4 text-sm text-muted-foreground"
                     role="status"
                 >
                     {statusLabel(chatState.status)}
                 </div>
 
                 {activeRunId && (
-                    <p className="mt-1 text-xs text-zinc-400">
+                    <p className="mt-1 text-xs text-muted-foreground">
                         运行编号：{activeRunId}
                     </p>
                 )}
 
                 <form className="mt-4" onSubmit={handleSubmit}>
-					<label
-						className="text-sm font-medium text-zinc-700"
+					<Label
+						className="text-sm font-medium text-foreground"
 						htmlFor="prompt"
 					>
 						你的问题
-					</label>
+					</Label>
 
-					<textarea
+					<Textarea
 						id="prompt"
-						className="mt-2 min-h-32 w-full resize-none rounded-xl border border-zinc-300 p-3 text-zinc-900 outline-none focus:border-zinc-500 disabled:bg-zinc-100"
+						className="mt-2 min-h-32 resize-y"
 						disabled={isBusy}
 						placeholder="请输入问题……"
 						value={prompt}
@@ -283,41 +287,41 @@ export default function ChatPanel() {
 
 					<div className="mt-3 flex items-center justify-end gap-3">
 						{isBusy && (
-							<button
-								className="rounded-lg border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-100"
+							<Button
+								variant="outline"
 								type="button"
 								onClick={handleStop}
 							>
 								停止生成
-							</button>
+							</Button>
 						)}
 
 						{(chatState.status === "error" ||
 							chatState.status === "aborted") && (
-							<button
-								className="rounded-lg border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-100"
+							<Button
+								variant="outline"
 								type="button"
 								onClick={handleRetry}
 							>
 								{chatState.status === "aborted"
 									? "重新生成"
 									: "重试"}
-							</button>
+							</Button>
 						)}
 
-						<button
-							className="rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-40"
+						<Button
+							className="min-w-20"
 							disabled={!prompt.trim() || isBusy}
 							type="submit"
 						>
 							{isBusy ? "生成中……" : "发送"}
-						</button>
+						</Button>
 					</div>
 				</form>
 
 				{chatState.tools.length > 0 && (
-					<div className="mt-6 rounded-xl border border-zinc-200 p-4">
-						<p className="text-sm font-medium text-zinc-700">工具执行</p>
+					<div className="mt-6 rounded-xl border border-border p-4">
+						<p className="text-sm font-medium text-foreground">工具执行</p>
 
 						<ul className="mt-3 space-y-3">
 							{chatState.tools.map((tool) => {
@@ -326,17 +330,17 @@ export default function ChatPanel() {
 
 								return (
 									<li
-										className="rounded-lg bg-zinc-50 p-3 text-sm"
+										className="rounded-lg bg-muted p-3 text-sm"
 										key={tool.toolCallId}
 									>
 										<div className="flex items-center justify-between gap-3">
-											<code className="font-medium text-zinc-800">
+											<code className="font-medium text-foreground">
 												{tool.toolName}
 											</code>
 											<span
 												className={
 													tool.status === "failed"
-														? "text-red-700"
+														? "text-destructive"
 														: tool.status === "succeeded"
 															? "text-emerald-700"
 															: "text-amber-700"
@@ -350,25 +354,25 @@ export default function ChatPanel() {
 											</span>
 										</div>
 
-										<p className="mt-2 break-all text-xs text-zinc-500">
+										<p className="mt-2 break-all text-xs text-muted-foreground">
 											参数：{tool.arguments}
 										</p>
 
 										{/* undefined 不显示，0 ms 仍能正常显示。 */}
 										{durationLabel !== null && (
-											<p className="mt-2 text-xs text-zinc-500">
+											<p className="mt-2 text-xs text-muted-foreground">
 												耗时：{durationLabel}
 											</p>
 										)}
 
 										{tool.result && (
-											<p className="mt-2 break-words text-zinc-700">
+											<p className="mt-2 break-words text-foreground">
 												结果：{tool.result}
 											</p>
 										)}
 
 										{tool.errorMessage && (
-											<p className="mt-2 text-red-700">
+											<p className="mt-2 text-destructive">
 												错误：{tool.errorMessage}
 											</p>
 										)}
@@ -379,19 +383,19 @@ export default function ChatPanel() {
 					</div>
 				)}
 
-				<div className="mt-6 min-h-32 rounded-xl bg-zinc-100 p-4">
-					<p className="text-sm font-medium text-zinc-700">AI 回复</p>
+				<div className="mt-6 min-h-32 rounded-xl bg-muted p-4">
+					<p className="text-sm font-medium text-foreground">AI 回复</p>
 
 					{chatState.errorMessage ? (
 						<p
 							aria-live="assertive"
-							className="mt-2 text-red-700"
+							className="mt-2 text-destructive"
 							role="alert"
 						>
 							{chatState.errorMessage}
 						</p>
 					) : (
-						<p className="mt-2 whitespace-pre-wrap text-zinc-900">
+						<p className="mt-2 whitespace-pre-wrap text-foreground">
 							{chatState.reply || "回复将在这里逐步显示"}
 						</p>
 					)}
@@ -404,7 +408,7 @@ export default function ChatPanel() {
 						status={chatState.status}
 					/>
 				)}
-			</section>
+			</Card>
 		</main>
 	);
 }

@@ -1,6 +1,6 @@
 # AI Agent 学习交接
 
-更新时间：2026-09-13（Asia/Shanghai）
+更新时间：2026-09-14（Asia/Shanghai）
 
 本文件是新学习会话唯一必须主动读取的动态进度入口。长期仓库与教学规则由自动加载的 [AGENTS.md](AGENTS.md) 提供；完整路线、大纲、架构和历史材料只按当前任务读取相关章节，不在启动时整篇加载。
 
@@ -34,48 +34,46 @@
 - `register_user` 注册服务已验收：服务拥有事务，拒绝已有活动事务，成功提交、失败回滚；仅将 PostgreSQL `users.ix_users_username` 的唯一冲突转为业务错误，其他异常保留分类。返回身份结果，不包含凭证；业务冲突使用 `from None` 抑制默认异常链展示。
 - `POST /auth/register` 已通过 HTTP 验收：201 安全身份结果，409 用户名冲突，422 输入校验失败，400 解析失败，500 通用内部故障；局部 APIRoute 包装校验与执行，错误 JSON 为对象，日志不记录异常详情。同步路由在线程池执行，每次独立 Session 并关闭。
 - `LoginRequest` 与 `authenticate_user` 已验收：密码原样保留 1～128 字符；未知用户名/无凭证/密码错误统一业务错误，未知用户执行一次虚拟哈希验证，哈希损坏与数据库故障保留分类。只读、不 autoflush、不提交或回滚调用方写入，返回安全身份。
-- 尚无登录 HTTP、登出或 Cookie 会话；凭证验证通过不等于建立登录态。
+- 登录会话签发服务 `issue_login_session` 已验收：复用凭证验证、32 字节安全随机令牌、SHA-256 摘要入库，默认有效期 8 小时，提交成功才返回 `SecretStr` 令牌及安全身份；拒绝调用方已有事务，失败回滚且保留异常分类。
+- `POST /auth/login` 已验收：JSON + 精确 Origin 校验，提交后签发 HttpOnly/SameSite=Lax/Path=/ Cookie，Expires 沿用数据库到期时间，不设置 Domain；Secure 默认 true，本地 HTTP 配置 false。正文只含安全身份，错误统一脱敏，成功/失败 no-store，每请求独立 Session 并在线程池执行。已完成只读令牌解析服务；已接入 GET /auth/me；已完成登出服务；已完成 POST /auth/logout；登录与当前用户 BFF 已验收，登录/身份查询/登出 BFF 与独立登录页均已验收。
 - `LoginSession` 与仓储已验收：只保存唯一的 64 位小写十六进制令牌摘要，关联用户，使用带时区时间；有效区间为创建时间含端点、过期时间不含端点。撤销只更新尚未撤销的记录，重复调用不覆盖时间，允许撤销过期记录；仓储只 flush，不提交调用方事务。
 
 ### 最近验证结果
 
-- 2026-09-13 后端数据库测试已统一 PostgreSQL + psycopg：默认运行 `335 passed`，无数据库测试跳过项；Ruff 通过。注册服务 10 条测试覆盖成功提交、事务所有权、失败回滚、真实约束分类、Session 恢复与回溯脱敏。
-- `tests/conftest.py` 自动创建随机独立 PostgreSQL 测试库，每例独立 schema，允许真实提交并自动清理；不连接开发业务表、不使用 SQLite 或 `.test-tmp-*`。通过 `ENVIRONMENT.md` 中的普通 pytest 命令运行，不再使用两个旧的 `RUN_POSTGRES_*` 开关。
-- 本课新增 51 条输入模型测试、15 条凭证服务测试（含中文注册 HTTP → 凭证校验联通）；schemas、authentication_service 及两个新测试文件 Pyright 零错误、零警告。Docker 曾停止导致首次测试中断，恢复现有容器后完整重跑通过。
-- 注册 HTTP 新增 21 条测试，验证真实持久化、冲突/输入/内部错误安全响应、故障恢复、日志脱敏、Session 关闭、线程执行及既有聊天校验行为。
-- 新增 2 条隔离测试验证测试库/私有 schema 及不同物理 PostgreSQL 连接间的真实 commit/rollback 可见性，不再以保存点替代注册服务提交；不宣称已做并发压测。数据库测试连接要求见 `ENVIRONMENT.md`。
-- 前端：`71 passed`，TypeScript 类型检查和 ESLint 通过。
-- 登录会话新增 29 条 PostgreSQL 测试，覆盖时间边界、约束、幂等撤销、真实提交/回滚及迁移升降级；模型、仓储、迁移及两个测试文件 Pyright 零错误、零警告。测试结束无遗留临时测试库。
-- 本机 PostgreSQL 已升级至 `c83f20a915bd (head)`，`alembic check` 返回 `No new upgrade operations detected.`。升级前后原五张业务表逐行比较一致（用户 1、聊天 3、消息 4、运行 3、事件 46）。
-- 2026-09-12 已在 Windows 验证 Python 3.12、`pnpm 10.34.1`、PostgreSQL/pgvector 与 Redis 环境；现有 `.env` 和命名卷数据未被覆盖或删除。
+- 后端签发、解析、登录/身份查询/登出服务及 HTTP 专项已验收；历史测试细节见 apps/api/tests 与 ENVIRONMENT.md。最新后端基线 537 passed、零警告，Ruff 通过。
+- 数据库测试统一 PostgreSQL + psycopg；conftest 每轮创建随机独立测试库、每例私有 schema，支持真实 commit/rollback 并自动清理。不用 SQLite、不连接开发业务表、不使用旧 RUN_POSTGRES_* 开关。运行方式见 ENVIRONMENT.md。
+- 本机开发数据库 head 为 `c83f20a915bd`，上一轮迁移 check 无差异，原五张业务表升级前后逐行一致；后续服务/接口课程未新增迁移。
+- 项目 `.venv` 已正式升级为 Python 3.12.13，`.python-version` 固定 3.12，旧环境保存在 Git 忽略的 `venv/python310-backup-20260914/`。requirements 固定 AnyIO 4.14.2，规避 Starlette 1.6.0 TestClient 旧 BlockingPortal 别名警告；未屏蔽警告或修改第三方源码，待 Starlette 正式修复后评估升级。pip check 已通过。
+- 本地 `.env` 的 LOGIN_COOKIE_SECURE=false 仅用于 HTTP，生产 HTTPS 必须 true。配置/依赖变更后重启已有进程；Docker 已启动。
+- 前端最新基线为认证/BFF 137 passed、聊天 77 passed，TypeScript/ESLint 通过；本课未重复 Pyright。2026-09-12 Windows 环境曾验收通过，跨电脑更新仍须各自安装 requirements 和执行迁移检查。
 
-测试数量只用于确认当前基线；新增课程后应以实际测试输出为准，不因数字变化误判回归。
+
+
+- 当前用户 BFF、登录页与页面异步状态已验收；细节、隔离浏览器命令及历史结果见 ENVIRONMENT.md 和现有测试。
+
+- 用户已授权教练直接完成 UI 配套替换，不安排新课、不改变下一课：登录页、聊天输入和运行摘要改用 shadcn/ui 的 Button/Input/Textarea/Label/Card，统一语义主题并随系统切换明暗；共享控件在 apps/web/src/components/ui，后续优先复用。核心认证和聊天状态逻辑保持原样。依赖与许可证见 ENVIRONMENT.md 和 apps/web/THIRD_PARTY_NOTICES.md。UI 验收：认证 102、聊天 71、浏览器 11 场景通过，TypeScript/ESLint 通过；明暗截图已检查，临时资源已清理。
+
+- 首页门禁、登录返回与当前用户依赖均已验收；Session 生命周期、请求内依赖缓存及页面异步竞态证据见既有测试和 ENVIRONMENT.md。
+
+## 最近完成：聊天认证与会话所有权闭环
+
+- 两个聊天入口使用 CurrentUser.id 传递可信身份；流式路由在发送响应头前，在事务中确认会话所有权并创建 run。ChatRoute 将未登录映射为 401、无权访问会话映射为统一 404，错误脱敏/no-store；POST 保留精确 Origin/JSON 检查。
+- 会话仓储 require_owned_conversation 同时限制 external_id/user_id；get_or_create_owned_conversation 使用 PostgreSQL ON CONFLICT DO NOTHING，仅针对全局唯一 external_id，不接管他人记录。15 条仓储测试验证事务与真实并发锁等待（READ COMMITTED），更高隔离级别重试未实现。
+- load_conversation/save_conversation_turn 现必须传入 user_id；save 只访问已有的本人会话。ensure_owned_conversation 管理普通聊天准备事务。旧匿名创建函数/常量/导入已清理，匿名历史保留，不迁移。缓存键为 (user_id, session_id)，命中前仍查归属，历史读取成功才发布缓存。
+- GET /sessions/{session_id}/messages 已接入身份/所有权；自己的空会话返回 200/空列表，未知或非本人统一 404。用户指出 Pydantic 构造器静态类型报错后，教练按明确授权补 ConversationMessage.model_validate 显式转换；该文件 Pyright 0 errors/0 warnings，专项 12 条复跑通过。
+- BFF 只转发有效唯一 Cookie 与 Origin，成功流保持 body/取消信号，404 安全映射；页面区分 401 与 404，保留输入，提示重新发送以生成新标识。当前发送生成新 session_id，重试沿用旧标识。
+- 最新验收：后端全量 537 passed、零弃用警告；前端认证/BFF 137、聊天状态 77、浏览器 21 场景通过；Ruff/TypeScript/ESLint 通过。新增 test_chat_ownership.py 12 条真实 Cookie/隔离 PostgreSQL 测试，覆盖双用户、模型上下文/持久化、缓存预置不绕过、清缓存恢复、历史状态、跨用户保存拒绝、旧匿名不可接管与故障脱敏。旧流式/Run 测试已适配 user_id；模型和 Redis 等待模拟。
+- 浏览器测试复用 run-isolated.py/login-page.mjs/chat_test_app.py；新增第二账号与真实 BFF 双用户场景：甲创建→切换乙沿用甲标识 404→乙新会话成功。全 21 场景通过，临时服务与隔离数据库已清理，无真实模型调用。重要面试题及索引已更新，参考答案已整理、尚未模拟。
 
 ## 唯一下一课
 
-**第 4 周：登录会话签发服务与事务编排。**
+**第 4 周：运行时间线与取消接口的所有权校验。**
 
-登录会话模型与持久化已验收（2026-09-13），学习者已修正撤销条件。测试、迁移和重要面试题已补齐，参考答案已整理、尚未模拟。正式进度仍为 3 / 12；不要重复注册、凭证验证或会话存储课程。
+聊天读写、历史查询和缓存已接入会话所有权，正式周进度仍为 3 / 12。接下来保护 GET /runs/{run_id} 与 POST /runs/{run_id}/cancel：根据运行关联的 Conversation.user_id 限制访问，用户身份只来自 CurrentUser。取消的授权应在写入取消状态/事件及发布 Redis 通知之前完成，并保留幂等与既有终态规则。
 
-下一课目标：组合凭证验证、安全随机令牌生成、SHA-256 摘要入库与事务提交；提交成功后才返回受保护的原始令牌及安全身份信息。一次只实现签发服务，不同时接入 HTTP、Cookie、前端或授权体系。
+先梳理 runs.py、run_repository.py、run_cancellation.py、前端取消 BFF 与 requestCancellation，给出一个可运行闭环：认证 Cookie/Origin 转发、401/404/服务错误、已结束运行与重复取消、跨用户拒绝不写数据库/不发布通知。不要只保护后端而导致现有停止按钮失效。按需读取 skills/agent-streaming/SKILL.md，继续模型模拟与 PostgreSQL 隔离测试；先给完整核心参考，学习者完成后再补测试。
 
-开始前按需读取：
-
-- `apps/api/app/models.py`、`apps/api/app/database.py`
-- `apps/api/app/services/authentication_service.py`
-- `apps/api/app/repositories/login_session_repository.py`
-- `apps/api/app/services/registration_service.py` 的事务所有权模式
-- `apps/api/tests/conftest.py`、`apps/api/tests/test_authentication_service.py`、`apps/api/tests/test_login_session_repository.py`
-
-必须保持的设计边界：
-
-- 区分数据库 Session、聊天 Conversation 和登录会话；已有 external_id 是业务身份，不是认证凭证。
-- 会话凭证必须使用密码学安全随机值，数据库只存令牌摘要并关联用户，明确过期时间、撤销方式及事务所有权；不能把密码或随机令牌明文写进日志。
-- 保留中文用户名规范和已有历史用户；不得通过会话迁移重建或清空开发数据。
-- 注册、凭证验证、会话签发分层；Cookie 的 HttpOnly/Secure/SameSite、BFF 转发、CSRF 与登录/登出接口在接入时分别落实，不能把存储模型视为完整登录闭环。
-- PostgreSQL 测试使用独立测试库；只有学习者明确说“完成了”后才补齐迁移/测试等配套并验收。
-
-验收范围在下一课开场落实：至少覆盖成功签发且数据库无明文令牌、中文用户名、错误凭证不写入、过期时间、随机令牌不重复、真实提交/失败回滚及事务所有权；错误与日志不泄露凭证。
+未完成边界：运行时间线和取消入口当前仍未授权，不能宣称应用已有完整多用户隔离。同一用户同一会话的并发排序、普通聊天非模型异常/取消后的缓存一致性仍沿用既有行为，未作为本课新增能力；不得宣称这些已解决。历史匿名数据不擅自迁移，不展开 Workspace/Task。
 
 ## 保留但不阻塞当前课程的问题
 

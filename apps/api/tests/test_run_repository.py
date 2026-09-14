@@ -1,9 +1,21 @@
-from sqlalchemy.orm import sessionmaker
+import pytest
+from sqlalchemy.orm import Session, sessionmaker
+from app.models import User
+
+
+@pytest.fixture
+def owner_id(engine):
+    with Session(engine) as session, session.begin():
+        user = User(external_id="run-test-owner")
+        session.add(user)
+        session.flush()
+        return user.id
+
 
 from app.repositories import run_repository
 
 
-def test_run_repository_records_and_loads_timeline(monkeypatch, engine):
+def test_run_repository_records_and_loads_timeline(monkeypatch, engine, owner_id):
     test_session_local = sessionmaker(
         bind=engine,
         autoflush=False,
@@ -11,7 +23,7 @@ def test_run_repository_records_and_loads_timeline(monkeypatch, engine):
     )
     monkeypatch.setattr(run_repository, "SessionLocal", test_session_local)
 
-    run_id = run_repository.create_agent_run("timeline-session")
+    run_id = run_repository.create_agent_run(user_id=owner_id, session_id="timeline-session")
 
     run_repository.record_run_event(
         run_id=run_id,
@@ -49,7 +61,7 @@ def test_run_repository_records_and_loads_timeline(monkeypatch, engine):
     assert events[2]["payload"] == {"chunk": "第二段"}
 
 
-def test_finish_run_rejects_unknown_status(monkeypatch, engine):
+def test_finish_run_rejects_unknown_status(monkeypatch, engine, owner_id):
     test_session_local = sessionmaker(
         bind=engine,
         autoflush=False,
@@ -57,7 +69,7 @@ def test_finish_run_rejects_unknown_status(monkeypatch, engine):
     )
     monkeypatch.setattr(run_repository, "SessionLocal", test_session_local)
 
-    run_id = run_repository.create_agent_run("invalid-status-session")
+    run_id = run_repository.create_agent_run(user_id=owner_id, session_id="invalid-status-session")
 
     try:
         run_repository.finish_agent_run(
@@ -70,7 +82,7 @@ def test_finish_run_rejects_unknown_status(monkeypatch, engine):
         raise AssertionError("未知运行状态应该被拒绝")
 
 
-def test_cancelling_a_running_run_records_its_terminal_event(monkeypatch, engine):
+def test_cancelling_a_running_run_records_its_terminal_event(monkeypatch, engine, owner_id):
     test_session_local = sessionmaker(
         bind=engine,
         autoflush=False,
@@ -78,7 +90,7 @@ def test_cancelling_a_running_run_records_its_terminal_event(monkeypatch, engine
     )
     monkeypatch.setattr(run_repository, "SessionLocal", test_session_local)
 
-    run_id = run_repository.create_agent_run("cancel-run-session")
+    run_id = run_repository.create_agent_run(user_id=owner_id, session_id="cancel-run-session")
 
     assert run_repository.request_run_cancellation(run_id, "user") is True
     assert run_repository.request_run_cancellation(run_id, "timeout") is False

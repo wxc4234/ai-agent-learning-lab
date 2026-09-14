@@ -249,3 +249,16 @@ test("a timeout becomes an error rather than an aborted run", () => {
   assert.equal(state.runSummary, null);
   assert.notEqual(state.status, "aborted");
 });
+
+for (const [status, message] of [
+    [404, "会话不存在或不可访问，请重新发送问题以创建新会话。"],
+    [401, "登录状态已失效，请打开“账号与退出”重新登录。"],
+    [403, "聊天请求来源不被允许，请从配置的应用地址访问。"],
+    [400, "聊天请求不符合要求，请检查输入后再试。"],
+    [415, "聊天请求不符合要求，请检查输入后再试。"],
+    [422, "聊天请求不符合要求，请检查输入后再试。"],
+] as const) {
+    test(`authentication/input HTTP ${status} has actionable safe message`, () => {
+        assert.equal(toUserFacingError(new Response("SECRET", { status })), message);
+    });
+}

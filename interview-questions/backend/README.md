@@ -38,7 +38,7 @@
 | --- | --- | --- | --- |
 | - | （示例）MySQL 索引原理 | 高 | 待做 |
 | web | [密码哈希、注册事务、登录凭证与 HTTP 脱敏](web/password-hashing.md) | 复习优先级：高 | 参考答案已整理、尚未模拟；含中文用户名及凭证校验证据 |
-| web | [服务端登录会话：摘要、过期、撤销与事务](web/login-sessions.md) | 复习优先级：高 | 参考答案已整理、尚未模拟；含 PostgreSQL 仓储及迁移证据 |
+| web | [服务端登录会话：摘要、过期、撤销与事务](web/login-sessions.md) | 复习优先级：高 | 参考答案已整理、尚未模拟；含仓储、签发、Cookie/CSRF、身份解析、依赖注入/Session 生命周期与登出撤销/清 Cookie；含聊天/历史所有权、缓存授权、并发唯一键争用及事务测试证据 |
 
 <!-- ORGANIZED-INTERVIEW-IMPORT:START -->
 

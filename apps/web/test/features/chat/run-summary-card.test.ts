@@ -4,6 +4,7 @@ import { createRequire } from "node:module";
 import { test } from "node:test";
 import { createElement, type ReactElement } from "react";
 import ts from "typescript";
+import { cn } from "cn";
 import { initialChatState, type ChatState, type CompletedRunSummary } from "../../../src/features/chat/chat-state.ts";
 import { createRunSummaryMetrics } from "../../../src/features/chat/run-summary-view.ts";
 
@@ -37,13 +38,19 @@ function compile(code: string) {
     }).outputText;
 }
 // 读取生产组件本体，使用真实 React 服务端渲染；不复制卡片 JSX。
+const primitiveSource = source("../../../src/components/ui/card.tsx");
+const primitiveFunction = primitiveSource.statements.find(ts.isFunctionDeclaration);
+assert.ok(primitiveFunction);
+const SharedCard = new Function("React", "cn",
+    compile(primitiveFunction.getText(primitiveSource)) + "\nreturn Card;",
+)({ createElement }, cn);
 const cardSource = source("../../../src/features/chat/components/run-summary-card.tsx");
 const cardFunction = cardSource.statements.find(ts.isFunctionDeclaration);
 assert.ok(cardFunction);
 const declaration = cardFunction.getText(cardSource).replace(/^export default /, "");
-const Card = new Function("React", "createRunSummaryMetrics",
+const Card = new Function("React", "createRunSummaryMetrics", "Card",
     compile(declaration) + "\nreturn RunSummaryCard;",
-)({ createElement }, createRunSummaryMetrics) as (
+)({ createElement }, createRunSummaryMetrics, SharedCard) as (
     props: { summary: CompletedRunSummary; status: "done" | "error" },
 ) => ReactElement;
 

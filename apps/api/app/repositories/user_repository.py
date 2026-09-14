@@ -51,3 +51,13 @@ def get_user_by_username(
     return session.scalar(
         select(User).where(User.username == username),
     )
+
+def get_user_by_id(
+    session: Session,
+    user_id: int,
+) -> User | None:
+    """按数据库内部主键查询用户，不创建用户或管理事务。"""
+
+    return session.scalar(
+        select(User).where(User.id == user_id),
+    )

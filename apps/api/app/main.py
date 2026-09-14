@@ -10,6 +10,9 @@ from app.routers.health import router as health_router
 from app.routers.runs import router as runs_router
 from app.routers.tools import router as tools_router
 from app.routers.registration import router as registration_router
+from app.routers.login import router as login_router
+from app.routers.current_user import router as current_user_router
+from app.routers.logout import router as logout_router
 from app.services.run_cancellation import close_cancellation_broker
 
 
@@ -34,4 +37,7 @@ app.include_router(conversation_router)
 app.include_router(tools_router)
 app.include_router(runs_router)
 app.include_router(registration_router)
+app.include_router(login_router)
+app.include_router(current_user_router)
+app.include_router(logout_router)
 """FastAPI 应用装配入口：只负责生命周期和路由注册。"""

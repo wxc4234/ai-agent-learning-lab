@@ -2,14 +2,11 @@
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
+from sqlalchemy.dialects.postgresql import insert
 
 from app import models  # noqa: F401  # 导入模型，使 Base 能收集所有数据表定义。
 from app.database import Base, SessionLocal, engine
 from app.models import Conversation, Message
-from app.repositories.user_repository import get_or_create_user
-
-# 当前尚未接入登录系统；保留一个稳定本地用户，后续由认证后的用户身份替换。
-LOCAL_USER_EXTERNAL_ID = "local-demo-user"
 
 
 def init_db() -> None:
@@ -17,40 +14,18 @@ def init_db() -> None:
     Base.metadata.create_all(engine)
 
 
-def get_or_create_conversation(
-    session: Session,
-    external_id: str,
-) -> Conversation:
-    """按 API 的 session_id 查找会话，首次聊天时创建对应会话。"""
-    conversation = session.scalar(
-        select(Conversation).where(
-            Conversation.external_id == external_id,
-        ),
-    )
-    if conversation is not None:
-        return conversation
-
-    user = get_or_create_user(session, LOCAL_USER_EXTERNAL_ID)
-    conversation = Conversation(
-        user_id=user.id,
-        external_id=external_id,
-    )
-    session.add(conversation)
-    session.flush()
-
-    return conversation
-
-
-def load_conversation(session_id: str) -> list[dict[str, str]]:
-    """按消息写入顺序读取会话历史，供 Chat Service 重建模型上下文。"""
+def load_conversation(
+    *,
+    user_id: int,
+    session_id: str,
+) -> list[dict[str, str]]:
+    """读取当前用户拥有的会话历史。"""
     with SessionLocal() as session:
-        conversation = session.scalar(
-            select(Conversation).where(
-                Conversation.external_id == session_id,
-            ),
+        conversation = require_owned_conversation(
+            session,
+            user_id=user_id,
+            session_id=session_id,
         )
-        if conversation is None:
-            return []
 
         messages = session.scalars(
             select(Message)
@@ -58,23 +33,30 @@ def load_conversation(session_id: str) -> list[dict[str, str]]:
             .order_by(Message.id),
         ).all()
 
-    return [
-        {
-            "role": message.role,
-            "content": message.content,
-        }
-        for message in messages
-    ]
+        return [
+            {
+                "role": message.role,
+                "content": message.content,
+            }
+            for message in messages
+        ]
 
 
 def save_conversation_turn(
+    *,
+    user_id: int,
     session_id: str,
     user_content: str,
     assistant_content: str,
 ) -> None:
-    """用一个事务保存完整聊天轮次，避免只写入用户或助手其中一条消息。"""
+    """检查所有权后，用一个事务保存完整聊天轮次。"""
     with SessionLocal.begin() as session:
-        conversation = get_or_create_conversation(session, session_id)
+        conversation = require_owned_conversation(
+            session,
+            user_id=user_id,
+            session_id=session_id,
+        )
+
         session.add_all(
             [
                 Message(
@@ -88,4 +70,74 @@ def save_conversation_turn(
                     content=assistant_content,
                 ),
             ],
+        )
+
+
+class ConversationNotAccessibleError(Exception):
+    """会话不存在，或不属于当前用户。"""
+
+    code = "conversation_not_accessible"
+
+    def __init__(self) -> None:
+        super().__init__("会话不存在或不可访问")
+
+
+def require_owned_conversation(
+    session: Session,
+    *,
+    user_id: int,
+    session_id: str,
+) -> Conversation:
+    """读取当前用户拥有的会话，不创建记录。"""
+    conversation = session.scalar(
+        select(Conversation).where(
+            Conversation.external_id == session_id,
+            Conversation.user_id == user_id,
+        )
+    )
+
+    if conversation is None:
+        raise ConversationNotAccessibleError()
+
+    return conversation
+
+
+def get_or_create_owned_conversation(
+    session: Session,
+    *,
+    user_id: int,
+    session_id: str,
+) -> Conversation:
+    """创建当前用户的会话；标识已存在时重新检查所有权。"""
+    statement = (
+        insert(Conversation)
+        .values(
+            external_id=session_id,
+            user_id=user_id,
+        )
+        .on_conflict_do_nothing(
+            index_elements=[Conversation.external_id],
+        )
+    )
+
+    session.execute(statement)
+
+    return require_owned_conversation(
+        session,
+        user_id=user_id,
+        session_id=session_id,
+    )
+
+
+def ensure_owned_conversation(
+    *,
+    user_id: int,
+    session_id: str,
+) -> None:
+    """确保会话属于当前用户；新会话成功创建后提交。"""
+    with SessionLocal.begin() as session:
+        get_or_create_owned_conversation(
+            session,
+            user_id=user_id,
+            session_id=session_id,
         )

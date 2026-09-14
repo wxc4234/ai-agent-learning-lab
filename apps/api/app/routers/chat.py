@@ -7,9 +7,14 @@ from openai import OpenAIError
 from app.repositories.run_repository import create_agent_run
 from app.schemas import ChatRequest, ChatResponse
 from app.services.chat_service import create_chat_reply, stream_chat_reply
+from app.dependencies import CurrentUser
+from app.routers.chat_boundary import ChatRoute
 
 # tag 只影响 Swagger 分组，让前端联调时按业务而非文件查找接口。
-router = APIRouter(tags=["chat"])
+router = APIRouter(
+    tags=["chat"],
+    route_class=ChatRoute,
+)
 
 
 @router.get("/chat")
@@ -20,16 +25,21 @@ def chat_help():
     }
 
 
-@router.post("/chat", response_model=ChatResponse)
-async def chat(request: ChatRequest):
+@router.post(
+    "/chat",
+    response_model=ChatResponse,
+)
+async def chat(
+    request: ChatRequest,
+    current_user: CurrentUser,
+) -> ChatResponse:
     try:
-        # Router 只转换 HTTP 请求；记忆、模型调用和持久化由 Service 统一处理。
         reply = await create_chat_reply(
+            user_id=current_user.id,
             session_id=request.session_id,
             prompt=request.prompt,
         )
     except OpenAIError as error:
-        # 不向前端暴露供应商底层异常，统一转换成可理解的网关错误。
         raise HTTPException(
             status_code=502,
             detail="模型服务暂时不可用",
@@ -42,23 +52,27 @@ async def chat(request: ChatRequest):
 
 
 @router.post("/chat/stream")
-async def chat_stream(request: ChatRequest) -> StreamingResponse:
-
+async def chat_stream(
+    request: ChatRequest,
+    current_user: CurrentUser,
+) -> StreamingResponse:
     run_id = await asyncio.to_thread(
         create_agent_run,
+        user_id=current_user.id,
         session_id=request.session_id,
         prompt=request.prompt,
     )
 
     return StreamingResponse(
         stream_chat_reply(
+            user_id=current_user.id,
             session_id=request.session_id,
             prompt=request.prompt,
             run_id=run_id,
         ),
         media_type="application/x-ndjson",
         headers={
-            "Cache-Control": "no-cache",
+            "Cache-Control": "no-store",
             "X-Run-ID": str(run_id),
         },
     )

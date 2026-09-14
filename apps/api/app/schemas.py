@@ -131,3 +131,36 @@ class LoginRequest(BaseModel):
     @classmethod
     def normalize_username(cls, value: str) -> str:
         return normalize_login_username(value)
+
+
+class LoginResponse(BaseModel):
+    """登录成功正文：仅返回客户端需要的安全身份。"""
+
+    external_id: str
+    username: str
+
+
+class LoginErrorResponse(BaseModel):
+    """登录失败正文：不携带输入值、凭证或内部异常详情。"""
+
+    code: str
+    message: str
+
+class CurrentUserResponse(BaseModel):
+    """当前登录用户的安全身份。"""
+
+    external_id: str
+    username: str
+
+
+class CurrentUserErrorResponse(BaseModel):
+    """当前用户查询的安全错误响应。"""
+
+    code: str
+    message: str
+
+class LogoutErrorResponse(BaseModel):
+    """登出失败的安全响应，不包含令牌或内部异常详情。"""
+
+    code: str
+    message: str

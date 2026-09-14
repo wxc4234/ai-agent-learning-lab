@@ -202,7 +202,7 @@ def test_redis_cancellation_signal_aborts_stream(monkeypatch):
     stream_blocker = asyncio.Event()
     finished_runs: list[tuple[int, str, dict[str, object]]] = []
 
-    async def fake_prepare_messages(session_id, prompt):
+    async def fake_prepare_messages(*, user_id, session_id, prompt):
         return history, list(history)
 
     async def blocked_agent_loop(decide, *, max_steps, max_total_tokens):
@@ -250,6 +250,7 @@ def test_redis_cancellation_signal_aborts_stream(monkeypatch):
 
     async def consume_until_cancelled():
         stream = chat_service.stream_chat_reply(
+            user_id=1,
             session_id="redis-cancel-test",
             prompt="生成一段长回答",
             run_id=505,
@@ -280,7 +281,7 @@ def test_cancelled_stream_rolls_back_pending_user_message(monkeypatch):
     ]
     blocker = asyncio.Event()
 
-    async def fake_prepare_messages(session_id, prompt):
+    async def fake_prepare_messages(*, user_id, session_id, prompt):
         return history, list(history)
 
     async def blocked_agent_loop(decide, *, max_steps, max_total_tokens):
@@ -326,6 +327,7 @@ def test_cancelled_stream_rolls_back_pending_user_message(monkeypatch):
 
     async def run_cancel():
         stream = chat_service.stream_chat_reply(
+            user_id=1,
             session_id="cancel-test",
             prompt="生成一段长回答",
             run_id=101,
@@ -384,7 +386,7 @@ def test_completed_stream_records_chunks_and_finished_status(monkeypatch):
         tool_duration_ms=12,
     )
 
-    async def fake_prepare_messages(session_id, prompt):
+    async def fake_prepare_messages(*, user_id, session_id, prompt):
         return history, list(history)
 
     async def fake_agent_loop(decide, *, max_steps, max_total_tokens):
@@ -404,6 +406,7 @@ def test_completed_stream_records_chunks_and_finished_status(monkeypatch):
         return [
             decode_event(line)
             async for line in chat_service.stream_chat_reply(
+                user_id=1,
                 session_id="agent-success",
                 prompt="计算矩形面积",
                 run_id=202,
@@ -493,6 +496,7 @@ def test_completed_stream_records_chunks_and_finished_status(monkeypatch):
     assert finished_runs == [(202, "done", finished_payload)]
     assert saved_turns == [
         {
+            "user_id": 1,
             "session_id": "agent-success",
             "user_content": "计算矩形面积",
             "assistant_content": "矩形面积是 12。",
@@ -511,7 +515,7 @@ def test_model_error_finishes_run_as_error_and_rolls_back_user_message(monkeypat
     ]
     finished_runs: list[tuple[int, str, dict[str, object]]] = []
 
-    async def fake_prepare_messages(session_id, prompt):
+    async def fake_prepare_messages(*, user_id, session_id, prompt):
         return history, list(history)
 
     async def failing_agent_loop(decide, *, max_steps, max_total_tokens):
@@ -522,6 +526,7 @@ def test_model_error_finishes_run_as_error_and_rolls_back_user_message(monkeypat
         return [
             decode_event(line)
             async for line in chat_service.stream_chat_reply(
+                user_id=1,
                 session_id="agent-model-error",
                 prompt="测试错误",
                 run_id=303,
@@ -575,7 +580,7 @@ def test_timed_out_stream_finishes_as_error(monkeypatch):
     stream_blocker = asyncio.Event()
     finished_runs: list[tuple[int, str, dict[str, object]]] = []
 
-    async def fake_prepare_messages(session_id, prompt):
+    async def fake_prepare_messages(*, user_id, session_id, prompt):
         return history, list(history)
 
     async def blocked_agent_loop(decide, *, max_steps, max_total_tokens):
@@ -619,6 +624,7 @@ def test_timed_out_stream_finishes_as_error(monkeypatch):
 
     async def cancel_stream():
         stream = chat_service.stream_chat_reply(
+            user_id=1,
             session_id="timeout-test",
             prompt="生成一段长回答",
             run_id=404,
@@ -660,7 +666,7 @@ def test_tool_error_is_emitted_and_model_can_still_finish(monkeypatch):
     )
     recorded_events: list[tuple[int, str, dict[str, object]]] = []
 
-    async def fake_prepare_messages(session_id, prompt):
+    async def fake_prepare_messages(*, user_id, session_id, prompt):
         return history, list(history)
 
     async def fake_agent_loop(decide, *, max_steps, max_total_tokens):
@@ -702,6 +708,7 @@ def test_tool_error_is_emitted_and_model_can_still_finish(monkeypatch):
         return [
             decode_event(line)
             async for line in chat_service.stream_chat_reply(
+                user_id=1,
                 session_id="agent-tool-error",
                 prompt="调用未知工具",
                 run_id=606,
@@ -775,7 +782,7 @@ def test_non_completed_loop_emits_run_error_and_rolls_back_turn(
         tool_duration_ms=12,
     )
 
-    async def fake_prepare_messages(session_id, prompt):
+    async def fake_prepare_messages(*, user_id, session_id, prompt):
         return history, list(history)
 
     async def fake_agent_loop(decide, *, max_steps, max_total_tokens):
@@ -815,6 +822,7 @@ def test_non_completed_loop_emits_run_error_and_rolls_back_turn(
         return [
             decode_event(line)
             async for line in chat_service.stream_chat_reply(
+                user_id=1,
                 session_id="agent-max-steps",
                 prompt="一直调用工具",
                 run_id=707,

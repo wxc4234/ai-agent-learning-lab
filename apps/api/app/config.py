@@ -16,6 +16,8 @@ API_DIR = APP_DIR.parent
 # apps/api 的上两层就是仓库根目录，其中保存了不提交 Git 的 .env。
 PROJECT_ROOT = API_DIR.parents[1]
 
+# 登录签发、身份查询和后续登出共用同一个 Cookie 名称。
+LOGIN_COOKIE_NAME = "agent_session"
 
 class Settings(BaseSettings):
     """定义配置契约：必填字段缺失时，在服务启动阶段明确失败。"""
@@ -92,6 +94,22 @@ class Settings(BaseSettings):
     redis_url: str = Field(
         default="redis://127.0.0.1:6379/0",
         validation_alias="REDIS_URL",
+    )
+
+    # 默认面向 HTTPS；本地 HTTP 调试通过环境变量显式关闭
+    login_cookie_secure: bool = Field(
+        default=True,
+        validation_alias="LOGIN_COOKIE_SECURE",
+
+    )
+
+    # 精确匹配 scheme、host、port，不使用通配符或字符串前缀匹配
+    login_allowed_origins: tuple[str, ...] = Field(
+        default=(
+            "http://localhost:3000",
+            "http://127.0.0.1:3000",
+        ),
+        validation_alias="LOGIN_ALLOWED_ORIGINS",
     )
 
     # 统一从根目录 .env 读取，并忽略暂未定义的环境变量，方便逐步扩展配置。

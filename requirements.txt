@@ -3,6 +3,9 @@
 
 # Web 框架（写接口 @app.post / @app.get 等）
 fastapi==0.141.1
+# Starlette 1.6.0 TestClient 仍引用 anyio.abc.BlockingPortal；
+# AnyIO 4.15 开始对此发出弃用警告。待 Starlette 修复并验证后再升级。
+anyio==4.14.2
 # 数据校验（BaseModel 定义请求/响应结构）
 pydantic==2.13.4
 # 配置管理（从环境变量和 .env 读取并校验配置）

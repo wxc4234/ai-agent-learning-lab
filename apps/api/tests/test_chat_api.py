@@ -5,14 +5,17 @@ from fastapi.testclient import TestClient
 from openai import OpenAIError
 
 import app.routers.chat as chat_router_module
+from app.dependencies import require_current_user
+from app.services.authentication_service import AuthenticatedUser
 
 
 def test_chat_rejects_request_missing_required_fields():
     app = FastAPI()
     app.include_router(chat_router_module.router)
+    app.dependency_overrides[require_current_user] = lambda: AuthenticatedUser(1, "test-user", "tester")
     client = TestClient(app)
 
-    response = client.post("/chat", json={})
+    response = client.post("/chat", json={}, headers={"Origin": "http://localhost:3000"})
 
     assert response.status_code == 422
 
@@ -26,12 +29,14 @@ def test_chat_returns_friendly_error_when_model_is_unavailable(monkeypatch):
 
     app = FastAPI()
     app.include_router(chat_router_module.router)
+    app.dependency_overrides[require_current_user] = lambda: AuthenticatedUser(1, "test-user", "tester")
     client = TestClient(app)
 
     response = client.post(
         "/chat",
+        headers={"Origin": "http://localhost:3000"},
         json={"session_id": "test-session", "prompt": "你好"},
     )
 
     assert response.status_code == 502
-    assert response.json() == {"detail": "模型服务暂时不可用"}
+    assert response.json() == {"code": "model_service_unavailable", "message": "模型服务暂时不可用"}

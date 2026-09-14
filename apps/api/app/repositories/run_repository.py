@@ -7,7 +7,9 @@ from sqlalchemy import select
 
 from app.database import SessionLocal
 from app.models import AgentRun, AgentRunEvent
-from app.repositories.conversation_repository import get_or_create_conversation
+from app.repositories.conversation_repository import (
+    get_or_create_owned_conversation,
+)
 
 
 class RunTimelineEvent(TypedDict):
@@ -30,18 +32,26 @@ class RunTimeline(TypedDict):
     events: list[RunTimelineEvent]
 
 
-def create_agent_run(session_id: str, prompt: str | None = None) -> int:
-    """创建一次运行记录，并返回 run_id。"""
-
+def create_agent_run(
+    *,
+    user_id: int,
+    session_id: str,
+    prompt: str | None = None,
+) -> int:
+    """确认会话所有权后，在同一事务中创建运行记录。"""
     with SessionLocal.begin() as session:
-        conversation = get_or_create_conversation(session, session_id)
+        conversation = get_or_create_owned_conversation(
+            session,
+            user_id=user_id,
+            session_id=session_id,
+        )
 
         run = AgentRun(
             conversation_id=conversation.id,
             status="running",
         )
         session.add(run)
-        session.flush()  # 生成 run.id
+        session.flush()
 
         session.add(
             AgentRunEvent(
@@ -51,11 +61,10 @@ def create_agent_run(session_id: str, prompt: str | None = None) -> int:
                     "session_id": session_id,
                     "prompt_length": len(prompt or ""),
                 },
-            )
+            ),
         )
 
         return run.id
-
 
 def record_run_event(
     run_id: int, event_type: str, payload: dict[str, object] | None = None

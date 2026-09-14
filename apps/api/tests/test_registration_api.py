@@ -227,5 +227,5 @@ def test_openapi_and_other_route_validation_remain_intact(client: TestClient):
         )
     assert RegistrationErrorResponse.model_fields.keys() == {"code", "message"}
     response = client.post("/chat", json={})
-    assert response.status_code == 422
-    assert "detail" in response.json()
+    assert response.status_code == 403
+    assert response.json()["code"] == "chat_origin_rejected"

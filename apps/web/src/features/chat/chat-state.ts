@@ -201,25 +201,47 @@ export function chatReducer(state: ChatState, action: ChatAction): ChatState {
 }
 
 export function toUserFacingError(error: unknown): string {
-	if (error instanceof Response) {
-		if (error.status === 429) {
-			return "请求太频繁了，请稍后再试。";
-		}
-		if (error.status === 502) {
-			return "模型服务暂时不可用，请稍后重试。";
-		}
-		if (error.status >= 500) {
-			return "服务暂时出错，请稍后重试。";
-		}
-	}
+    if (error instanceof Response) {
+        if (error.status === 401) {
+            return "登录状态已失效，请打开“账号与退出”重新登录。";
+        }
 
-	if (error instanceof TypeError) {
-		return "网络连接中断，请检查网络后重试。";
-	}
+        if (error.status === 403) {
+            return "聊天请求来源不被允许，请从配置的应用地址访问。";
+        }
 
-	if (error instanceof Error && error.message) {
-		return error.message;
-	}
+		if (error.status === 404) {
+            return "会话不存在或不可访问，请重新发送问题以创建新会话。";
+        }
 
-	return "发生了未知错误，请稍后重试。";
+        if (
+            error.status === 400 ||
+            error.status === 415 ||
+            error.status === 422
+        ) {
+            return "聊天请求不符合要求，请检查输入后再试。";
+        }
+
+        if (error.status === 429) {
+            return "请求太频繁了，请稍后再试。";
+        }
+
+        if (error.status === 502) {
+            return "模型服务暂时不可用，请稍后重试。";
+        }
+
+        if (error.status >= 500) {
+            return "服务暂时出错，请稍后重试。";
+        }
+    }
+
+    if (error instanceof TypeError) {
+        return "网络连接中断，请检查网络后重试。";
+    }
+
+    if (error instanceof Error && error.message) {
+        return error.message;
+    }
+
+    return "发生了未知错误，请稍后重试。";
 }
