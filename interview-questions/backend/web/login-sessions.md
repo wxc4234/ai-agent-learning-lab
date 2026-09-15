@@ -24,9 +24,9 @@ SQLAlchemy Session 管理数据库工作单元，Conversation 保存聊天业务
 
 ## 项目证据
 
-- `apps/api/app/models.py` 与 `apps/api/app/repositories/login_session_repository.py`：关联用户、唯一摘要、时间约束、创建、查询、撤销。
-- `apps/api/tests/test_login_session_repository.py`：28 条 PostgreSQL 测试覆盖成功、失败、时间边界、时区以及真实提交/回滚。
-- `apps/api/tests/test_login_session_migration.py`：隔离测试库演练升级、降级、再升级，与模型比较一致，原五张业务表逐行不变。降级删除登录会话表，仅在测试库演练。
+- `apps/api/app/models.py` 与 `apps/api/app/repositories/auth/login_session_repository.py`：关联用户、唯一摘要、时间约束、创建、查询、撤销。
+- `apps/api/tests/auth/test_login_session_repository.py`：28 条 PostgreSQL 测试覆盖成功、失败、时间边界、时区以及真实提交/回滚。
+- `apps/api/tests/migrations/test_login_session_migration.py`：隔离测试库演练升级、降级、再升级，与模型比较一致，原五张业务表逐行不变。降级删除登录会话表，仅在测试库演练。
 - `apps/api/migrations/versions/c83f20a915bd_add_login_sessions.py`：新增登录会话表及索引。
 
 2026-09-13：后端 335 条测试通过，Ruff 通过；本课模型、仓储、迁移和测试 Pyright 零错误、零警告。开发库升级至 c83f20a915bd，已有业务数据逐行不变。
@@ -43,7 +43,7 @@ SecretStr 只保护默认显示，field(repr=False) 进一步省略结果里的 
 
 失败场景与取舍：调用方先查用户再签发会被拒绝；仓储擅自提交会破坏统一回滚；在 commit 前返回会产生无持久化记录的凭证。网络在服务器提交后断开可能使客户端无法判断提交结果，rollback 不保证撤销服务器已完成的提交；当前故障注入覆盖提交前失败，未实现此类不确定结果的幂等恢复。
 
-项目证据：`apps/api/app/services/login_session_service.py` 和 `apps/api/tests/test_login_session_service.py`。2026-09-14 新增 16 条 PostgreSQL 测试，覆盖独立物理连接可见性、真实摘要唯一冲突、提交失败后恢复、调用方 pending/flushed/read 三种事务状态，以及凭证错误、随机源故障、损坏哈希、有效期与脱敏。后端完整回归 351 passed，Ruff 通过；1 条 Starlette/AnyIO 弃用警告。未进行并发压测。
+项目证据：`apps/api/app/services/auth/login_session_service.py` 和 `apps/api/tests/auth/test_login_session_service.py`。2026-09-14 新增 16 条 PostgreSQL 测试，覆盖独立物理连接可见性、真实摘要唯一冲突、提交失败后恢复、调用方 pending/flushed/read 三种事务状态，以及凭证错误、随机源故障、损坏哈希、有效期与脱敏。后端完整回归 351 passed，Ruff 通过；1 条 Starlette/AnyIO 弃用警告。未进行并发压测。
 
 ## Cookie 登录的 HTTP 边界如何设计？
 
@@ -59,7 +59,7 @@ SecretStr 只保护默认显示，field(repr=False) 进一步省略结果里的 
 
 失败场景：将 content-type 拼成 content_type 会令正常 JSON 请求全部 415；漏捕 RequestValidationError 会把客户端输入错误变成 500。登录失败不签发新 Cookie，也不等于清除了请求原有 Cookie。若 commit 已成功但 Cookie 交付失败，可能留下客户端未取得令牌的记录；本课未实现这种跨数据库/网络边界的补偿。
 
-项目证据：apps/api/app/routers/login.py、config.py、schemas.py、main.py 与 apps/api/tests/test_login_api.py。2026-09-14 本课 29 条 PostgreSQL HTTP 测试通过，覆盖中文登录、Secure 开关、Cookie 摘要/Expires、Origin 边界、输入与解析错误、安全日志、提交前故障回滚、每请求 Session 关闭及线程池执行。测试未启动开发数据库 lifespan，尚未做浏览器 Cookie/BFF 联通验收。
+项目证据：apps/api/app/routers/auth/login.py、config.py、schemas.py、main.py 与 apps/api/tests/auth/test_login_api.py。2026-09-14 本课 29 条 PostgreSQL HTTP 测试通过，覆盖中文登录、Secure 开关、Cookie 摘要/Expires、Origin 边界、输入与解析错误、安全日志、提交前故障回滚、每请求 Session 关闭及线程池执行。测试未启动开发数据库 lifespan，尚未做浏览器 Cookie/BFF 联通验收。
 
 本课最终回归：380 passed，Ruff 通过，1 条既有 Starlette/AnyIO 弃用警告。
 
@@ -75,7 +75,7 @@ SecretStr 只保护默认显示，field(repr=False) 进一步省略结果里的 
 
 失败场景与取舍：只保护第一次查询会令第二次查询触发写入；将数据库异常统一转成登录失效会掩盖服务故障；把 external_id 当凭证允许客户端冒用身份。读取身份只代表本次查询所见状态，不能宣称实现了并发撤销与业务执行的原子隔离或跨请求缓存一致性。
 
-项目证据：apps/api/app/services/login_session_resolver.py、repositories/user_repository.py 与 tests/test_login_session_resolver.py。新增 29 条 PostgreSQL 测试覆盖真实签发后解析中文身份、格式与错误脱敏、创建/过期端点、时区、撤销、用户异常、两次查询的 autoflush 防护、调用方事务保留，以及真实数据库故障由调用方回滚恢复。受数据库外键/CHECK 约束禁止的用户异常状态通过仓储返回值注入验证，不宣称这些状态已真实写入数据库。
+项目证据：apps/api/app/services/auth/login_session_resolver.py、repositories/user_repository.py 与 tests/auth/test_login_session_resolver.py。新增 29 条 PostgreSQL 测试覆盖真实签发后解析中文身份、格式与错误脱敏、创建/过期端点、时区、撤销、用户异常、两次查询的 autoflush 防护、调用方事务保留，以及真实数据库故障由调用方回滚恢复。受数据库外键/CHECK 约束禁止的用户异常状态通过仓储返回值注入验证，不宣称这些状态已真实写入数据库。
 
 ## 当前用户接口如何防止身份冒用并释放资源？
 
@@ -85,7 +85,7 @@ GET /auth/me 只从 agent_session Cookie 获取令牌并包装成 SecretStr，�
 
 当前 HTTP 依赖每请求创建独立 Session，同步解析在线程池执行。退出 with SessionLocal() 会关闭数据库 Session，结束未提交事务并释放连接资源，这不等于撤销 LoginSession。响应生成也纳入局部 APIRoute 错误边界；成功和失败都 no-store，JSON 与日志不包含令牌，也不产生 Set-Cookie。
 
-项目证据：apps/api/app/routers/current_user.py、config.py 的共享 Cookie 名称、schemas.py、main.py，以及 tests/test_current_user_api.py。新增 16 条测试覆盖真实 HTTP 登录到当前用户查询、旧 Cookie 遭数据库过期/撤销拒绝、身份字段冒用无效、真实查询故障恢复、响应校验故障脱敏、SecretStr 包装、线程池与 Session 关闭。仅验收后端 TestClient 链路，不宣称浏览器/BFF 登录闭环完成。
+项目证据：apps/api/app/routers/auth/current_user.py、config.py 的共享 Cookie 名称、schemas.py、main.py，以及 tests/auth/test_current_user_api.py。新增 16 条测试覆盖真实 HTTP 登录到当前用户查询、旧 Cookie 遭数据库过期/撤销拒绝、身份字段冒用无效、真实查询故障恢复、响应校验故障脱敏、SecretStr 包装、线程池与 Session 关闭。仅验收后端 TestClient 链路，不宣称浏览器/BFF 登录闭环完成。
 
 ## 登出为什么要撤销服务端记录并支持幂等？
 
@@ -95,7 +95,7 @@ GET /auth/me 只从 agent_session Cookie 获取令牌并包装成 SecretStr，�
 
 服务拥有事务，检查已有事务位于 try 外且优先于令牌校验，避免连缺失令牌路径也误干预调用方工作。失败回滚后保留异常分类。不能先调用有效会话解析器，因为过期令牌仍应允许标记撤销。单设备登出以令牌摘要定位，不按 user_id 撤销全部会话。
 
-项目证据：apps/api/app/services/logout_service.py 与 tests/test_logout_service.py。新增 26 条 PostgreSQL 测试覆盖真实签发→登出→解析失败、其他令牌有效、独立物理连接可见、首次撤销时间保持、过期/未来记录、无效输入、调用方 pending/flushed/read 事务、提交前故障及更新后真实 SQL 失败回滚、Session 恢复与脱敏。未做并发撤销压测或服务器已提交后网络断开的不确定结果恢复。
+项目证据：apps/api/app/services/auth/logout_service.py 与 tests/auth/test_logout_service.py。新增 26 条 PostgreSQL 测试覆盖真实签发→登出→解析失败、其他令牌有效、独立物理连接可见、首次撤销时间保持、过期/未来记录、无效输入、调用方 pending/flushed/read 事务、提交前故障及更新后真实 SQL 失败回滚、Session 恢复与脱敏。未做并发撤销压测或服务器已提交后网络断开的不确定结果恢复。
 
 ## HTTP 登出如何同时完成服务端撤销与客户端清 Cookie？
 
@@ -105,7 +105,7 @@ POST /auth/logout 先精确校验 Origin，再从 Cookie 提取 SecretStr 令牌
 
 删除 Cookie 必须对应原名称、Path=/ 和不设置 Domain，并沿用 Secure/HttpOnly/SameSite 策略。成功与失败都 no-store；204 无正文。只观察浏览器 Cookie 消失无法证明撤销完成，还必须重放旧令牌并确认 /auth/me 返回 401。数据库提交与浏览器接收清 Cookie 不是跨系统原子操作；若提交成功但响应丢失，可重试幂等登出，不宣称回滚已提交的撤销。
 
-项目证据：apps/api/app/routers/logout.py、schemas.py、main.py 与 tests/test_logout_api.py。新增 18 条 PostgreSQL HTTP 测试覆盖登录→查询→登出→旧令牌重放失败、其他会话仍有效、重复/无效/过期 Cookie、删除属性与 Secure 开关、Origin 拒绝、提交失败回滚且保留 Cookie、脱敏日志、线程池与 Session 关闭、204/OpenAPI 及旧接口回归。仅完成后端 TestClient 链路，尚未做 BFF/浏览器 Cookie 验证。
+项目证据：apps/api/app/routers/auth/logout.py、schemas.py、main.py 与 tests/auth/test_logout_api.py。新增 18 条 PostgreSQL HTTP 测试覆盖登录→查询→登出→旧令牌重放失败、其他会话仍有效、重复/无效/过期 Cookie、删除属性与 Secure 开关、Origin 拒绝、提交失败回滚且保留 Cookie、脱敏日志、线程池与 Session 关闭、204/OpenAPI 及旧接口回归。仅完成后端 TestClient 链路，尚未做 BFF/浏览器 Cookie 验证。
 
 
 ## FastAPI 当前用户依赖如何管理身份、线程和数据库生命周期？
@@ -132,7 +132,7 @@ ChatRoute 包装依赖求解和路由执行：状态变更请求先验证精确 
 
 取舍：本课完成身份验证，尚未实现资源所有权。现有 conversation 仓储和内存缓存仍按 session_id 工作，历史/运行查询与取消入口尚未整体接入授权。下一步必须把服务端身份贯穿持久化、缓存、查询和取消，防止已登录用户跨账号访问。
 
-项目证据：routers/chat.py、routers/chat_boundary.py、tests/test_chat_auth_boundary.py（14 条）、tests/test_chat_auth_sessions.py（18 条）。后者复用真实隔离 PostgreSQL，验证有效/缺失/未知/错误格式/过期/撤销凭证、Session 在业务与流前关闭、SQL 故障与输入脱敏；业务模型与 run 创建模拟并断言拒绝时不调用。2026-09-14 后端全量 510 passed、零弃用警告。
+项目证据：routers/chat.py、routers/chat_boundary.py、tests/chat/test_chat_auth_boundary.py（14 条）、tests/chat/test_chat_auth_sessions.py（18 条）。后者复用真实隔离 PostgreSQL，验证有效/缺失/未知/错误格式/过期/撤销凭证、Session 在业务与流前关闭、SQL 故障与输入脱敏；业务模型与 run 创建模拟并断言拒绝时不调用。2026-09-14 后端全量 510 passed、零弃用警告。
 
 ## 会话创建如何避免并发接管，并保留事务边界？
 
@@ -154,6 +154,46 @@ ChatRoute 包装依赖求解和路由执行：状态变更请求先验证精确 
 
 缓存键使用 (user_id, session_id)，并在每次命中前重新执行数据库所有权检查。仅更换缓存键仍不够：过时或误写的缓存不能成为授权依据。读取历史成功后才发布缓存；数据库失败不能留下半成品。历史查询同样要求 CurrentUser，自己的空会话为 200/空列表，不存在或非本人统一 404；保存消息也按所有权定位记录。
 
-取舍和边界：会话 external_id 仍全局唯一，不接管 local-demo-user 的历史数据。普通聊天会先提交空会话准备，流式聊天将会话与 run 创建放在同一事务；模型调用不长期占用该事务。当前只完成聊天与会话历史的授权，运行时间线和取消接口仍待补齐；同一用户同一会话并发写入的顺序与缓存一致性也不是本课已解决的问题。
+取舍和边界：会话 external_id 仍全局唯一，不接管 local-demo-user 的历史数据。普通聊天会先提交空会话准备，流式聊天将会话与 run 创建放在同一事务；模型调用不长期占用该事务。此节记录聊天与会话历史课的范围。运行时间线与取消的后续实现见 [运行所有权与终态互斥](agent-run-observability.md)；同一用户同一会话并发写入的顺序与缓存一致性仍未解决。
 
 项目证据：chat.py、conversation.py、chat_boundary.py、chat_service.py 和两个仓储；test_chat_ownership.py 新增 12 条真实 Cookie/隔离 PostgreSQL 测试，仅模拟模型和 Redis 等待。验证双用户普通/流式聊天、模型收到的上下文、数据库记录数量、缓存预置不绕过、清缓存后从持久化恢复、历史状态码、跨用户保存拒绝、匿名历史不可接管与故障脱敏。
+
+## 为什么模型、实际数据库结构和 Alembic 版本记录必须分别核对？
+
+复习优先级：高；参考答案已整理、尚未模拟。
+
+参考答案：ORM 模型描述期望结构，数据库目录记录真实表结构，alembic_version 记录已经执行到哪一步；三者可能因 create_all、人工操作或环境切换而不一致。已有表并不能证明迁移版本正确，版本落后也不代表迁移涉及的表一定不存在。直接 upgrade 可能撞到重复表，直接 stamp 则可能掩盖缺失结构。
+
+项目证据：Workspace 课预检发现开发库版本为 b62d19f804ae，但 login_sessions 已存在。先以 compare_metadata（含 server default）检查除新 Workspace 外的结构，再单独核对登录会话的 CHECK 约束，与 c83f20a915bd 目标一致。隔离 PostgreSQL 演练通过后，在单事务内锁住迁移版本表、重新检查前置条件，校准已存在结构对应的版本，执行新增 Workspace 表的迁移并更新最终版本。最终为 d94e31b706fa，alembic check 无差异。
+
+取舍与失败场景：结构存在的原因未追溯，不能断言一定由 create_all 造成；校准只适用于已证实全部迁移效果已存在的这一次情形，不把 stamp 当作通用恢复命令。若存在数据回填等非结构操作，仅比对表结构还不够。这里旧登录迁移只有建表/索引，不含数据转换；没有重写旧迁移、删表或重建业务数据。迁移升级/回退及旧表逐行保持在隔离库验证，开发库未做业务数据逐行读取。
+
+配套证据：test_workspace_repository.py（19 条）与 test_workspace_migration.py（2 条）；覆盖所有权、UUID/名称、flush 与 commit 的跨连接可见性、调用方回滚、约束失败、完整旧迁移链、版本校准与目标模型比较。
+
+## 服务为什么先提取结果、提交成功后再返回？
+
+复习优先级：高；参考答案已整理、尚未模拟。
+
+参考答案：拥有事务的服务在提交前将 ORM 字段复制到不可变普通结果对象，提交成功后才返回。这样既不把未提交结果当成功，也避免默认 expire_on_commit=True 时提交后读取 ORM 属性触发隐式查询和新事务。结果仅包含对外标识、规范化名称和数据库创建时间，不暴露 ORM 对象或内部用户字段。
+
+事务检查必须在 try/rollback 边界之外：传入 Session 已有显式、只读、pending 或 flushed 事务时，服务拒绝接手，也不能顺手回滚调用方工作。仓储只 flush；服务管理 commit/rollback，调用方负责关闭 Session。名称校验异常与数据库异常保留分类，HTTP 脱敏留给后续路由边界。
+
+Workspace 项目证据：workspace_service.py 与 test_workspace_service.py 的 20 条隔离 PostgreSQL 测试。覆盖两种 expire_on_commit 配置、结果关闭 Session 后可用、冻结与字段白名单、既有事务保护、真实外键错误/SQL 错误、提交前注入故障回滚已 flush 记录、结果构造失败及 Session 恢复。提交故障测试模拟的是提交前失败，不宣称处理了服务器已提交但客户端未收到确认的分布式不确定性。
+
+Workspace HTTP 补充证据：真实 app 的测试先发现遗漏 include_router 导致 404，说明仅把 router 挂到测试专用 app 无法覆盖应用装配。补齐注册后，29 条 HTTP 测试验证真实 Cookie 归属、输入身份字段拒绝、Session 关闭和错误脱敏；与创建服务 20 条、认证依赖 9 条组成 58 条定向回归，未声称执行全量。
+
+失败边界：服务提交之后仍可能发生 HTTP 响应构造或序列化错误。测试注入无效响应字段，确认返回安全 500、数据库记录仍为 1。事务只能覆盖提交之前的工作；客户端失败响应不必然表示业务没成功，后续幂等设计应解决重复提交，而不能依赖“所有 500 都回滚”的假设。
+
+
+BFF/页面补充证据（2026-09-15）：Workspace 创建响应白名单与状态/错误码联合校验，唯一合法 Cookie 转发，取消和超时覆盖 fetch 与正文读取，错误不透传内部信息。注册页面区分“账号创建成功”和“登录会话已建立”，创建请求超时后不自动重试；结果未知时允许尝试登录确认。119 条 Workspace/注册/原登录 BFF 定向测试与两个隔离浏览器场景验证这些边界，真实新账号可登录并创建自己的 Workspace。参考答案已整理、尚未模拟。
+
+
+## 本地 Coding Agent 免登录后，为什么仍保留身份和访问边界？
+
+复习优先级：高；参考答案已整理、尚未模拟。
+
+参考答案：免产品登录是交互方式变化，不等于删除资源归属。固定本机主体复用 Workspace/会话/Run 外键，避免修改所有业务仓储；数据库唯一约束与 ON CONFLICT 处理并发首次初始化。原账号资源不自动迁给本机用户。单安装实例的多个浏览器共享一个本机身份，因此不能将其当作多租户云服务。
+
+浏览器只访问回环地址 BFF，内部随机凭证仅在服务端配置与 BFF/API 请求间传递；BFF 拒绝错误来源、跨站与远程上游，API 再检查 Host/Origin/凭证。操作文件仍要 Workspace 路径范围与执行审批；本机内部凭证不是 Sandbox，也不能直接作为公网认证方案。模型 API Key 与本机内部凭证用途不同，调用云模型时选入上下文的数据仍会离开电脑。
+
+项目证据：test_local_mode.py 覆盖稳定主体、并发初始化、不接管账号数据、无效凭证/Host/Origin 拒绝、配置失败关闭和事务保护；local-mode.test.ts 检查 BFF 只注入服务端凭证、无 Cookie 聊天/取消/创建、禁止远程上游及账号变更。主线切换由教练按用户授权直接实现，不能据此声称学习者已独立掌握。

@@ -12,9 +12,11 @@ const browser = await chromium.launch({
 let count = 0;
 async function scenario(name, run) {
     if (process.env.AUTH_TEST_FILTER && !name.includes(process.env.AUTH_TEST_FILTER)) return;
-    const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
+    const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
     try {
-        await run(await context.newPage(), context);
+        const page = await context.newPage();
+        page.setDefaultTimeout(15000);
+        await run(page, context);
         count += 1;
         console.log(`PASS: ${name}`);
     } finally { await context.close(); }
@@ -27,6 +29,83 @@ async function fill(page, password = 'Isolated-Browser-Test-2026!') {
     await page.getByLabel('密码', { exact: true }).fill(password);
 }
 try {
+    await scenario('registration: PC layout and keyboard at laptop and desktop sizes', async (page) => {
+        await mkdir('/private/tmp/agent-ui-preview', {recursive:true});
+        for (const [width,height] of [[1366,768],[1920,1080]]) {
+            await page.setViewportSize({width,height});
+            await page.goto(`${base}/login`);
+            await form(page).waitFor();
+            await page.screenshot({path:`/private/tmp/agent-ui-preview/login-pc-${width}.png`,fullPage:true});
+            await page.getByRole('button',{name:'没有账号？注册账号'}).click();
+            await page.getByLabel('用户名',{exact:true}).focus();
+            await page.keyboard.press('Tab');
+            assert.equal(await page.getByLabel('密码',{exact:true}).evaluate(el => el === document.activeElement),true);
+            await page.keyboard.press('Tab');
+            assert.equal(await page.getByLabel('确认密码',{exact:true}).evaluate(el => el === document.activeElement),true);
+            const bounds = await page.getByRole('region').boundingBox();
+            assert.ok(bounds);
+            assert.ok(Math.abs(bounds.x + bounds.width / 2 - width / 2) < 2);
+            assert.ok(bounds.width >= 400 && bounds.width <= 500);
+            assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),true);
+            const button = await page.getByRole('button',{name:'注册',exact:true}).boundingBox();
+            assert.ok(button && button.y >= 0 && button.y + button.height <= height);
+            await page.screenshot({path:`/private/tmp/agent-ui-preview/register-pc-${width}.png`,fullPage:true});
+        }
+    });
+    await scenario('registration: create account, duplicate, login and workspace HTTP', async (page, context) => {
+        await page.goto(`${base}/login?next=/`);
+        await page.getByRole('button', {name:'没有账号？注册账号'}).click();
+        await page.getByLabel('用户名', {exact:true}).fill('注册浏览器Agent');
+        await page.getByLabel('密码', {exact:true}).fill('Registration-Test-2026!');
+        await page.getByLabel('确认密码', {exact:true}).fill('different');
+        await page.getByRole('button', {name:'注册',exact:true}).click();
+        await page.getByText('两次输入的密码不一致。').waitFor();
+        await page.getByLabel('确认密码', {exact:true}).fill('Registration-Test-2026!');
+        await mkdir('/private/tmp/agent-ui-preview', {recursive:true});
+        await page.screenshot({path:'/private/tmp/agent-ui-preview/register.png', fullPage:true});
+        await page.getByRole('button', {name:'注册',exact:true}).click();
+        await page.getByText('注册成功，请使用新账号登录。').waitFor();
+        assert.equal(await page.getByLabel('用户名',{exact:true}).inputValue(),'注册浏览器agent');
+        assert.equal(await page.getByLabel('密码',{exact:true}).inputValue(),'');
+        assert.equal((await context.cookies()).some(cookie => cookie.name === 'agent_session'),false);
+        await page.getByRole('button', {name:'没有账号？注册账号'}).click();
+        await page.getByLabel('密码',{exact:true}).fill('Registration-Test-2026!');
+        await page.getByLabel('确认密码',{exact:true}).fill('Registration-Test-2026!');
+        await page.getByRole('button',{name:'注册',exact:true}).click();
+        await page.getByText('用户名已被使用，请更换用户名或登录。').waitFor();
+        await page.getByRole('button',{name:'已有账号？返回登录'}).click();
+        await page.getByLabel('密码',{exact:true}).fill('Registration-Test-2026!');
+        await form(page).click();
+        await page.getByLabel('你的问题').waitFor();
+        const result = await page.evaluate(async () => {
+            const response = await fetch('/api/workspaces', {
+                method:'POST', headers:{'Content-Type':'application/json'},
+                body:JSON.stringify({name:'  注册后的工作空间  '}),
+            });
+            return {status:response.status,body:await response.json()};
+        });
+        assert.equal(result.status,201);
+        assert.equal(result.body.name,'注册后的工作空间');
+        assert.deepEqual(Object.keys(result.body).sort(),['created_at','external_id','name']);
+    });
+    await scenario('registration: validation and uncertain result keep login available', async (page) => {
+        await page.goto(`${base}/login`);
+        await page.getByRole('button',{name:'没有账号？注册账号'}).click();
+        await page.getByLabel('用户名',{exact:true}).fill('注册校验用户');
+        await page.getByLabel('密码',{exact:true}).fill('short');
+        await page.getByLabel('确认密码',{exact:true}).fill('short');
+        await page.getByRole('button',{name:'注册',exact:true}).click();
+        await page.getByText('注册信息不符合要求，请检查用户名和密码。').waitFor();
+        await page.route('**/api/auth/register', route => route.fulfill({status:504,body:'{}'}));
+        await page.getByLabel('密码',{exact:true}).fill('Registration-Test-2026!');
+        await page.getByLabel('确认密码',{exact:true}).fill('Registration-Test-2026!');
+        await page.getByRole('button',{name:'注册',exact:true}).click();
+        await page.getByText('注册结果尚未确认。如果账号已创建，可尝试登录。').waitFor();
+        assert.equal(await page.getByLabel('密码',{exact:true}).inputValue(),'');
+        await page.getByRole('button',{name:'已有账号？返回登录'}).click();
+        await form(page).waitFor();
+        assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),true);
+    });
     await scenario('shared UI controls and light-dark themes', async (page) => {
         await mkdir('/private/tmp/agent-ui-preview', {recursive:true});
         for (const scheme of ['light','dark']) {
@@ -56,7 +135,7 @@ try {
             assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),true);
         }
     });
-    await scenario('real login, wrong password, reload, logout, mobile layout', async (page, context) => {
+    await scenario('real login, wrong password, reload, logout, PC layout', async (page, context) => {
         await page.goto(`${base}/login`);
         await form(page).waitFor();
         await fill(page, 'wrong');
@@ -363,6 +442,103 @@ try {
         await page.getByRole('button', {name:'发送',exact:true}).click();
         assert.equal((await ownResponse).status(), 200);
         await page.getByText('隔离模型：认证聊天成功。', {exact:true}).waitFor();
+    });
+    async function loginAndStartSlow(page, prompt = '[cancel-test] 停止测试') {
+        await page.goto(`${base}/login`);
+        await form(page).waitFor();
+        await fill(page);
+        await form(page).click();
+        await logged(page).waitFor();
+        await page.goto(base);
+        await page.getByLabel('你的问题').fill(prompt);
+        await page.getByRole('button', {name:'发送', exact:true}).click();
+        const number = page.getByText(/^运行编号：/);
+        await number.waitFor();
+        return (await number.innerText()).match(/\d+/)[0];
+    }
+
+    async function timeline(context, runId, cookie) {
+        const response = await context.request.get(`http://127.0.0.1:18000/runs/${runId}`, {
+            headers: {Cookie:`agent_session=${cookie.value}`},
+        });
+        assert.equal(response.status(), 200);
+        return response.json();
+    }
+
+    await scenario('run cancel real BFF owner stop and repeated cancel', async (page, context) => {
+        const runId = await loginAndStartSlow(page);
+        const cookie = (await context.cookies()).find(c => c.name === 'agent_session');
+        const response = page.waitForResponse(r => r.url().endsWith(`/runs/${runId}/cancel`));
+        await page.getByRole('button', {name:'停止生成', exact:true}).click();
+        assert.equal((await response).status(), 204);
+        await page.getByText('已停止生成', {exact:true}).waitFor();
+        assert.equal(await page.locator('main [role="alert"]').count(), 0);
+        const before = await timeline(context, runId, cookie);
+        assert.equal(before.status, 'aborted');
+        const repeat = await context.request.post(`${base}/api/runs/${runId}/cancel`, {
+            headers:{Origin:base}, data:{reason:'timeout'},
+        });
+        assert.equal(repeat.status(), 204);
+        assert.deepEqual(await timeline(context, runId, cookie), before);
+        assert.equal(before.events.filter(e => e.event_type === 'RUN_CANCELLATION_REQUESTED').length, 1);
+    });
+
+    for (const mode of ['401', '404', '503', 'network', 'timeout']) {
+        await scenario(`run cancel ${mode} shows independent notice and stops locally`, async (page, context) => {
+            const runId = await loginAndStartSlow(page);
+            const ownerCookie = (await context.cookies()).find(c => c.name === 'agent_session');
+            if (mode === '401') {
+                assert.equal((await context.request.post(`${base}/api/auth/logout`, {headers:{Origin:base}})).status(), 204);
+                await context.addCookies([ownerCookie]);
+            } else if (mode === '404') {
+                assert.equal((await context.request.post(`${base}/api/auth/login`, {
+                    headers:{Origin:base}, data:{username:'浏览器用户乙',password:'Isolated-Browser-Test-2026!'},
+                })).status(), 200);
+            } else {
+                await page.route('**/api/runs/*/cancel', async route => {
+                    if (mode === 'network') return route.abort();
+                    if (mode === 'timeout') {
+                        await new Promise(resolve => setTimeout(resolve, 5500));
+                    }
+                    await route.fulfill({status:503, body:'simulated broker failure'}).catch(() => {});
+                });
+            }
+            await page.getByRole('button', {name:'停止生成', exact:true}).click();
+            const notice = page.locator('main [role="alert"]');
+            await notice.waitFor();
+            assert.match(await notice.innerText(), mode === '401' ? /登录状态已失效/ : mode === '404' ? /运行不存在或不可访问/ : /取消.*未完成|取消服务暂时不可用/);
+            await page.getByText('已停止生成', {exact:true}).waitFor();
+            assert.equal(await page.getByLabel('你的问题').inputValue(), '[cancel-test] 停止测试');
+            if (mode === '404') {
+                const state = await timeline(context, runId, ownerCookie);
+                assert.equal(state.events.some(e => e.event_type === 'RUN_CANCELLATION_REQUESTED'), false);
+            }
+        });
+    }
+
+    await scenario('run cancel delayed failure does not overwrite next request', async page => {
+        let release;
+        const pending = new Promise(resolve => { release = resolve; });
+        let started;
+        const entered = new Promise(resolve => { started = resolve; });
+        await page.route('**/api/runs/*/cancel', async route => {
+            started();
+            await pending;
+            await route.fulfill({status:503, body:'late failure'}).catch(() => {});
+        });
+        await loginAndStartSlow(page, '[cancel-short] 延迟测试');
+        await page.getByRole('button', {name:'停止生成', exact:true}).click();
+        await entered;
+        await page.getByText('已停止生成', {exact:true}).waitFor();
+        await page.getByLabel('你的问题').fill('新一轮正常问题');
+        await page.getByRole('button', {name:'发送', exact:true}).click();
+        await page.getByText('隔离模型：认证聊天成功。', {exact:true}).waitFor();
+        const late = page.waitForResponse(r => r.url().includes('/cancel'));
+        release();
+        await late;
+        await page.waitForTimeout(100);
+        assert.equal(await page.locator('main [role="alert"]').count(), 0);
+        await page.getByText('已完成', {exact:true}).waitFor();
     });
     console.log(`Browser scenarios: ${count} passed`);
 } finally { await browser.close(); }

@@ -1,3 +1,5 @@
+import { isLocalMode } from "../../_shared/runtime.ts";
+
 export const runtime = "nodejs";
 
 const API_BASE_URL =
@@ -117,6 +119,7 @@ function isLoginCookieDeletion(cookie: string): boolean {
 }
 
 export async function POST(request: Request): Promise<Response> {
+    if (isLocalMode()) return Response.json({ code: "local_account_disabled", message: "本地模式无需账号登录" }, { status: 403, headers: { "Cache-Control": "no-store" } });
     const origin = request.headers.get("origin");
 
     if (origin === null || !ALLOWED_ORIGINS.includes(origin)) {

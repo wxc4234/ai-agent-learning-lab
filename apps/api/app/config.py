@@ -2,8 +2,10 @@
 
 from decimal import Decimal
 from pathlib import Path
+from typing import Literal
+import re
 
-from pydantic import Field, SecretStr
+from pydantic import Field, SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -21,6 +23,16 @@ LOGIN_COOKIE_NAME = "agent_session"
 
 class Settings(BaseSettings):
     """定义配置契约：必填字段缺失时，在服务启动阶段明确失败。"""
+
+    # 缺省保持账号模式；本地启动配置显式开启，避免部署时意外免认证。
+    app_mode: Literal["account", "local"] = Field(default="account", validation_alias="APP_MODE")
+    local_runtime_token: SecretStr = Field(default=SecretStr(""), validation_alias="LOCAL_RUNTIME_TOKEN")
+
+    @model_validator(mode="after")
+    def validate_local_mode(self):
+        if self.app_mode == "local" and not re.fullmatch(r"[a-f0-9]{64}", self.local_runtime_token.get_secret_value()):
+            raise ValueError("Local mode requires a 64-character random runtime token")
+        return self
 
     # SecretStr 会在日志或 print 时隐藏真实 Key，降低误泄露风险。
     deepseek_api_key: SecretStr = Field(

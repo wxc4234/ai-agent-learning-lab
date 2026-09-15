@@ -13,7 +13,7 @@ services:
       POSTGRES_DB: agent_lab
     ports:
       # 让 FastAPI 可以通过 localhost:5432 连接容器内的 PostgreSQL。
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
     volumes:
       # 命名 Volume 独立于容器生命周期，重启或重建容器不会丢失数据。
       - postgres_data:/var/lib/postgresql/data
@@ -29,7 +29,7 @@ services:
     container_name: ai-agent-redis
     ports:
       # 让本机 FastAPI 后续可通过 localhost:6379 连接 Redis。
-      - "6379:6379"
+      - "127.0.0.1:6379:6379"
     command: ["redis-server", "--appendonly", "yes"]
     volumes:
       # AOF 与命名 Volume 一起保证容器重建后缓存数据仍可恢复。

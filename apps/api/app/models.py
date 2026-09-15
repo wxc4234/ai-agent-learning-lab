@@ -14,6 +14,7 @@ class User(Base):
 
     __tablename__ = "users"
 
+    # 保留已有用户结构：用户名与密码哈希必须同时为空或同时存在。
     __table_args__ = (
         CheckConstraint(
             "(username IS NULL AND password_hash IS NULL) OR "
@@ -46,6 +47,128 @@ class User(Base):
     # 一个用户可以拥有多个会话；数据库关联字段实际保存在 Conversation.user_id。
     conversations: Mapped[list["Conversation"]] = relationship(back_populates="user")
 
+    # 一个用户可以拥有多个工作空间，归属外键保存在 Workspace.user_id。
+    workspaces: Mapped[list["Workspace"]] = relationship(
+        back_populates="user",
+    )
+
+class Workspace(Base):
+    """用户拥有的工作空间，后续承载项目任务与代码资源。"""
+
+    __tablename__ = "workspaces"
+
+    # 数据库保留名称约束，并拒绝用空字符串表示目录。
+    # NULL 明确表示尚未绑定；目录是否真实有效由服务层检查。
+    __table_args__ = (
+        CheckConstraint(
+            "char_length(name) BETWEEN 1 AND 100",
+            name="ck_workspaces_name_length",
+        ),
+        CheckConstraint(
+            "root_path IS NULL OR char_length(root_path) > 0",
+            name="ck_workspaces_root_path_not_empty",
+        ),
+    )
+
+    # 内部主键用于数据库关联，对外使用独立生成的 external_id。
+    id: Mapped[int] = mapped_column(primary_key=True)
+
+    # 对外标识由服务端生成；唯一索引不能替代所有权校验。
+    external_id: Mapped[str] = mapped_column(
+        String(100),
+        unique=True,
+        index=True,
+    )
+
+    # 外键保证用户存在，按用户查询时可使用此索引。
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id"),
+        index=True,
+    )
+
+    # 显示名称允许重名，不用作资源身份或幂等键。
+    name: Mapped[str] = mapped_column(
+        String(100),
+        nullable=False,
+    )
+
+    # 保存目录校验服务返回的规范绝对路径；旧工作空间保持未绑定。
+    # 不设置默认目录，避免将用户尚未选择的目录关联到工作空间。
+    root_path: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True,
+    )
+
+    # 由数据库生成带时区的创建时间，避免依赖应用服务器时钟。
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+    )
+
+    # 与 User.workspaces 配对，关系名称必须与 back_populates 一致。
+    user: Mapped["User"] = relationship(
+        back_populates="workspaces",
+    )
+
+    # 一个项目可以包含多个任务，实际关联字段保存在 Task.workspace_id。
+    tasks: Mapped[list["Task"]] = relationship(
+        back_populates="workspace",
+    )
+
+class Task(Base):
+    """项目中的一个持续工作目标，不等同于一次 Agent 执行。"""
+
+    __tablename__ = "tasks"
+
+    # 标题用于展示，允许重名；数据库兜底限制长度。
+    # 去除首尾空白等输入规则，后续由创建服务负责。
+    __table_args__ = (
+        CheckConstraint(
+            "char_length(title) BETWEEN 1 AND 200",
+            name="ck_tasks_title_length",
+        ),
+    )
+
+    # 内部主键用于表之间关联，对外使用独立的业务标识。
+    id: Mapped[int] = mapped_column(primary_key=True)
+
+    # 后续由服务端生成 UUID，不使用标题作为资源身份。
+    external_id: Mapped[str] = mapped_column(
+        String(100),
+        unique=True,
+        index=True,
+    )
+
+    # 每个任务必须属于一个项目；任务所有者沿 Workspace.user_id 查找。
+    # 不额外复制 user_id，避免在 Task 中维护第二份项目归属。
+    workspace_id: Mapped[int] = mapped_column(
+        ForeignKey("workspaces.id"),
+        index=True,
+        nullable=False,
+    )
+
+    # Task 标题用于项目任务列表，允许同一项目出现同名任务。
+    title: Mapped[str] = mapped_column(
+        String(200),
+        nullable=False,
+    )
+
+    # 由数据库生成带时区的创建时间。
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+    )
+
+    # 与 Workspace.tasks 配对。
+    workspace: Mapped["Workspace"] = relationship(
+        back_populates="tasks",
+    )
+
+    # 当前设计中，一个任务至多对应一个会话。
+    # 真正的一对一约束由 Conversation.task_id 的唯一索引保证。
+    conversation: Mapped["Conversation | None"] = relationship(
+        back_populates="task",
+    )
 
 class LoginSession(Base):
     """某次登录的服务端记录；不保存原始会话令牌。"""
@@ -106,6 +229,15 @@ class Conversation(Base):
     # 外键保证每个会话都明确归属某个用户，并加速按用户查询会话列表。
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
 
+    # 旧会话允许暂时没有任务，不猜测它属于哪个项目。
+    # 唯一索引保证同一个 Task 不会关联两个 Conversation。
+    task_id: Mapped[int | None] = mapped_column(
+        ForeignKey("tasks.id"),
+        nullable=True,
+        unique=True,
+        index=True,
+    )
+
     # API 和前端使用的稳定会话标识，不暴露数据库内部自增主键。
     external_id: Mapped[str] = mapped_column(
         String(100),
@@ -122,6 +254,11 @@ class Conversation(Base):
 
     # 与 User.conversations 对应，便于 conversation.user 访问所属用户。
     user: Mapped[User] = relationship(back_populates="conversations")
+
+    # 与 Task.conversation 配对；历史会话读取时可能得到 None。
+    task: Mapped["Task | None"] = relationship(
+        back_populates="conversation",
+    )
 
     messages: Mapped[list["Message"]] = relationship(back_populates="conversation")
 

@@ -3,6 +3,7 @@ import importlib.util
 import os
 from pathlib import Path
 import shutil
+import secrets
 import subprocess
 import tempfile
 import time
@@ -23,13 +24,15 @@ database = module.test_database_url.__wrapped__()
 url = next(database)
 schema = module.empty_engine.__wrapped__(url)
 engine = next(schema)
+test_mode = os.environ.get("BROWSER_APP_MODE", "account")
+runtime_token = secrets.token_hex(32)
 processes = []
 logs = ExitStack()
 try:
     module.engine.__wrapped__(engine)
     from sqlalchemy.orm import Session
     from app.schemas import RegisterRequest
-    from app.services.registration_service import register_user
+    from app.services.auth.registration_service import register_user
 
     for username in ("浏览器Agent", "浏览器用户乙"):
         with Session(engine) as session:
@@ -41,8 +44,8 @@ try:
             )
     from datetime import datetime, UTC, timedelta
     from hashlib import sha256
-    from app.repositories.user_repository import get_user_by_username
-    from app.repositories.login_session_repository import create_login_session
+    from app.repositories.auth.user_repository import get_user_by_username
+    from app.repositories.auth.login_session_repository import create_login_session
 
     with Session(engine) as session:
         user = get_user_by_username(session, "浏览器agent")
@@ -66,6 +69,10 @@ try:
             ROOT / "apps/web/src/app/api/auth/login/route.ts",
             web / "app/api/auth/login/route.ts",
         )
+        for route in ("auth/register", "workspaces", "workspaces/[workspaceId]/directory", "workspaces/[workspaceId]/directory/select", "workspaces/[workspaceId]/tasks", "workspaces/[workspaceId]/tasks/[taskId]/messages", "workspaces/[workspaceId]/tasks/[taskId]/title"):
+            destination = web / "app/api" / route
+            destination.mkdir(parents=True)
+            shutil.copyfile(ROOT / "apps/web/src/app/api" / route / "route.ts", destination / "route.ts")
         (web / "app/api/auth/me").mkdir(parents=True)
         shutil.copyfile(
             ROOT / "apps/web/src/app/api/auth/me/route.ts",
@@ -81,6 +88,13 @@ try:
             ROOT / "apps/web/src/app/api/chat/stream/route.ts",
             web / "app/api/chat/stream/route.ts",
         )
+        (web / "app/api/runs/[runId]/cancel").mkdir(parents=True)
+        shutil.copyfile(
+            ROOT / "apps/web/src/app/api/runs/[runId]/cancel/route.ts",
+            web / "app/api/runs/[runId]/cancel/route.ts",
+        )
+        shutil.copytree(ROOT / "apps/web/src/app/api/_shared", web / "app/api/_shared")
+        shutil.copytree(ROOT / "apps/web/src/app/workspaces", web / "app/workspaces")
         shutil.copyfile(ROOT / "apps/web/package.json", web / "package.json")
         (web / "node_modules").symlink_to(
             ROOT / "apps/web/node_modules", target_is_directory=True
@@ -102,10 +116,20 @@ try:
         )
         shutil.copyfile(ROOT / "apps/web/src/app/page.tsx", web / "app/home-page.tsx")
         (web / "app/page.js").write_text(
+            'export { default } from "./home-page";'
+            if test_mode == "local" else
             'import Link from "next/link"; import HomePage from "./home-page"; export default function Page() { return <><Link href="/login">登录测试页</Link><HomePage /></>; }'
         )
+        # 与真实项目保持 src/app 布局，确保 BFF 的相对数据模块导入一致。
+        (web / "app").rename(web / "src/app")
+        picked_directory = web / "选择的 项目目录"
+        picked_directory.mkdir()
         env = os.environ.copy()
+        if os.environ.get("BROWSER_TEST_SCRIPT") == "workspace-directory.mjs":
+            env["BROWSER_TEST_DIRECTORY"] = str(picked_directory.resolve())
         env.update(
+            APP_MODE=test_mode,
+            LOCAL_RUNTIME_TOKEN=runtime_token,
             DATABASE_URL=url.render_as_string(hide_password=False),
             PGOPTIONS=f"-csearch_path={schema_name}",
             LOGIN_ALLOWED_ORIGINS='["http://localhost:13000"]',
@@ -172,7 +196,7 @@ try:
                         "Temporary service exited; inspect its local log"
                     )
                 try:
-                    with urllib.request.urlopen(address, timeout=3) as response:
+                    with urllib.request.urlopen(urllib.request.Request(address, headers={"X-Local-Runtime-Token": runtime_token}), timeout=3) as response:
                         assert response.status == 200
                     break
                 except (OSError, TimeoutError):
@@ -182,10 +206,10 @@ try:
         print("Isolated services ready; starting browser verification.", flush=True)
         try:
             subprocess.run(
-                [NODE, str(ROOT / "apps/web/test/browser/login-page.mjs")],
+                [NODE, str(ROOT / "apps/web/test/browser" / (os.environ.get("BROWSER_TEST_SCRIPT") or ("local-mode.mjs" if test_mode == "local" else "login-page.mjs")))],
                 check=True,
                 timeout=720,
-                env=os.environ | {"AUTH_TEST_BASE_URL": "http://localhost:13000"},
+                env=os.environ | {"AUTH_TEST_BASE_URL": "http://localhost:13000", "BROWSER_APP_MODE": test_mode, "BROWSER_TEST_DIRECTORY": env.get("BROWSER_TEST_DIRECTORY", "")},
             )
         finally:
             for process in reversed(processes):

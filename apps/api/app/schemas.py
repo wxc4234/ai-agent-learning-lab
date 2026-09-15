@@ -2,6 +2,7 @@
 
 import unicodedata
 from typing import Literal
+from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, Field, SecretStr, field_validator
 
@@ -164,3 +165,116 @@ class LogoutErrorResponse(BaseModel):
 
     code: str
     message: str
+
+
+class WorkspaceCreateRequest(BaseModel):
+    """创建输入只接收名称，身份由登录依赖提供。"""
+
+    # 禁止隐式类型转换和额外字段，拒绝客户端传入 user_id 等身份信息。
+    model_config = ConfigDict(
+        strict=True,
+        extra="forbid",
+        hide_input_in_errors=True,
+    )
+
+    # 此处检查类型；strip 和长度规则继续由既有仓储统一处理。
+    name: str = Field(
+        description="工作空间名称，去除首尾空白后为 1～100 个字符",
+    )
+
+
+class WorkspaceResponse(BaseModel):
+    """只输出客户端需要的工作空间字段。"""
+
+    # 使用对外标识，不输出数据库内部 id 或 user_id。
+    external_id: str
+    name: str
+    created_at: datetime
+
+class WorkspaceListResponse(BaseModel):
+    """工作空间列表，只返回公开字段与是否还有更多记录。"""
+
+    items: list[WorkspaceResponse]
+
+    # 表示本次返回范围之外仍有记录，不代表已经实现翻页。
+    has_more: bool
+
+class WorkspaceErrorResponse(BaseModel):
+    """错误正文只包含稳定错误码和安全提示。"""
+
+    code: str
+    message: str
+
+class WorkspaceDirectoryRequest(BaseModel):
+    """目录绑定只接受路径，身份由服务端提供。"""
+
+    # 拒绝隐式类型转换和额外字段，不能让客户端指定资源归属。
+    model_config = ConfigDict(
+        strict=True,
+        extra="forbid",
+        hide_input_in_errors=True,
+    )
+
+    # 这里只检查字符串类型与非空；实际目录规则复用校验服务。
+    # 不 strip，避免改变包含合法空格的目录名称。
+    root_path: str = Field(min_length=1)
+
+
+class WorkspaceDirectoryResponse(BaseModel):
+    """返回本地工作台需要的绑定结果，不暴露内部用户主键。"""
+
+    external_id: str
+    name: str
+    root_path: str
+
+class WorkspaceDirectoryStateResponse(BaseModel):
+    """读取数据库保存的绑定状态，不代表目录当前一定可访问。"""
+
+    external_id: str
+    name: str
+
+    # NULL 明确表示未绑定；字段必须出现，不能用遗漏字段表达状态。
+    root_path: str | None
+
+class TaskCreateRequest(BaseModel):
+    """创建任务只接收标题，归属和资源标识由服务端确定。"""
+
+    model_config = ConfigDict(
+        strict=True,
+        extra="forbid",
+        hide_input_in_errors=True,
+    )
+
+    # HTTP 层检查类型；规范化及长度规则由事务服务统一处理。
+    title: str = Field(
+        description="任务标题，去除首尾空白后为 1～200 个字符",
+    )
+
+
+class TaskResponse(BaseModel):
+    """任务创建结果，不暴露内部主键或 ORM 对象。"""
+
+    model_config = ConfigDict(
+        strict=True,
+        extra="forbid",
+    )
+
+    # 三个标识均为服务端生成的对外标识。
+    external_id: str = Field(pattern=r"^[0-9a-f]{32}$")
+    workspace_id: str = Field(pattern=r"^[0-9a-f]{32}$")
+    conversation_id: str = Field(pattern=r"^[0-9a-f]{32}$")
+
+    title: str = Field(min_length=1, max_length=200)
+    created_at: datetime
+
+class TaskDetailResponse(BaseModel):
+    """提供恢复任务所需的项目资料与任务标识。"""
+
+    model_config = ConfigDict(
+        strict=True,
+        extra="forbid",
+    )
+
+    # 项目资料也来自服务端，不从 URL 中信任名称或归属。
+    workspace: WorkspaceResponse
+    task: TaskResponse

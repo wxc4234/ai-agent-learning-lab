@@ -11,6 +11,8 @@ type GateStatus = "checking" | "ready" | "redirecting" | "error";
 
 type AuthGateProps = {
     children: ReactNode;
+    localMode?: boolean;
+    returnTo?: "/" | "/workspaces" | "/workspaces/new";
 };
 
 function isUser(value: unknown): boolean {
@@ -24,7 +26,7 @@ function isUser(value: unknown): boolean {
     );
 }
 
-export default function AuthGate({ children }: AuthGateProps) {
+export default function AuthGate({ children, localMode = false, returnTo = "/" }: AuthGateProps) {
     const router = useRouter();
     const [status, setStatus] = useState<GateStatus>("checking");
     const activeRequest = useRef<AbortController | null>(null);
@@ -61,7 +63,7 @@ export default function AuthGate({ children }: AuthGateProps) {
 
             if (response.status === 401) {
                 setStatus("redirecting");
-                router.replace("/login?next=%2F");
+                router.replace(`/login?next=${encodeURIComponent(returnTo)}`);
                 return;
             }
 
@@ -89,9 +91,10 @@ export default function AuthGate({ children }: AuthGateProps) {
                 activeRequest.current = null;
             }
         }
-    }, [router]);
+    }, [router, returnTo]);
 
     useEffect(() => {
+        if (localMode) return;
         let disposed = false;
 
         queueMicrotask(() => {
@@ -107,19 +110,27 @@ export default function AuthGate({ children }: AuthGateProps) {
             activeRequest.current = null;
             controller?.abort();
         };
-    }, [checkSession]);
+    }, [checkSession, localMode]);
 
-    if (status === "ready") {
+    if (localMode || status === "ready") {
         return (
             <>
                 <nav
                     aria-label="账号导航"
                     className="border-b bg-card px-4 py-3"
                 >
-                    <div className="mx-auto flex max-w-2xl justify-end">
-                        <Button asChild variant="ghost" size="sm">
-                            <Link href="/login">账号与退出</Link>
-                        </Button>
+                    <div className="mx-auto flex max-w-5xl items-center justify-between">
+                        <div className="flex items-center gap-3">
+                            <Link href="/">聊天首页</Link>
+                            <Link href="/workspaces">工作空间</Link>
+                        </div>
+                        {localMode ? (
+                            <span className="text-sm text-muted-foreground">本地工作台</span>
+                        ) : (
+                            <Button asChild variant="ghost" size="sm">
+                                <Link href="/login">账号与退出</Link>
+                            </Button>
+                        )}
                     </div>
                 </nav>
                 {children}

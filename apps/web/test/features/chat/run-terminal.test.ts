@@ -67,6 +67,7 @@ const requestCode = ts.transpileModule(
 
 function createHarness(fetchResponse: typeof fetch) {
     let state = initialChatState;
+    let cancellationNotice: string | null = null;
     const actions: ChatAction[] = [];
     const timers = new Map<number, () => void>();
     let nextTimer = 0;
@@ -74,6 +75,14 @@ function createHarness(fetchResponse: typeof fetch) {
     const cancellationPendingRef = { current: false };
     const dependencies = {
         fetch: fetchResponse,
+        workbench: { setBusy: () => {} },
+        setPrompt: () => {},
+        chatState: initialChatState,
+        setHistory: () => {},
+        mountedRef: { current: true },
+        summarizeTitle: async () => {},
+        requestVersionRef: { current: 0 },
+        setCancellationNotice(value: string | null) { cancellationNotice = value; },
         readAgentStream,
         toUserFacingError,
         dispatch(action: ChatAction) {
@@ -110,6 +119,8 @@ function createHarness(fetchResponse: typeof fetch) {
         controllerRef,
         cancellationPendingRef,
         activeRunIdRef: dependencies.activeRunIdRef,
+        requestVersionRef: dependencies.requestVersionRef,
+        get cancellationNotice() { return cancellationNotice; },
         get state() { return state; },
     };
 }
@@ -237,4 +248,69 @@ test("a delayed cancellation only aborts its captured controller", async () => {
     await cancelling;
     assert.equal(oldController.signal.aborted, true);
     assert.equal(newController.signal.aborted, false);
+});
+
+for (const [status, message] of [
+    [204, null],
+    [401, "登录状态已失效"],
+    [404, "运行不存在或不可访问"],
+    [503, "取消服务暂时不可用"],
+] as const) {
+    test(`cancellation ${status} preserves classification and aborts local stream`, async () => {
+        const controller = new AbortController();
+        const harness = createHarness(async (_url, init) => {
+            assert.notEqual(init?.signal, controller.signal);
+            assert.deepEqual(JSON.parse(init?.body as string), {reason:"user"});
+            return new Response(null, {status});
+        });
+        harness.controllerRef.current = controller;
+        harness.activeRunIdRef.current = "17";
+        await harness.requestCancellation("user");
+        assert.equal(controller.signal.aborted, true);
+        assert.equal(harness.timers.size, 0);
+        if (message === null) assert.equal(harness.cancellationNotice, null);
+        else assert.ok(harness.cancellationNotice?.includes(message));
+    });
+}
+
+test("cancellation timeout aborts its own fetch and then local stream", async () => {
+    const controller = new AbortController();
+    const harness = createHarness(async (_url, init) => new Promise((_resolve, reject) => {
+        init?.signal?.addEventListener("abort", () => reject(new DOMException("aborted", "AbortError")));
+    }));
+    harness.controllerRef.current = controller;
+    harness.activeRunIdRef.current = "17";
+    const pending = harness.requestCancellation("user");
+    for (const timer of [...harness.timers.values()]) timer();
+    await pending;
+    assert.equal(controller.signal.aborted, true);
+    assert.match(harness.cancellationNotice!, /取消请求未完成/);
+    assert.equal(harness.timers.size, 0);
+});
+
+test("duplicate cancellation sends one request and stale response cannot write notice", async () => {
+    let resolve!: (response: Response) => void;
+    let calls = 0;
+    const controller = new AbortController();
+    const harness = createHarness(async () => {
+        calls += 1;
+        return new Promise<Response>(done => { resolve = done; });
+    });
+    harness.controllerRef.current = controller;
+    harness.activeRunIdRef.current = "17";
+    const first = harness.requestCancellation("user");
+    await harness.requestCancellation("timeout");
+    assert.equal(calls, 1);
+    harness.requestVersionRef.current += 1;
+    resolve(new Response(null, {status:503}));
+    await first;
+    assert.equal(harness.cancellationNotice, null);
+    assert.equal(controller.signal.aborted, true);
+});
+
+test("no active request causes no cancellation fetch", async () => {
+    const harness = createHarness(async () => { throw new Error("must not fetch"); });
+    await harness.requestCancellation("user");
+    assert.equal(harness.cancellationPendingRef.current, false);
+    assert.equal(harness.timers.size, 0);
 });

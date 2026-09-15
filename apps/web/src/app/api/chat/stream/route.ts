@@ -1,3 +1,5 @@
+import { isLocalMode, localHeaders } from "../../_shared/runtime.ts";
+
 const API_BASE_URL = process.env.API_BASE_URL ?? "http://127.0.0.1:8000";
 
 export const runtime = "nodejs";
@@ -87,7 +89,7 @@ export async function POST(request: Request): Promise<Response> {
 
     const token = readLoginToken(request.headers.get("cookie"));
 
-    if (token === null) {
+    if (!isLocalMode() && token === null) {
         return errorResponse(401, SAFE_ERRORS[401]);
     }
 
@@ -107,7 +109,7 @@ export async function POST(request: Request): Promise<Response> {
             headers: {
                 "Content-Type": "application/json",
                 Origin: origin,
-                Cookie: `agent_session=${token}`,
+                ...(isLocalMode() ? localHeaders(request) : { Cookie: `agent_session=${token}` }),
             },
             body: JSON.stringify(requestBody),
             signal: request.signal,

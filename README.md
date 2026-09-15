@@ -14,7 +14,7 @@
 8. [每周学习记录](week-learning/README.md)：已经结束周次的练习与复盘材料。
 9. [面试题库](interview-questions/README.md)：AI 全栈社招面试题库（算法 / 前端 / 后端 / AI / 系统设计 / 项目 / 行为面试）。
 
-当前阶段（2026-09-10）：日历处于**第 3 周（09-07 ～ 09-13）**，第 1 ～ 3 周验收均已完成，正式周进度为 **3 / 12（25%）**。Tool Registry、参数校验和基础 Agent Loop 已正式归入第 3 周的最小 Runtime，不再误记为提前进入第 7 周；第 4 周的可观测与 Token 预算核心已预完成。当前先收尾失败运行摘要，再从第 4 周 Day 1 的身份与会话开始顺序推进。
+当前阶段（2026-09-15）：第 1～3 周完成，正式进度 3 / 12；当前推进第 4 周本地工作台。主产品为本地优先 PC Coding Agent，免产品注册登录，用户自行配置模型服务。账号模式作为已完成扩展保留；具体进度见 LEARNING_HANDOFF.md。
 
 节奏约定：每日 4 ～ 6 小时；作品集先做一个足够深的主项目；**第 8 周开始第一批投递，不等作品集全部完成**。路线于 2026-08-31 按最新岗位调研修正过，依据见 [SKILL_GAP_ANALYSIS.md](SKILL_GAP_ANALYSIS.md) 第 10 节。
 
@@ -39,16 +39,20 @@
 
 ## 快速启动
 
-在完成环境安装后运行：
+在仓库根目录，完成 Python/Node 依赖安装与数据库迁移后运行：
 
 ```bash
-cd apps/api
-python -m uvicorn app.main:app --reload
+docker compose -f infra/compose.yaml up -d
+.venv/bin/python scripts/run_local.py
 ```
 
-然后打开 <http://127.0.0.1:8000/docs>。
+打开 http://127.0.0.1:3000，直接聊天或创建 Workspace，无需注册登录。首次使用先在根目录 `.env` 配置自己的模型 API Key。启动脚本同步本地模式与内部凭证，Ctrl+C 停止 Web/API；持久数据不会删除。Windows 使用 `.venv\Scripts\python.exe scripts\run_local.py`。
+
+目前仍需 PostgreSQL/Redis 与源码运行环境，尚未提供桌面安装包。模型使用云 API 时，选入上下文的内容会发送至模型服务。本地 FastAPI 文档接口也受内部凭证保护，不能像历史账号模式一样直接裸访问 `/docs`。详细配置见 ENVIRONMENT.md。
 
 ## 主要目录
+
+后端已按“层级 → 业务领域”组织，查找文件与新增模块规则见 [项目目录导航](docs/project-structure.md)。当前进度见 [学习交接](LEARNING_HANDOFF.md)，学习内容与阶段完成情况见 [课程大纲](LEARNING_CURRICULUM.md)。
 
 ```text
 ai-agent-learning-lab/

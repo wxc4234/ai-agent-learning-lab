@@ -26,7 +26,7 @@
 
 ## 发现的传输边界
 
-`apps/api/app/services/model_decision.py` 当前模型请求使用 `stream=False`。`chat_service.py` 将完整 reply 放入一个 `TEXT_MESSAGE_CONTENT`，随后发送文本结束和运行终态。因此当前接口是 NDJSON 领域事件流，不能描述成模型逐 Token 实时输出。浏览器解析器支持任意网络分块，并不意味着后端逐 Token 生产内容。
+`apps/api/app/services/model/model_decision.py` 当前模型请求使用 `stream=False`。`chat_service.py` 将完整 reply 放入一个 `TEXT_MESSAGE_CONTENT`，随后发送文本结束和运行终态。因此当前接口是 NDJSON 领域事件流，不能描述成模型逐 Token 实时输出。浏览器解析器支持任意网络分块，并不意味着后端逐 Token 生产内容。
 
 请求完成后再离线不属于流中断测试。低速传输也不保证每条 NDJSON 事件分别触发可观察的页面渲染。本轮未据此修改业务代码，也未扩大为模型流式输出改造。
 

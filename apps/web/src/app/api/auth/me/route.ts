@@ -1,3 +1,5 @@
+import { isLocalMode, localHeaders } from "../../_shared/runtime.ts";
+
 export const runtime = "nodejs";
 
 const API_BASE_URL =
@@ -93,7 +95,7 @@ function readLoginToken(cookieHeader: string | null): string | null {
 export async function GET(request: Request): Promise<Response> {
     const token = readLoginToken(request.headers.get("cookie"));
 
-    if (token === null) {
+    if (!isLocalMode() && token === null) {
         return unauthorizedResponse();
     }
 
@@ -106,7 +108,7 @@ export async function GET(request: Request): Promise<Response> {
             {
                 method: "GET",
                 headers: {
-                    Cookie: `${LOGIN_COOKIE_NAME}=${token}`,
+                    ...(isLocalMode() ? localHeaders(request) : { Cookie: `${LOGIN_COOKIE_NAME}=${token}` }),
                 },
                 signal,
                 cache: "no-store",

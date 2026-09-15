@@ -79,3 +79,9 @@ def engine(empty_engine: Engine) -> Engine:
     """Create current application tables exclusively inside the test schema."""
     Base.metadata.create_all(empty_engine)
     return empty_engine
+
+
+@pytest.fixture(autouse=True)
+def account_mode_baseline(monkeypatch):
+    """既有测试固定账号模式；本地专项自行开启，避免开发 .env 改变测试语义。"""
+    monkeypatch.setattr(settings, "app_mode", "account")

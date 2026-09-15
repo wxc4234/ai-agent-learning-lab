@@ -5,14 +5,23 @@ from typing import Annotated
 from fastapi import Depends, Request
 from pydantic import SecretStr
 
-from app.config import LOGIN_COOKIE_NAME
+from app.config import LOGIN_COOKIE_NAME, settings
+from app.local_boundary import local_request_allowed
+from app.services.auth.local_identity import resolve_local_identity
+from app.services.auth.login_session_resolver import InvalidLoginSessionError
 from app.database import SessionLocal
-from app.services.authentication_service import AuthenticatedUser
-from app.services.login_session_resolver import resolve_login_session
+from app.services.auth.authentication_service import AuthenticatedUser
+from app.services.auth.login_session_resolver import resolve_login_session
 
 
 def require_current_user(request: Request) -> AuthenticatedUser:
     """读取登录 Cookie，返回不依赖数据库 Session 的安全身份。"""
+
+    if settings.app_mode == "local":
+        if not local_request_allowed(request):
+            raise InvalidLoginSessionError()
+        with SessionLocal() as session:
+            return resolve_local_identity(session)
 
     raw_token = request.cookies.get(LOGIN_COOKIE_NAME)
     token = SecretStr(raw_token) if raw_token is not None else None

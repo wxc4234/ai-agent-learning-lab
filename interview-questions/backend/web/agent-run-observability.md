@@ -38,3 +38,19 @@ event：执行过程中发生了什么
 status：最终结果
 duration：花了多久
 ```
+
+## 运行取消如何同时保证所有权、幂等与终态互斥？
+
+复习优先级：高；参考答案已整理、尚未模拟。
+
+参考答案：run_id 仅用于定位，不能当作凭证。读取时间线和取消时，使用 CurrentUser.id，通过 AgentRun.conversation_id 连接 Conversation，并同时限制 run_id 与 Conversation.user_id。未知和非本人统一 404；取消必须先校验归属，再检查终态，否则可能向他人暴露“运行已经完成”的信息。未登录为 401，数据库故障为脱敏 500。
+
+取消在一个 PostgreSQL 事务内锁住 AgentRun 行，检查 running，写 RUN_CANCELLATION_REQUESTED、对应终态事件以及 finished_at。正常结束也锁同一行，并在取得锁后重新检查状态。只有第一个有效终态写入者改变状态；重复取消返回 204，不重复插入事件或发布通知。单纯把几次写入放进事务，并不能防止两个事务同时读到 running。
+
+授权与事件写入成功、事务提交后才发布 Redis 通知。事件落库失败应回滚状态，且不通知。数据库与 Redis 不是同一事务：发布失败返回 503，但数据库可能已经提交终态；当前重复取消不会补发通知。要实现可靠投递需要额外的重试/事务消息设计，当前不能宣称 exactly-once 或可靠通知补偿已实现。
+
+前端取消 BFF 验证 Origin/JSON，只转发唯一合法 Cookie，并保留取消信号和 no-store；错误正文使用安全映射。页面区分 401、404、服务故障与请求中断，最终停止本地接收。AbortController.abort() 不能证明服务端已取消，因此失败提示说明“未确认服务端取消”；晚返回的取消响应通过请求版本号避免污染新一轮页面状态。
+
+项目证据：app/repositories/runtime/run_repository.py、app/routers/runtime/runs.py、run_boundary.py；test_run_ownership.py 使用真实 Cookie 和独立 PostgreSQL，覆盖双用户、匿名旧数据、终态拒绝、回滚、行锁等待、双取消竞争与 Redis 故障。前端 cancel-run-route.test.ts、run-terminal.test.ts 与隔离浏览器取消场景覆盖真实生产函数和同源 BFF。具体验收结果见 ENVIRONMENT.md 的本课记录。
+
+追问：只在取消函数加行锁是否足够？为什么重复取消不应新增事件？提交后 Redis 失败，客户端应该如何描述结果？用户在另一个页面登出后，本页停止按钮会发生什么？

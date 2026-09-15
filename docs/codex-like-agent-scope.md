@@ -1,10 +1,10 @@
 # Codex-like Coding Agent：能力边界与最终验收
 
-更新时间：2026-09-10（Asia/Shanghai）
+更新时间：2026-09-15（Asia/Shanghai）
 
 ## 1. 产品目标
 
-构建一个面向代码仓库的 AI Agent 全栈产品。用户能够登录、创建或导入 Workspace、提交代码任务，并观察 Agent 从理解上下文、制定计划、调用工具、修改代码、运行验证到交付 Diff 的完整过程。
+构建一个本地优先的 PC Coding Agent。用户在本机启动 Web UI 与 Runtime，自行配置模型，无需注册登录，创建或导入 Workspace、提交代码任务，并观察 Agent 从理解上下文、制定计划、调用工具、修改代码、运行验证到交付 Diff 的完整过程。
 
 这里的 “Codex-like” 是工程能力目标，不是品牌或内部实现复刻：项目不训练基础模型，也不声称复制 OpenAI 的专有提示词、推理系统、隔离平台或云调度架构。
 
@@ -14,11 +14,19 @@
 - [Evals API](https://developers.openai.com/api/reference/java/resources/evals/methods/create)：用固定数据源与测试标准评价 Agent 工作流。
 - [Skills API](https://developers.openai.com/api/reference/python/resources/skills/methods/create)：把可复用指令与资源封装为版本化能力。
 
+### PC 工作台布局目标
+
+主要视觉参考已由用户确认：2026-09-15 提供的 Codex 截图；补充参考 https://github.com/deepseek-ai/deepseek-harness 。采用浅灰绿色项目侧栏、白色留白对话区、底部圆角输入与紧凑右侧详情；本课先实现布局、收起和现有运行详情，调宽、真实项目树及绑定入口分课推进。
+
+最终 PC 界面采用用户指定的 DeepSeek Harness / Codex Harness 风格三栏工作台；顶部“聊天首页 / 工作空间”为临时导航。布局规划为左侧项目/任务、中间对话与执行过程、右侧文件/Diff/运行详情，支持侧栏收起与调宽；具体视觉实现前核对用户所指参考版本，不把临时独立页面当最终布局。
+
+现阶段先完成目录绑定基础；接入工作台布局时迁移现有聊天、Workspace 与创建入口，后续能力逐步填入三栏，不持续扩展顶部临时导航。
+
 ## 2. 核心能力矩阵
 
 | 能力域 | 最小产品能力 | 可验证证据 |
 |---|---|---|
-| 身份与隔离 | 用户只能访问自己的 Workspace、Task、Run 和文件 | 越权 API 测试返回 403/404 |
+| 身份与隔离 | 本机稳定身份、内部访问凭证及 Workspace 文件/任务边界；账号模式保留 | 未授权请求被拒绝，不接管历史账号资源，目录越界被拒绝 |
 | 任务与状态 | Task 与 Run 分离；支持 queued/planning/running/waiting_approval/done/aborted/error | 刷新页面后状态和时间线一致 |
 | 流式交互 | 文本、计划、工具、终端、补丁、审批和终态使用稳定事件协议 | 任意网络分块可解析；每次运行只有一个终态 |
 | Agent Loop | 模型只产生 ToolAction 或 FinalAnswer；Observation 回灌；有步数、时间和 Token 上限 | Mock 轨迹覆盖成功、纠错、超时、取消和预算耗尽 |
@@ -32,7 +40,7 @@
 | MCP / Skills | 动态接入 MCP 工具；仓库级指令与 Skill 可发现、版本化和审计 | 自建 MCP Server 与至少一个 Skill 被真实任务调用 |
 | 有限多 Agent | 只委派独立、边界清楚的子任务，限制并发并由主 Agent 合并结果 | 并发检索/测试任务不产生重复写入或状态竞争 |
 | 可观测与评测 | Trace、Token、成本、延迟、工具成功率、补丁正确率和轨迹评分 | CI 对固定任务集执行回归门禁 |
-| 生产化 | 后台 Worker、限流、并发控制、日志脱敏、健康检查、部署与恢复 | 公网环境完成端到端演示，README 可复现 |
+| 生产化 | 后台 Worker、限流、并发控制、日志脱敏、健康检查、部署与恢复 | 干净 PC 完成端到端演示，README 可复现安装/启动/升级；域名展示与分发 |
 
 ## 3. AI 全栈掌握范围
 
@@ -43,11 +51,11 @@
 | Agent Runtime | 模型适配、Tool Calling、ReAct、计划、记忆、反思、Checkpoint、取消、Steering、预算 |
 | 工具执行 | 文件系统边界、Shell/Sandbox、Apply Patch、Git、测试、审批与审计 |
 | 数据与检索 | PostgreSQL、SQLAlchemy、Alembic、Redis、pgvector、混合检索、Rerank、对象存储 |
-| 质量与运维 | pytest、前端测试、Evals、Trace、CI/CD、Docker、监控、安全清单和云部署 |
+| 质量与运维 | pytest、前端测试、Evals、Trace、CI/CD、Docker、监控、安全边界和本地交付 |
 
 ## 4. 最终端到端验收场景
 
-1. 用户 A 登录并导入一个样例 Git Workspace，用户 B 无法读取它。
+1. 用户本机启动免登录工作台，配置自己的模型并选择样例 Git Workspace；其他目录和原账号资源不会被接管。
 2. 用户提交“修改两个相关文件并补测试”的任务。
 3. Agent 读取仓库指令，检索相关符号和代码，展示一个可更新的计划。
 4. Agent 调用文件、搜索、补丁和测试工具；浏览器实时展示工具状态、终端输出和成本。

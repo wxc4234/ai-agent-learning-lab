@@ -1,5 +1,8 @@
 # 环境与依赖
 
+> 当前主运行方式（2026-09-15）：本地优先、免产品登录。完成下方依赖安装及迁移后，在仓库根目录运行 `.venv/bin/python scripts/run_local.py`；Windows 为 `.venv\Scripts\python.exe scripts\run_local.py`。旧认证章节保留为历史/账号模式说明。详见 [本地模式说明](docs/local-runtime.md)。
+
+
 这份文档专门说明：**需要安装什么、如何启动前后端、怎样选择解释器，以及出错时如何排查**。
 
 ## 1. 项目需要什么
@@ -422,7 +425,7 @@ python -m uvicorn app.main:app --reload
 在 `apps/api` 使用项目 Python 环境运行本课测试：
 
 ```bash
-../../.venv/bin/python -m pytest -q tests/test_login_api.py
+../../.venv/bin/python -m pytest -q tests/auth/test_login_api.py
 ```
 
 2026-09-14 修正后本课 29 passed，项目 `.venv` 完整后端回归 380 passed，Ruff 通过；有 1 条既有 Starlette/AnyIO 弃用警告。输入合法性检查返回安全 422，不泄露原始密码。登录请求须包含允许的 Origin 和 application/json；目前仅验收后端，浏览器 BFF 登录链路尚未接入。
@@ -432,7 +435,7 @@ python -m uvicorn app.main:app --reload
 在 `apps/api` 使用项目环境运行：
 
 ```bash
-../../.venv/bin/python -m pytest -q tests/test_login_session_resolver.py
+../../.venv/bin/python -m pytest -q tests/auth/test_login_session_resolver.py
 ../../.venv/bin/python -m pytest -q
 ../../.venv/bin/python -m ruff check app tests
 ```
@@ -444,7 +447,7 @@ python -m uvicorn app.main:app --reload
 在 `apps/api` 使用项目环境执行：
 
 ```bash
-../../.venv/bin/python -m pytest -q tests/test_current_user_api.py
+../../.venv/bin/python -m pytest -q tests/auth/test_current_user_api.py
 ../../.venv/bin/python -m pytest -q
 ../../.venv/bin/python -m ruff check app tests
 ```
@@ -472,7 +475,7 @@ python -W error::DeprecationWarning -m pytest -q
 在 apps/api 使用项目环境：
 
 ```bash
-../../.venv/bin/python -W error::DeprecationWarning -m pytest -q tests/test_logout_service.py
+../../.venv/bin/python -W error::DeprecationWarning -m pytest -q tests/auth/test_logout_service.py
 ../../.venv/bin/python -W error::DeprecationWarning -m pytest -q
 ../../.venv/bin/python -m ruff check app tests
 ```
@@ -484,7 +487,7 @@ python -W error::DeprecationWarning -m pytest -q
 在 apps/api 使用项目环境：
 
 ```bash
-../../.venv/bin/python -W error::DeprecationWarning -m pytest -q tests/test_logout_api.py
+../../.venv/bin/python -W error::DeprecationWarning -m pytest -q tests/auth/test_logout_api.py
 ../../.venv/bin/python -W error::DeprecationWarning -m pytest -q
 ../../.venv/bin/python -m ruff check app tests
 ```
@@ -587,7 +590,7 @@ cd apps/api
 
 ### 2026-09-14 聊天认证课首次验收（待修正）
 
-新增 `apps/api/tests/test_chat_auth_boundary.py`（模型与 run 创建模拟，不访问数据库）：从 apps/api 执行 `../../.venv/bin/python -W error::DeprecationWarning -m pytest -q tests/test_chat_auth_boundary.py`，结果 11 passed、3 failed。流式装饰器遗漏 require_current_user，导致拒绝认证和认证故障场景仍返回 200，成功场景亦没有执行依赖。已向学习者提供修正段，本课尚未通过。
+新增 `apps/api/tests/chat/test_chat_auth_boundary.py`（模型与 run 创建模拟，不访问数据库）：从 apps/api 执行 `../../.venv/bin/python -W error::DeprecationWarning -m pytest -q tests/chat/test_chat_auth_boundary.py`，结果 11 passed、3 failed。流式装饰器遗漏 require_current_user，导致拒绝认证和认证故障场景仍返回 200，成功场景亦没有执行依赖。已向学习者提供修正段，本课尚未通过。
 
 新增聊天 BFF 34 条测试已通过（test:auth 自动纳入）；test:state 共 76 条通过，pnpm typecheck、pnpm lint、后端 Ruff 通过。本轮未跑后端全量或浏览器；真实隔离数据库认证测试、旧断言适配与浏览器链路留待核心修正后完成。
 
@@ -602,7 +605,7 @@ cd apps/api
 
 ### 会话仓储所有权原语验收
 
-新增 require_owned_conversation / get_or_create_owned_conversation 已通过，现有聊天调用尚未切换。新增 `apps/api/tests/test_owned_conversation_repository.py` 15 条测试，复用 PostgreSQL 独立库/私有 schema；两个物理连接通过 pg_blocking_pids 确认锁等待，覆盖同/不同用户争用及首事务提交/回滚。测试按当前 READ COMMITTED 运行，不代表已实现 SERIALIZABLE 重试。
+新增 require_owned_conversation / get_or_create_owned_conversation 已通过，现有聊天调用尚未切换。新增 `apps/api/tests/chat/test_owned_conversation_repository.py` 15 条测试，复用 PostgreSQL 独立库/私有 schema；两个物理连接通过 pg_blocking_pids 确认锁等待，覆盖同/不同用户争用及首事务提交/回滚。测试按当前 READ COMMITTED 运行，不代表已实现 SERIALIZABLE 重试。
 
 从 apps/api 执行 `../../.venv/bin/python -W error::DeprecationWarning -m pytest -q`：**525 passed，零警告**。Ruff 与前端 `pnpm lint` 通过。本课未改接口/UI，未重跑浏览器和前端单测；136/76/20 为上一课验收结果。核心无需修正，只补空行与文件末尾换行；测试验证所有权、重复复用、跨连接事务可见性、外层回滚与数据库异常分类。没有新增迁移或操作开发业务数据。
 
@@ -612,6 +615,483 @@ cd apps/api
 
 - 全量后端 `../../.venv/bin/python -W error::DeprecationWarning -m pytest -q`（apps/api）**537 passed，零警告**。新增 test_chat_ownership.py 12 条，真实隔离 PostgreSQL/令牌，只模拟模型与 Redis 等待。旧模型测试、run 测试及保存参数断言已适配 user_id。
 - 前端 `pnpm test:auth` **137**、`pnpm test:state` **77**、`pnpm typecheck`、`pnpm lint` 通过；后端和浏览器 Python 配套 Ruff 通过。
-- 用户发现静态类型错误后，历史路由改为逐条 ConversationMessage.model_validate，再构造 ConversationHistoryResponse；`npx --yes --package pyright pyright --pythonpath ../../.venv/bin/python app/routers/conversation.py`（apps/api）**0 errors/0 warnings**。该修正后再次运行 test_chat_ownership.py，12 passed；未宣称全仓库 Pyright 已通过。npx 未改项目依赖。
+- 用户发现静态类型错误后，历史路由改为逐条 ConversationMessage.model_validate，再构造 ConversationHistoryResponse；`npx --yes --package pyright pyright --pythonpath ../../.venv/bin/python app/routers/chat/conversation.py`（apps/api）**0 errors/0 warnings**。该修正后再次运行 test_chat_ownership.py，12 passed；未宣称全仓库 Pyright 已通过。npx 未改项目依赖。
 - 浏览器隔离入口新增第二账号、BFF 双用户访问场景，全量 **21/21** 通过：甲创建会话、切换乙重放甲标识 404/保留输入，乙发送新会话成功。原登录、门禁、撤销重放等场景也通过。启动器超时上限 720 秒；临时服务、数据库/schema 自动清理，不调用真实模型、不操作开发业务表。
 - 下一课保护运行时间线与取消入口。本课未解决同用户同会话并发顺序或普通聊天非模型失败时的缓存恢复问题。
+
+### 2026-09-15：运行时间线与取消所有权验收
+
+学习者明确完成后，教练检查核心实现，仅清理未使用的 RunTimeline 导入、缩进/空白与文件末尾换行；没有代写或改变本课业务逻辑。新增 RunRoute 覆盖依赖解析和执行边界，GET/POST 根据 CurrentUser.id 与 Conversation.user_id 授权；未知/他人统一 404，终态判断位于授权之后。取消与正常结束使用同一 AgentRun 行锁，事务提交后才发布通知。
+
+验证结果：
+
+- 后端全量 **573 passed，零弃用警告**。新增 `apps/api/tests/runtime/test_run_ownership.py` **36 条**，复用独立 PostgreSQL 数据库/私有 schema，验证真实令牌、双用户、旧匿名、幂等终态、真实行锁等待、双取消竞争、事件插入失败回滚、身份/业务数据库故障与 Redis 发布失败。旧运行仓储与 API 测试已适配身份参数。
+- 前端认证/BFF **171 passed**（新增取消 BFF 34 条）；聊天状态 **84 passed**（新增取消函数行为 7 条，现有 AST 夹具补齐 requestVersionRef 与提示 setter）。测试执行生产取消函数，覆盖 204/401/404/503、独立 AbortSignal、超时、重复取消与晚到响应。
+- Ruff、TypeScript、ESLint、git diff --check 通过。本课未重复 Pyright；此前历史路由 Pyright 结果仍仅是上一课证据。
+- 浏览器新增取消专项 **7/7 场景通过**：本人停止和重复取消、真实撤销后 401、切换账号后 404、模拟 503/网络中断/取消请求超时、旧取消失败晚到不污染新一轮。原有 21 场景本课未重复，不能把它们算入本次运行数量。
+- 浏览器复制真实取消 BFF 与页面，认证、Agent Loop、工具执行和 PostgreSQL 持久化使用真实代码；模型以固定 ToolAction/FinalAnswer 模拟，工具决策包含 Token usage，通知通过进程内 Future 模拟 Redis。仅用于隔离测试服务器，不作为真实 Redis 跨实例验证。测试结束确认临时服务、schema 与数据库自动清理，未调用真实模型或访问开发业务表。
+
+运行方式：
+
+```bash
+# 从 apps/api
+../../.venv/bin/python -W error::DeprecationWarning -m pytest -q
+../../.venv/bin/python -m ruff check app tests
+
+# 从仓库根目录
+pnpm --dir apps/web test:auth
+pnpm --dir apps/web test:state
+pnpm --dir apps/web typecheck
+pnpm --dir apps/web lint
+
+PLAYWRIGHT_MODULE=/Users/wanxiancheng/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright \
+CHROME_EXECUTABLE='/Applications/Google Chrome.app/Contents/MacOS/Google Chrome' \
+AUTH_TEST_FILTER='run cancel' \
+.venv/bin/python apps/web/test/browser/run-isolated.py
+```
+
+首轮后端因沙箱拒绝本机 TCP 连接而未进入业务断言；放行隔离测试后通过。浏览器测试编写阶段修正了按钮名称、模拟工具决策缺少 Token usage，以及误计入 Next 全局 alert 的测试断言；最终 7 场景完整重跑通过。取消时仍观察到 ASGI callable returned without completing response / Next failed to pipe response 传输关闭日志，页面和数据库断言通过；尚未排查有序关闭，不宣称该现象已解决。
+
+一致性边界：Redis 发布失败返回 503，但数据库终态可能已提交；重复取消不补发通知。当前没有事务消息/可靠投递补偿，也未新增同用户同会话的并发排序或缓存恢复能力。独立取消请求的 5 秒超时只限制浏览器等待，不能证明服务端没有执行取消。
+
+
+### Workspace 基础课：首次检查待修正
+
+已新增迁移 `d94e31b706fa_add_workspaces.py`（前置 `c83f20a915bd`）以及 `test_workspace_repository.py` / `test_workspace_migration.py`，覆盖名称、UUID、所有权、事务可见性与回滚、数据库约束、真实旧迁移链升级及旧表数据保持。配套文件 Ruff 通过。
+
+从 apps/api 执行 `../../.venv/bin/python -W error::DeprecationWarning -m pytest -q tests/workspace/test_workspace_repository.py tests/migrations/test_workspace_migration.py`，在 conftest 导入模型阶段失败：`sqlalchemy.exc.ArgumentError: __table_args__ value must be a tuple, dict, or None`。没有测试通过计数，未连接测试数据库或执行迁移。还发现 User.workspaces 关系被误放到 Conversation、关系与仓储函数名称拼写不一致，已要求学习者修正。当前工作区不能沿用上一课 573 passed 作为本课通过证据；数据库尚未升级到新增 revision。
+
+### Workspace 基础课：修正后验收（2026-09-15）
+
+学习者修正元组和关系位置后，教练机械性统一剩余三处命名（User.workspaces、create_workspace、require_owned_workspace），按学习者原有注释位置补充字段、关系、约束和事务说明。名称规范化及所有权查询的业务逻辑保持学习者实现。
+
+专项共 21 条：workspace 仓储 19 条，迁移 2 条。使用 PostgreSQL 隔离库/私有 schema，覆盖名称边界与中文、UUID、同名创建、双用户拒绝、跨连接提交可见性、调用方回滚、数据库约束及故障恢复；迁移测试执行真实旧迁移链，验证升级/回退后六张旧表记录保持，并演练迁移版本校准。迁移回退只在隔离库执行。
+
+开发库升级前实测版本为 b62d19f804ae，login_sessions 已存在、workspaces 不存在，与之前交接中的版本描述不一致。根因未追溯。完整比对已有目标模型（含 server default），并核对登录会话三个 CHECK 约束后，确认 c83f20a915bd 的纯结构效果已存在。在隔离库验证同样路径后，使用带前置断言与版本表锁的单事务校准 c83f20a915bd，执行新增 Workspace 表迁移，再记录 d94e31b706fa。开发库没有执行降级、删表或重建，未读取业务表正文。最终 alembic check：No new upgrade operations detected。
+
+这次校准不能当作通用 stamp 操作复用。另一台电脑需先执行 alembic current 并核对实际结构；正常情况下执行 alembic upgrade head 和 alembic check。若旧版本对应的表已存在，先定位差异，不能直接跳过迁移，尤其不能跳过数据回填类操作。
+
+从 apps/api 运行：
+
+```bash
+../../.venv/bin/python -W error::DeprecationWarning -m pytest -q tests/workspace/test_workspace_repository.py tests/migrations/test_workspace_migration.py
+../../.venv/bin/python -W error::DeprecationWarning -m pytest -q
+../../.venv/bin/python -m ruff check app tests migrations
+../../.venv/bin/python -m alembic current
+../../.venv/bin/python -m alembic check
+```
+
+本课未修改前端，不重复前端和浏览器测试；上一课 171/84/7 为历史验证结果。Workspace 当前只有模型和仓储，尚无创建服务、HTTP/BFF、页面或文件目录绑定。
+
+Workspace 最终全量回归：**594 passed，零弃用警告**；Ruff（app/tests/migrations）与 git diff --check 通过。
+
+### Workspace 创建服务验收
+
+`workspace_service.py` 由学习者实现；教练仅补空行、逗号和末尾换行，核心业务无需修正。新增 `tests/workspace/test_workspace_service.py` 20 条真实 PostgreSQL 隔离测试，成功与失败路径均已通过。
+
+覆盖：提交后从独立连接读取；expire_on_commit 为 true/false 时不重新开启事务；结果脱离 Session 后可用、字段白名单与不可变性；名称错误保留分类；已有显式/只读/pending/flushed 事务不被提交或回滚；外键错误、真实 SQL 故障、提交前模拟故障及结果构造失败都撤销本次写入；Session 可复用；同名创建产生不同标识。测试不代表已解决“服务器提交成功但客户端未收到确认”的不确定结果或请求幂等。
+
+首轮测试因 Docker 未运行、5432 连接拒绝而未进入业务断言；启动 Docker Desktop 和已有 PostgreSQL 容器后专项通过。测试只创建随机独立数据库/私有 schema，不连接开发业务表，不调用真实模型。本课没有新迁移，也未重跑前端或浏览器。
+
+从 apps/api 运行：
+
+```bash
+../../.venv/bin/python -W error::DeprecationWarning -m pytest -q tests/workspace/test_workspace_service.py
+../../.venv/bin/python -W error::DeprecationWarning -m pytest -q
+../../.venv/bin/python -m ruff check app tests
+```
+
+Workspace 创建服务最终验收：后端全量 **614 passed，零弃用警告**；Ruff 与 git diff --check 通过。
+
+### Workspace 创建 HTTP 接口：按影响范围验收
+
+学习者实现 `routers/workspace.py` 和三个 schema；最初真实 app 请求 POST /workspaces 返回 404，原因是 main.py 缺少导入与 include_router。教练补齐这两行机械性装配，保留学习者的单数文件名 workspace.py，未改业务逻辑，并补末尾换行。
+
+本次按影响范围执行 **58 passed，零弃用警告**：新增 test_workspace_api.py 29 条、现有 test_workspace_service.py 20 条、test_current_user_dependency.py 9 条。HTTP 测试使用真实 app（不进入访问开发库的 lifespan）、真实注册/签发 Cookie 和随机隔离 PostgreSQL；验证 201 与归属、同名允许、请求体身份字段拒绝、伪造查询参数/请求头不能改变身份、过期/撤销/无效凭证、精确 Origin/JSON 类型、输入与名称错误分类、SQL/提交/响应生成故障脱敏、线程池、认证与业务 Session 分离/关闭，以及 OpenAPI 实际注册。原始 HTTP 400 通过服务抛出异常模拟，JSON 语法错误按真实框架行为为 422。
+
+```bash
+# 从 apps/api
+../../.venv/bin/python -W error::DeprecationWarning -m pytest -q tests/workspace/test_workspace_api.py tests/workspace/test_workspace_service.py tests/auth/test_current_user_dependency.py
+../../.venv/bin/python -m ruff check app/routers/workspace/workspace.py app/schemas.py app/main.py tests/workspace/test_workspace_api.py
+```
+
+Ruff（本次修改文件）和 git diff --check 通过。未运行后端全量、前端、浏览器、模型/流式取消或迁移回归：本课新增独立 HTTP 路由与 schema，没有修改这些实现。614 passed 是上一课全量结果，不能当成本次全量结果。今后回归先按改动及调用链、共享依赖和风险选取；影响范围不清、共享机制或数据库结构变化时扩大范围。
+
+提交后响应失败边界已通过测试确认：服务提交成功后，响应模型校验失败会返回脱敏 500，但记录仍已持久化。不可承诺所有 500 都回滚，也未实现创建请求幂等或自动重试补偿。没有开发业务表访问或真实模型调用。
+
+
+### Workspace BFF 与注册页面闭环（2026-09-15）
+
+- 新增注册 BFF 与登录页注册模式；注册成功后使用新账号登录，密码与确认密码清空，后端规范化用户名保留。不把创建成功等同于签发会话，超时不自动重试。
+- Workspace BFF 用户误命名为 routes.ts，已修正为 route.ts，真实 Next HTTP 验证可达。
+- 定向 BFF 测试 119 passed；TypeScript 和本轮修改文件 ESLint 通过。首次测试使用了教学示例中误写的 33 位 ID，已修正测试数据为 32 位；业务校验无需改变。
+- 隔离 PostgreSQL + Chrome：新增 registration: 两场景通过，覆盖注册/重复注册/登录/首页返回/真实 Workspace 创建、密码确认、真实 422 和模拟 504；移动端截图检查通过。临时服务及数据库自动清理；未修改开发业务数据、未调用真实模型。
+
+```bash
+cd apps/web
+node --experimental-strip-types --test 'test/features/workspaces/**/*.test.ts' 'test/features/auth/register-route.test.ts' 'test/features/auth/login-route.test.ts'
+pnpm typecheck
+pnpm exec eslint src/app/login/page.tsx src/app/api/auth/register/route.ts src/app/api/workspaces/route.ts test/features/auth/register-route.test.ts test/features/workspaces/create-route.test.ts
+```
+
+Workspace 单独回归可用 `pnpm test:workspaces`。浏览器从仓库根目录运行：
+
+```bash
+PLAYWRIGHT_MODULE=/Users/wanxiancheng/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright \
+CHROME_EXECUTABLE='/Applications/Google Chrome.app/Contents/MacOS/Google Chrome' \
+AUTH_TEST_FILTER='registration:' \
+.venv/bin/python apps/web/test/browser/run-isolated.py
+```
+
+
+### PC 场景验收补充（2026-09-15）
+
+用户明确产品使用场景为 PC，已写入 AGENTS.md。浏览器默认视口从 390×844 调整为 1440×900；注册专项增加 1366×768 与 1920×1080 的登录/注册截图、居中与宽度、横向溢出、首屏提交按钮及键盘 Tab 顺序检查。原移动端记录只是历史验证，不代表当前主验收场景。PC 注册截图已人工检查，保持现有居中表单布局。
+
+本轮 registration: 三个 PC 场景全部通过：布局与键盘、新用户注册/重复注册/登录/Workspace 创建、输入错误及不确定结果恢复。临时服务与隔离数据库已自动清理；node --check 与 git diff --check 通过。
+
+
+## 本地模式切换与验证（2026-09-15）
+
+`setup_local.py` 保留原配置，自动生成并同步 `APP_MODE=local` 与 `LOCAL_RUNTIME_TOKEN`；两端 `.env` 文件均被 Git 忽略。本机身份与账号身份的数据分开，不转移历史归属。`run_local.py` 只绑定 127.0.0.1，Ctrl+C 关闭 Web/API，持久数据保留。先用 `docker compose -f infra/compose.yaml up -d` 启动 PostgreSQL/Redis，使用当前 `.venv` 完成迁移，再运行启动器。Compose 端口已收紧为回环地址；不会删 Volume。
+
+本轮修改共享身份依赖与全局边界，后端全量 656 passed、零弃用警告；原账号前端/BFF 204 passed，Workspace/本地 BFF 65 passed；TypeScript、修改文件 ESLint/Ruff 通过。测试固定账号基线，本地专项自行切换，避免本机 `.env` 改变既有测试语义。
+
+```bash
+cd apps/api
+../../.venv/bin/python -W error::DeprecationWarning -m pytest -q
+cd ../web
+APP_MODE=account pnpm test:auth
+APP_MODE=account pnpm test:workspaces
+pnpm typecheck
+```
+
+本地 PC 浏览器专项从仓库根目录运行（使用隔离 PostgreSQL 和模拟模型，不读写开发业务表）：
+
+```bash
+BROWSER_APP_MODE=local \
+PLAYWRIGHT_MODULE=/Users/wanxiancheng/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright \
+CHROME_EXECUTABLE='/Applications/Google Chrome.app/Contents/MacOS/Google Chrome' \
+.venv/bin/python apps/web/test/browser/run-isolated.py
+```
+
+账号浏览器回归不设置 BROWSER_APP_MODE（默认为 account）；可用 AUTH_TEST_FILTER 选择受影响场景。不要直接对开发业务数据运行测试。
+
+
+最终验收补充：本地 PC 浏览器 3 场景通过（无 Cookie 真实聊天/取消、创建/校验/刷新、模拟超时不重试）；原账号模式 1 个真实登录/错误密码/刷新/登出场景通过。配置生成保留模型 Key、同步随机凭证及重复执行稳定性测试另计 1 passed，不冒称重跑了后端全量。截图检查覆盖 1366×768/1920×1080。
+
+已重启当前开发 Web/API 为 127.0.0.1:3000/8000；Compose 容器保留命名卷重建后健康，端口为 127.0.0.1:5432/6379。实测首页、创建页、本机身份接口 200，登录页返回首页；裸 API 无内部凭证 403，前端 HTML/JSON 无内部凭证或登录 Cookie。首次本机身份探测仅创建本机主体，没有迁移历史账号数据。当前运行实例已准备好继续学习。
+
+
+### Workspace 列表后端验收（2026-09-15）
+
+GET /workspaces 已完成，默认返回 20 条、上限 100；过滤身份后按 created_at/id 倒序，多查一条判断 has_more。列表读取不 commit、不刷新调用方 pending 写入，Session 关闭前转为响应字段。仅完成后端，没有列表 BFF/页面或翻页。
+
+`tests/workspace/test_workspace_list.py` 新增 21 条，和 `test_workspace_api.py`、`test_workspace_repository.py`、`test_local_mode.py` 组成 82 passed（10.15s）、零弃用警告，Ruff/diff check 通过。覆盖空列表、默认/极值/截断、相同时间排序、两类身份隔离、非法参数、SQL/响应故障脱敏、Session 释放与只读边界。核心代码无需修正，仅补格式。未重跑全量或前端。
+
+```bash
+cd apps/api
+../../.venv/bin/python -W error::DeprecationWarning -m pytest -xq --tb=short tests/workspace/test_workspace_list.py tests/workspace/test_workspace_api.py tests/workspace/test_workspace_repository.py tests/local/test_local_mode.py
+```
+
+### Workspace 列表 BFF 与 PC 页面验收（2026-09-15）
+
+列表闭环已完成，替代上一条“仅后端”的阶段状态。GET BFF 校验身份、来源、limit 与公开响应，区分失败/超时/取消；页面区分加载、空列表与错误，支持刷新、创建后返回列表及账号登录返回。最新 20 条以 has_more 提示截断，尚无翻页。
+
+本课 `APP_MODE=account pnpm --dir apps/web test:workspaces`：116 passed，其中新增 list-data 17 条、list-route 34 条。覆盖合法/非法数据、Unicode 名称、重复 ID、两种身份、错误映射、超时与取消。TypeScript 与定向 ESLint/Ruff、node --check、git diff --check 通过；用户核心逻辑无需修正，仅补末尾换行。
+
+隔离 PostgreSQL + Chrome：本地 4/4、账号 5/5 场景通过。覆盖真实空列表→创建→返回→刷新、错误不误作空列表、重试与畸形响应、请求中重复刷新/导航、真实 21 条截断，以及账号失效重新登录返回。PC 检查覆盖 1366×768/1920×1080，本地截图已人工检查。临时服务与数据库已清理，没有调用真实模型或修改开发业务数据；本课未重跑后端全量与聊天全量。
+
+从仓库根目录分别执行以下命令；Playwright/Chrome 路径配置同前文：
+
+```bash
+BROWSER_APP_MODE=local BROWSER_TEST_SCRIPT=workspace-list.mjs .venv/bin/python apps/web/test/browser/run-isolated.py
+BROWSER_APP_MODE=account BROWSER_TEST_SCRIPT=workspace-list.mjs .venv/bin/python apps/web/test/browser/run-isolated.py
+```
+
+隔离启动器现在保留真实 src/app 与 src/features 目录关系，避免相对导入在临时应用中失效。`scripts/run_local.py` 已启用 uvicorn --reload；Python 源码更新可自动加载，配置或依赖变化仍需手动重启。本轮发现旧 API 进程未加载新增 GET 接口，已正常停止原启动器并重启 Web/API；实际 /workspaces 与 /api/workspaces?limit=1 均返回 200，后者保留 Cache-Control: no-store。
+
+### 本地项目目录校验服务验收（2026-09-15）
+
+新增 test_workspace_directory.py，29 passed（0.04s）、零弃用警告。真实临时目录覆盖中文/首尾空格、普通文件、缺失目录、目录链接、链接后的 ..、断链、循环链接和根目录；故障注入覆盖 resolve/stat 阶段权限、目录消失与其他系统异常，并检查安全错误文本。成功路径保留文件内容与修改时间，失败路径不创建缺失目录。临时目录由 pytest 管理，不使用数据库 fixture、不启动开发服务、不调用模型。Windows 原生盘符与链接行为尚未实机验证。
+
+```bash
+cd apps/api
+../../.venv/bin/python -W error::DeprecationWarning -m pytest -q tests/workspace/test_workspace_directory.py
+../../.venv/bin/python -m ruff check app/services/workspace/workspace_directory.py tests/workspace/test_workspace_directory.py
+```
+
+核心实现与参考一致，仅补空行及末尾换行；定向 Ruff 和 git diff --check 通过。首次从根目录执行 pytest 未设置 app 导入路径，收集失败；切到 apps/api 按上面命令运行后通过。本课不涉及数据库、前端或账号模式，未重复其回归。当前只完成目录校验，尚无目录绑定字段、接口或文件工具授权。
+
+### Workspace 目录字段首次检查：待修正
+
+模型 root_path 字段及新迁移内容符合参考，但 Workspace 的约束误写到 User 类，覆盖旧用户约束，Workspace 自身缺少新约束。test_workspace_root_path.py 结果 1 passed / 2 failed，明确复现约束归属错误。未连接或升级开发数据库，未运行账号流程。等待学习者修正后继续真实 PostgreSQL 迁移验收；目前不标记课程完成。
+
+### Workspace 目录字段修正后验收（2026-09-15）
+
+用户已将 Workspace 约束移回正确模型，并恢复 User 既有约束。新增目录字段测试与历史迁移、仓储、创建服务、列表组成 66 passed（6.11s）、零弃用警告，定向 Ruff 与 diff check 通过。真实隔离 PostgreSQL 先提交旧用户/Workspace，再升级；验证旧值逐字段保持、root_path 默认 NULL、空字符串触发指定 CHECK、普通文本可提交、原创建读取可用。回退/再次升级仅在隔离库执行，验证旧列记录仍保留、绑定字段回退后丢失、重升为 NULL。历史迁移测试改用该历史版本模型快照。
+
+```bash
+cd apps/api
+../../.venv/bin/python -W error::DeprecationWarning -m pytest -xq tests/workspace/test_workspace_root_path.py tests/migrations/test_workspace_migration.py tests/workspace/test_workspace_repository.py tests/workspace/test_workspace_service.py tests/workspace/test_workspace_list.py
+```
+
+开发库原为 d94e31b706fa，升级前实际结构及 CHECK 与旧版本快照一致。执行 alembic upgrade e05f42c817ab 成功，current 为 e05f42c817ab (head)，alembic check 无差异；未执行 stamp、回退或业务数据回填。实际 /workspaces 和 /api/workspaces?limit=1 均为 200，未启动额外开发服务。其他电脑仍需各自执行正常升级。此次未跑账号流程、完整前端、浏览器交互或完整后端回归。
+
+### 本地 Workspace 目录绑定事务服务验收（2026-09-15）
+
+用户核心代码与参考一致，无需修正。test_workspace_binding.py 新增 16 条，与目录校验/仓储/创建服务组成 84 passed（2.87s）、零弃用警告；定向 Ruff 和 git diff --check 通过。测试使用随机独立 PostgreSQL/私有 schema 与临时目录，允许真实提交并自动清理，未操作开发业务数据。
+
+覆盖首次提交及脱离 Session 的冻结结果、普通路径与符号链接重复绑定、不同路径冲突、无效/已删除目录、资源不可访问时不检查文件系统、已有事务不被回滚、flush 后提交故障回滚与重试、行锁查询刷新旧 ORM 值且不刷新其他待写入对象。并发用 pg_blocking_pids 确认第二连接真实等待，再释放首请求；同路径成功，不同路径冲突，最终值保持首个提交结果。
+
+```bash
+cd apps/api
+../../.venv/bin/python -W error::DeprecationWarning -m pytest -xq tests/workspace/test_workspace_binding.py tests/workspace/test_workspace_directory.py tests/workspace/test_workspace_repository.py tests/workspace/test_workspace_service.py
+```
+
+本课只完成服务层，尚未接 HTTP/BFF 或页面；未新增迁移、启动额外开发进程或运行账号/UI/模型全量回归。行锁仅保护数据库绑定决策，文件系统仍可能在检查后变化；目录内文件访问边界尚待实现。
+
+### 本地目录绑定 HTTP 验收（2026-09-15）
+
+新增 test_workspace_binding_api.py 32 条；与绑定事务、目录校验及本地列表回归组成 78 passed（3.77s）、零弃用警告，定向 Ruff 与 diff check 通过。用户核心实现无需修正，仅补末尾换行，既有列表测试适配统一校验文案。
+
+```bash
+cd apps/api
+../../.venv/bin/python -W error::DeprecationWarning -m pytest -xq tests/workspace/test_workspace_binding_api.py tests/workspace/test_workspace_binding.py tests/workspace/test_workspace_directory.py tests/workspace/test_workspace_list.py::test_local_list_keeps_registered_resources_separate
+```
+
+使用真实 app/本地身份与自动清理的隔离 PostgreSQL，不运行开发库 lifespan。覆盖创建→绑定→重复→列表白名单，冲突保持原值，正文额外字段/类型/空值、标识格式、真实目录失败、资源不可访问、Host/Origin/内部凭证、非 local 提前拒绝、JSON 类型/解析、目录故障映射和未知错误脱敏。验证身份 Session 在业务前关闭，业务失败及响应构造时 Session 均关闭。提交后响应构造故障返回安全 500，但独立数据库查询证实记录已绑定，响应文案因此使用“结果未确认”。
+
+本课未启动额外服务或改动开发业务数据，无新增迁移；尚未接 BFF/页面，未跑账号功能、前端或浏览器回归。
+
+### 本地目录绑定 BFF 验收（2026-09-15）
+
+新增 binding-route.test.ts：60 passed，TypeScript（next typegen + tsc）和定向 ESLint、diff check 通过。用户核心实现无需修正，仅补末尾换行。测试覆盖本地边界、动态标识、严格正文、安全请求头和响应白名单、请求/响应 Workspace ID 一致、Unicode 字数和绝对路径、15 类已知错误映射及状态错配/原型属性拒绝、网络/畸形 JSON，以及客户端/超时在上游请求或正文读取阶段的中断。写请求不自动重试；错误结果保持未确认语义。
+
+```bash
+node --experimental-strip-types --test apps/web/test/features/workspaces/binding-route.test.ts
+pnpm --dir apps/web typecheck
+```
+
+本课只做 BFF 模拟上游专项，不把它记为真实 HTTP/浏览器集成验收；未运行账号功能或完整后端/前端测试，未启动开发服务或操作开发业务数据。非 local 拒绝测试属于本地端点边界。类型生成提示当前 Node 通过 Rosetta 运行，但类型检查正常通过。
+
+### 三栏工作台首次验收：待修正
+
+TypeScript、定向 ESLint 与聊天 84 条通过。新增 workbench.mjs：PC 初始 1366×768/1920×1080 尺寸及输入可见性通过，1366 截图已检查；收起左栏后中栏宽度为 0，侧栏用例失败。真实本地聊天、取消 204、重新生成通过；浏览器结果 1 passed / 1 failed，隔离服务及 PostgreSQL 已清理。原因是教练参考遗漏 Grid 固定列位置，hidden 左栏退出自动排布，需给三栏分别设置固定列与行。未替学习者修改核心布局，待其修正后继续完整浏览器验收。隔离启动器本地模式移除额外测试导航以匹配实际视口结构。
+
+### 三栏列定位修正后验收
+
+用户授权直接修正。workbench-shell.tsx 给左/中/右栏分别指定 col-start-1/2/3 和 row-start-1，修复 hidden 导致自动排布进入 0px 第一列；清理本课展示区多余缩进。TypeScript、定向 ESLint、浏览器配套 Ruff/node --check/diff check 通过。
+
+浏览器 3 类场景最终通过：PC 两种尺寸/全部折叠组合/键盘操作/草稿保留；真实聊天及运行中折叠、取消与重试；真实测试模型输出 200 行内容，中栏独立滚动且输入框位置不变，并检查深色 1920×1080。浅色初始与深色长回复截图已查看。完整首轮为 2 passed / 1 failed，失败因 2 秒模型在切栏时已结束；模拟等待改 20 秒后单独复跑真实聊天场景 1 passed。无产品逻辑改动用于绕过该测试。隔离服务与数据库已清理；没有新开用户开发服务。此前聊天 84 条已通过，列定位修正后未重复无关全量。
+
+```bash
+BROWSER_APP_MODE=local BROWSER_TEST_SCRIPT=workbench.mjs .venv/bin/python apps/web/test/browser/run-isolated.py
+```
+
+Playwright/Chrome 配置同前文；WORKBENCH_TEST_FILTER 可选择场景，完整运行不设置。当前只完成工作台骨架及真实运行详情，项目列表/目录绑定入口和调宽后续接入。
+
+### 真实 Workspace 项目侧栏验收（2026-09-15）
+
+核心实现符合参考，仅补末尾换行。列表解析 17 条通过，TypeScript/定向 ESLint、浏览器脚本语法及 diff check 通过。新增 workspace-sidebar.mjs 共 4 场景全部通过：真实空列表→创建→返回侧栏→选择→刷新保留→折叠保留草稿，1366×768/1920×1080 布局；503 与畸形列表不误作空状态、重试恢复；20 项截断/长名称无横向溢出/新列表移除选择/聊天草稿保留；请求中刷新禁用且不重复 fetch、离开页面后旧结果不污染重新挂载的侧栏。1366 PC 截图已人工检查。
+
+```bash
+node --experimental-strip-types --test apps/web/test/features/workspaces/list-data.test.ts
+BROWSER_APP_MODE=local BROWSER_TEST_SCRIPT=workspace-sidebar.mjs .venv/bin/python apps/web/test/browser/run-isolated.py
+```
+
+Playwright/Chrome 路径配置同前文。临时服务与隔离 PostgreSQL 已清理；未启动额外开发服务或修改开发业务数据，未重复账号/完整后端/聊天全量测试。当前选择仅展示项目资料；列表不含 root_path，绑定状态回读与表单仍待接入。
+
+### 目录绑定状态读取 HTTP 验收（2026-09-15）
+
+用户核心符合参考，仅补末尾换行。新增 test_workspace_directory_api.py 17 条，与绑定 HTTP 32 条及本地列表 1 条共 50 passed（4.25s）、零弃用警告；定向 Ruff 和 diff check 通过。
+
+```bash
+cd apps/api
+../../.venv/bin/python -W error::DeprecationWarning -m pytest -xq tests/workspace/test_workspace_directory_api.py tests/workspace/test_workspace_binding_api.py tests/workspace/test_workspace_list.py::test_local_list_keeps_registered_resources_separate
+```
+
+真实 app/隔离 PostgreSQL 验证无 Origin 的合法 GET、NULL 与绑定路径回读、目录删除后仍读取保存状态、标识及资源/Host/Origin/凭证边界、非 local 提前拒绝、身份和业务 Session 关闭、读取禁止 commit，以及查询/响应异常固定 500 而非 NULL。另一连接持有写锁且 flush 未提交时，读取在 1 秒 statement_timeout 内返回先前已提交 NULL，验证未使用 FOR UPDATE。绑定 PUT 及原本地创建/列表仍通过。未启动额外服务、写开发业务数据、新增迁移或回归账号功能/UI；夹具自动清理隔离数据库。
+
+
+### 目录状态读取 BFF 验收（2026-09-15）
+
+新增 directory-read-route.test.ts 50 条，与原绑定 PUT 60 条共 110 passed。覆盖 null/绝对路径、缺字段及畸形响应、响应 ID 匹配、Unicode 名称边界、本地凭证与来源检查、错误白名单、脱敏、无缓存、不转发 Cookie/查询参数，以及请求前、fetch、正文读取和正文返回后的取消/超时。失败不自动重试。上游 fetch 使用模拟，未进行浏览器/API 集成或数据库验证。
+
+```bash
+node --experimental-strip-types --test apps/web/test/features/workspaces/directory-read-route.test.ts apps/web/test/features/workspaces/binding-route.test.ts
+pnpm --dir apps/web typecheck
+cd apps/web
+pnpm exec eslint 'src/app/api/workspaces/[workspaceId]/directory/route.ts' test/features/workspaces/directory-read-route.test.ts
+```
+
+TypeScript 和定向 ESLint 通过；首轮类型检查发现教练新增测试的异构对象数组推断问题，显式标注 Record<string, string>[] 后通过。用户核心无需修正，仅补末尾换行。本课没有启动额外开发服务或修改数据库，下一课接入工作台目录面板。
+
+
+### 系统目录选择与自动保存验收（2026-09-15）
+
+用户明确授权教练直接替换手输路径交互。项目侧栏现在点击“选择项目目录”打开系统文件夹选择器，选中后自动校验并保存；取消返回 204，无额外绑定按钮。macOS 使用固定 osascript 脚本，Windows 使用系统 PowerShell STA FolderBrowserDialog，无新依赖。选择等待 120 秒，BFF/页面分别 130/140 秒；单 API 进程窗口互斥，不在窗口等待期间占用数据库 Session。Windows 已覆盖输出协议和异常测试，但尚未实机验证窗口。当前本机页面已观察到用户选择后显示已绑定目录；没有代替用户更换现有项目目录。
+
+后端选择器/选择 HTTP/原读取与绑定共 72 passed（4.62s），前端新选择 BFF 25 条加原 GET/PUT 共 135 passed；TypeScript、定向 ESLint/Ruff、脚本语法与 diff check 通过。首轮新增 BFF 测试的对象数组类型推断错误已修正。Python 首次从根目录运行因 app 导入路径失败，改从 apps/api 按规范执行后通过。
+
+```bash
+cd apps/api
+../../.venv/bin/python -m pytest -q tests/workspace/test_directory_picker.py tests/workspace/test_workspace_selection_api.py tests/workspace/test_workspace_directory_api.py tests/workspace/test_workspace_binding_api.py
+cd ../..
+node --experimental-strip-types --test apps/web/test/features/workspaces/directory-select-route.test.ts apps/web/test/features/workspaces/directory-read-route.test.ts apps/web/test/features/workspaces/binding-route.test.ts
+BROWSER_APP_MODE=local BROWSER_TEST_SCRIPT=workspace-directory.mjs .venv/bin/python apps/web/test/browser/run-isolated.py
+```
+
+Playwright/Chrome 配置同前文。最终浏览器 6/6 场景通过：取消→重新选择→真实保存→刷新保留及两种 PC 尺寸；真实 POST 提交后丢失响应再 GET 恢复；畸形读取不误报未绑定；路径拒绝/冲突/畸形成功/网络异常；旧 GET/POST 晚返回不能污染新项目、连续点击去重及草稿保留；GET 与 POST 正文读取超时恢复。只有系统目录选择结果使用隔离测试替身，真实场景其余 BFF/API/目录校验/数据库均使用正式实现。截图 directory-1366.png 已检查，位于 /private/tmp/agent-ui-preview/output/playwright/。
+
+旧手输版本初轮 5/6 通过后按用户要求改版；新版本首轮 5/6，失败为浏览器点击等待 10 秒超时，最终增加操作等待上限并明确状态等待后完整复跑 6/6。没有通过改产品逻辑跳过失败。所有临时 Web/API 和隔离 PostgreSQL 已清理；没有新增常驻开发服务。当前 React 类型中 FormEvent 已 deprecated，用户改用 React SubmitEvent 合理；最终页面改为按钮选择，无需表单事件类型。
+
+
+### Task 模型与兼容迁移验收（2026-09-15）
+
+用户已将 task relationship 从 Workspace 移到 Conversation，mapper 配对恢复。新增 test_task_model.py、test_task_migration.py，并更新旧迁移测试的历史 metadata 快照，避免与最新 Task 模型误比较。相关测试最终 41 passed（3.02s），使用 -W error，零警告；Ruff/diff check 通过。首次 40 条通过但测试构造 Task 后又读取 User 触发 autoflush 警告，已将查询置于对象构造之前；非产品逻辑问题。
+
+```bash
+cd apps/api
+../../.venv/bin/python -W error -m pytest -q tests/tasks/test_task_model.py tests/migrations/test_task_migration.py tests/migrations/test_workspace_migration.py tests/workspace/test_workspace_root_path.py tests/workspace/test_workspace_repository.py tests/runtime/test_run_repository.py
+../../.venv/bin/python -m alembic check
+```
+
+隔离 PostgreSQL 使用真实历史迁移，保存旧项目/会话/消息/运行/事件后升级，验证旧值保持、多个 NULL 关联、单任务唯一会话、外键/非空/标题边界、200 个 Unicode 字符、同名任务、ORM commit 后重读、旧版会话创建、回退再升级。另补开发库空 Task 表恢复演练。
+
+开发库检查：版本为 e05f42c817ab，但启动 init_db/create_all 已提前创建 tasks 空表，conversations 缺少 task_id。没有盲目 upgrade 或直接 stamp：先比对完整部分结构，再单事务设置 5 秒 lock_timeout、锁 tasks、确认 count=0，移除仅此空表，确认上一版结构完全一致，运行 f16a53d928bc 的真实 upgrade，确认最新模型无差异后才更新版本账本并提交。失败可整体回滚。提交后 head=f16a53d928bc、Task 0 条、已关联会话 0 条，alembic check 无差异。没有修改旧业务行、回退开发数据库或启动额外服务。
+
+此为严格前置核对后的特例修复，不是通用迁移命令。API 启动 create_all 的职责尚未收口，后续新增模型迁移前应处理，避免再次产生部分结构。其他电脑仍须分别核对并升级，不能复制本机版本账本。
+
+
+### Task 创建事务服务验收（2026-09-15）
+
+新增 test_task_service.py 25 条，与 Task 模型、目录绑定事务和运行仓储共 46 passed（3.01s），-W error 零警告；Ruff/diff check 通过。学习者核心符合参考，仅补末尾换行。
+
+```bash
+cd apps/api
+../../.venv/bin/python -W error -m pytest -q tests/tasks/test_task_service.py tests/tasks/test_task_model.py tests/workspace/test_workspace_binding.py tests/runtime/test_run_repository.py
+../../.venv/bin/python -m ruff check app/services/tasks/task_service.py tests/tasks/test_task_service.py
+```
+
+隔离 PostgreSQL 验证 Task/Conversation 同事务真实保存与正确归属，expire_on_commit 两种配置下不重开事务，关闭 Session 后普通不可变结果仍可读取；标题规范化/Unicode 边界/类型拒绝/同名新任务；未知和他人项目拒绝优先于标题校验；显式、读取、待写及已 flush 的调用方事务不被提交或回滚。Conversation before_insert 期间确认 Task 已插入，再执行真实无效 SQL，独立连接验证两表均无残留且 Session 可恢复。结果构造失败与模拟 commit 抛错也回滚两条已 flush 记录；此处不证明连接在真实提交成功后断开时可以确定结果。
+
+本课没有 HTTP/BFF/UI 变更或新迁移，未写开发业务数据、调用模型或启动额外服务；夹具自动清理隔离数据库。
+
+
+### Task 创建 HTTP 验收（2026-09-15）
+
+test_task_api.py 最终 33 条。首轮 Task 32 条 + 绑定 HTTP 32 + 目录读取 17 + 系统选择 11，共 92 passed（7.09s）。补 FastAPI 响应模型校验失败后，Task 33 + 本地创建/列表各 1 条复跑 35 passed（3.60s），相关覆盖合计 95 条，均 -W error 零警告。Ruff/diff check 通过，用户核心无修正，仅空白和末尾换行。
+
+```bash
+cd apps/api
+../../.venv/bin/python -W error -m pytest -q tests/tasks/test_task_api.py tests/workspace/test_workspace_binding_api.py tests/workspace/test_workspace_directory_api.py tests/workspace/test_workspace_selection_api.py
+../../.venv/bin/python -W error -m pytest -q tests/tasks/test_task_api.py tests/local/test_local_mode.py::test_local_identity_stable_and_does_not_adopt_registered_user tests/workspace/test_workspace_list.py::test_local_list_keeps_registered_resources_separate
+```
+
+真实应用和隔离 PostgreSQL 验证 201 保存 Task/Conversation、标题规范化和 Unicode 边界、额外字段/类型/路径拒绝、未知与他人项目统一 404、Cookie/身份头不能改变归属、Host/Origin/内部凭证和非 local 提前拒绝。身份 Session 在服务前关闭，业务 Session 在响应构造前关闭。服务失败不产生记录；真实提交后响应构造失败、服务结果字段异常及 FastAPI 已注册 response_model 校验失败均为安全 500 task_creation_uncertain，独立连接确认两条记录仍已保存。重复同标题创建不同任务，未实现幂等。
+
+未运行模型、迁移或浏览器，不改开发业务数据，不启动额外服务。测试数据库由夹具自动清理。下一课 Task 创建 BFF。
+
+
+### Task 创建 BFF 验收（2026-09-15）
+
+新增 task-create-route.test.ts 59 条全部通过（627.79ms），pnpm typecheck、定向 ESLint 和 diff check 通过。学习者核心无需修正，仅末尾换行。
+
+```bash
+node --experimental-strip-types --test apps/web/test/features/workspaces/task-create-route.test.ts
+pnpm --dir apps/web typecheck
+cd apps/web
+pnpm exec eslint 'src/app/api/workspaces/[workspaceId]/tasks/route.ts' test/features/workspaces/task-create-route.test.ts
+```
+
+使用真实 Request/Response、模拟上游 fetch，验证 201 与公开字段、服务器凭证注入、Cookie/查询参数不透传、Origin/Host/配置/JSON/标识/额外字段拒绝、标题原样转发、Unicode 响应长度、项目标识匹配、错误码和状态组合、自有属性校验、畸形响应/网络失败。取消覆盖转发前、请求正文、fetch、响应正文及正文返回竞态，超时覆盖上游请求与正文，全部不自动重试；前置取消明确未提交，后置取消或超时保持结果未确认。
+
+本课未修改共享 BFF 工具或后端，未重复无关接口回归，未运行浏览器/真实 API 集成，未启动额外服务或访问数据库。真实联调留到工作台创建入口课程。
+
+
+### 工作台 Task 创建入口验收（2026-09-15）
+
+新增 apps/web/test/browser/workspace-task.mjs，隔离启动器复制真实 Task BFF。5 组浏览器场景通过；首轮发现目录面板/任务表单的同级 key 重复，补组件前缀并将 key/水合控制台警告纳入断言后，全场景复跑 5 passed、0 failed。TypeScript、定向 ESLint、Task BFF 59 条、git diff --check 通过。
+
+```bash
+BROWSER_APP_MODE=local BROWSER_TEST_SCRIPT=workspace-task.mjs \
+PLAYWRIGHT_MODULE=/Users/wanxiancheng/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright \
+CHROME_EXECUTABLE='/Applications/Google Chrome.app/Contents/MacOS/Google Chrome' \
+.venv/bin/python apps/web/test/browser/run-isolated.py
+pnpm --dir apps/web typecheck
+node --experimental-strip-types --test apps/web/test/features/workspaces/task-create-route.test.ts
+```
+
+浏览器真实经过 BFF/API/独立 PostgreSQL：未绑定目录的项目也可创建任务，空白及 201 个 Unicode 字符被拒绝，首尾空白规范化后 200 个 Emoji 成功；再次主动创建返回不同 Task/Conversation 标识。真实提交返回 201 后主动丢弃响应，表单进入结果未确认且阻止再次提交。此处不模拟真实数据库 commit 丢包。
+
+模拟故障覆盖 12 种异常成功/状态错误码错配响应，明确拒绝恢复编辑且不显示后端原始 message；同一事件循环双提交仅发一次，忽略 abort 的旧项目响应不污染新表单，正文阶段超时同样暂停提交。真实模型不参与本课。
+
+已查看 1366×768 与 1920×1080 截图，三栏无横向溢出，长标题在侧栏内换行，聊天输入保持可见且草稿不丢失。截图位于 /private/tmp/agent-ui-preview/output/playwright/task-1366.png 和 task-1920.png。临时服务、隔离 schema/database 已自动清理，没有写开发业务数据。
+
+当前创建结果不自动切换聊天，无 Task 列表与恢复入口；组件级防重复不是请求幂等，刷新/重新挂载会丢失未知状态提示。Next.js 仍提示当前 Node 经 Rosetta 运行，未将此提示记作业务测试失败。
+
+### 对话式任务侧栏交互修正（2026-09-15）
+
+用户明确授权教练直接实现。移除旧标题表单，使用共享 shadcn/ui Button 的 ghost/icon 样式组合项目行、笔形新建入口及任务列表；目录管理移入项目设置。首次发送才创建 Task/Conversation，后续消息固定会话，点回任务读取历史；首轮完成后后端生成标题，失败保留临时摘录，条件更新防止覆盖后来标题。前后端字段校验与本地授权均保留，没有新增迁移。
+
+验证结果：后端 Task 工作台/创建/本地入口共 57 passed（4.50s），-W error；前端 Task 创建/读取 BFF 与聊天状态/终态共 158 passed；TypeScript、定向 ESLint、Ruff、diff check 通过。最初新服务 SessionLocal 未纳入本地测试夹具，导致读取归属检查失败；已在共用 local_client 中显式替换为隔离库 sessionmaker，复跑通过，未执行业务写入或迁移。
+
+```bash
+cd apps/api
+../../.venv/bin/python -W error -m pytest -q tests/tasks/test_task_workspace.py tests/tasks/test_task_api.py tests/local/test_local_mode.py
+cd ../..
+node --experimental-strip-types --test apps/web/test/features/workspaces/task-read-route.test.ts apps/web/test/features/workspaces/task-create-route.test.ts apps/web/test/features/chat/*.test.ts
+pnpm --dir apps/web typecheck
+BROWSER_APP_MODE=local BROWSER_TEST_SCRIPT=workspace-task.mjs \
+PLAYWRIGHT_MODULE=/Users/wanxiancheng/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright \
+CHROME_EXECUTABLE='/Applications/Google Chrome.app/Contents/MacOS/Google Chrome' \
+.venv/bin/python apps/web/test/browser/run-isolated.py
+```
+
+workspace-task.mjs 已替换为新交互的 4 组浏览器测试，初轮及补迟到历史用例后的复跑均 4 passed、0 failed。真实 BFF/API/隔离 PostgreSQL，聊天和标题仅模拟模型出口；验证双提交只创建一次、两轮同会话、自动标题保存、刷新后手动选回任务、两个项目隔离、设置中的目录入口、空草稿、已提交响应丢失后从列表恢复，以及历史失败阻止发送、忽略 abort 的旧历史迟到仍不污染新任务。临时服务、schema/database 已自动清理。
+
+已视查 1366×768 与 1920×1080，截图为 /private/tmp/agent-ui-preview/output/playwright/task-conversation-1366.png 与 task-conversation-1920.png。布局开关提升到工作台上下文，切换任务保留侧栏开关；静态检查通过。本次没有调用真实付费模型验证标题措辞质量。辅助标题请求的费用尚未计入 AgentRun 指标。刷新自动选回原 Task、历史运行摘要恢复、删除及服务端创建幂等仍待后续课程；当前可从真实列表手动选回任务。
+
+### 空白页布局、侧栏字号与键盘交互优化（2026-09-15）
+
+空白态引导/输入框居中相邻；有消息后保持底部输入框。详情默认收起，通过图标打开；侧栏 280px，项目/任务 15px、辅助 13px、品牌 16px。项目分组内放刷新和新增图标，项目行显示展开箭头。输入区显示项目及键盘提示，Enter 发送、Shift+Enter 换行，isComposing/229 阻止输入法确认误发。
+
+TypeScript、定向 ESLint、diff check 与聊天 84 条专项通过。沿用 workspace-task.mjs 的 4 组真实 BFF/API/隔离 PostgreSQL 浏览器场景，全部通过；追加空白页标题/输入框间距、三个视口无横向溢出、键盘换行与输入法确认不创建任务的检查。用户要求放大侧栏字体后，使用 BROWSER_SCENARIO='first send' 定向复跑 1 组通过，计算样式确认项目字号为 15px。临时服务和隔离库均自动清理。
+
+已查看 1366×768 和 2560×1318 空白页截图；同时生成 1920×1080 截图。最终图片为 /private/tmp/agent-ui-preview/output/playwright/task-empty-1366.png、task-empty-1920.png、task-empty-2560.png。后端未变更；未重复运行无关数据库专项。运行方式沿用上一节，在浏览器命令前加 BROWSER_SCENARIO='first send' 可仅复跑主要布局与发送场景。不改变下一课，也不将简单样式调整另行归档面试题。
+
+### 全页 18px 字号（2026-09-15）
+
+按用户明确要求，全站 xs/sm/base 与 body 使用 18px，并替换工作台小于 18px 的固定字号；标题保留更大层级。同步增加 Button/Input 高度、侧栏行高，左右栏展开宽度调整为 320px/340px。TypeScript、定向 ESLint、diff check 通过。BROWSER_SCENARIO='first send' 浏览器定向复跑通过，计算样式确认项目名 18px；1366×768、1920×1080、2560×1318 布局检查与截图完成，1366 截图已视查。首发、同会话续聊、标题及历史链路正常；临时服务和隔离库已清理。此前 15px/280px 样式记录由本节取代。
+
+
+### Task 详情读取接口验收（2026-09-15）
+
+学习者实现核心，教练新增 test_task_detail.py 18 条；详情、任务工作台 11 条及创建 33 条共 62 passed（5.41s），-W error 零警告。Ruff/diff check 通过，核心无需修正，仅补 schemas.py 末尾换行。
+
+```bash
+cd apps/api
+../../.venv/bin/python -W error -m pytest -q tests/tasks/test_task_detail.py tests/tasks/test_task_workspace.py tests/tasks/test_task_api.py
+../../.venv/bin/python -m ruff check app/schemas.py app/services/tasks/task_workspace.py app/routers/workspace/workspace.py tests/tasks/test_task_detail.py
+```
+
+复用 local_client 的隔离 PostgreSQL 会话工厂，验证真实 HTTP 与公开字段、Cookie/身份头不改变归属、22 条任务中第一页外的旧任务可直接定位、未知任务/项目/错误项目/他人项目/会话归属错配统一 404、非法路径 422、非本地模式提前拒绝及内部异常脱敏。直接服务测试捕获 SQL，确认仅 SELECT、未 commit，Session 已关闭且序列化不再触发查询；重读标题保持不变。测试库自动清理；未访问开发业务表、运行迁移、调用模型或启动额外服务。本课不涉及前端，不运行浏览器或无关全量回归。
+
+### 按业务领域整理目录与当日收尾（2026-09-15）
+
+用户授权后，将 routers/services/repositories 按领域分组，并将后端测试归入 auth/chat/core/local/migrations/model/runtime/tasks/tools/workspace。共迁移 97 个源码/测试文件；完整布局见 docs/project-structure.md。同步 Python 导入、测试夹具包导入、浏览器隔离启动器、迁移测试文件定位和文档中的运行路径，不保留旧路径转发模块。
+
+迁移后后端全量 899 passed（58.07s），-W error；Ruff 全量 app/tests 与 diff check 通过。前端 TypeScript、Workspace 325 条通过。BROWSER_SCENARIO='first send' 浏览器复跑 1 组通过，真实 BFF/API/隔离 PostgreSQL 验证创建、连续聊天、自动标题和刷新后历史读取，包含三个 PC 尺寸布局检查；模型出口仍为模拟，临时进程及测试库自动清理。
+
+```bash
+cd apps/api
+../../.venv/bin/python -W error -m pytest -q
+../../.venv/bin/python -W error -m pytest -q tests/tasks
+../../.venv/bin/python -m ruff check app tests
+cd ../web
+pnpm typecheck
+pnpm test:workspaces
+```
+
+启动命令仍为 python -m uvicorn app.main:app --reload，不改变接口 URL、数据库模型或 Alembic 修订。若已有进程未启用 reload，重启原服务即可，不需要额外创建服务或重新初始化数据库。当日进度更新在 LEARNING_HANDOFF.md，学习内容与完成范围更新在 LEARNING_CURRICULUM.md；唯一下一课保持 Task 详情 BFF。

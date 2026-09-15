@@ -18,8 +18,8 @@
 
 ## 项目证据
 
-- 实现：`apps/api/app/services/password_service.py`。
-- 测试：`apps/api/tests/test_password_service.py`，7 条覆盖算法标识、正确/错误密码、随机盐、空格与 Unicode、非法哈希和验证故障传播。
+- 实现：`apps/api/app/services/auth/password_service.py`。
+- 测试：`apps/api/tests/auth/test_password_service.py`，7 条覆盖算法标识、正确/错误密码、随机盐、空格与 Unicode、非法哈希和验证故障传播。
 - 2026-09-11：后端 130 条测试通过，Ruff 通过；没有调用模型 API。
 - 当前已完成密码服务、User 登录字段、注册服务与注册 HTTP 接口；尚无登录、Cookie 或权限闭环，不宣称认证已完成。
 
@@ -47,7 +47,7 @@ flush 在当前事务中执行 SQL、取得主键并触发唯一性检查，但�
 
 失败场景：使用 `raise UsernameAlreadyExistsError() from error` 时，即使业务错误文本安全，默认 traceback 仍会展示原始 SQL 异常与参数中的密码哈希。学习者改为 `from None` 后默认异常链展示被抑制，但原异常仍可存在于 `__context__`；日志系统收集局部变量或异常上下文仍可能泄露，因此后续 HTTP/日志边界必须独立脱敏。
 
-项目证据：`apps/api/tests/test_registration_service.py` 共 10 条测试；2026-09-13 数据库测试统一到 PostgreSQL 后，后端默认 219 条通过，Ruff 通过。覆盖成功结果不含凭证、已有事务保护、哈希/提交失败回滚、真实用户名与其他约束分类、Session 恢复及默认回溯脱敏。统一 fixture 创建独立临时测试库与每例私有 schema，注册服务使用真实 commit；新增 2 条隔离用例验证不同物理连接间的提交/回滚可见性。测试结束自动清理，不污染开发业务数据，不声称已做并发压测。尚未接入注册 HTTP 接口。
+项目证据：`apps/api/tests/auth/test_registration_service.py` 共 10 条测试；2026-09-13 数据库测试统一到 PostgreSQL 后，后端默认 219 条通过，Ruff 通过。覆盖成功结果不含凭证、已有事务保护、哈希/提交失败回滚、真实用户名与其他约束分类、Session 恢复及默认回溯脱敏。统一 fixture 创建独立临时测试库与每例私有 schema，注册服务使用真实 commit；新增 2 条隔离用例验证不同物理连接间的提交/回滚可见性。测试结束自动清理，不污染开发业务数据，不声称已做并发压测。尚未接入注册 HTTP 接口。
 
 ## 追问：为什么业务错误安全，HTTP 响应或日志仍可能泄露密码？
 
@@ -61,7 +61,7 @@ HTTP 结果明确区分：201 创建账号、409 用户名冲突、422 无效输
 
 同步密码哈希与数据库调用放在普通 def 路由，由 FastAPI 在线程池执行；路由创建并关闭 Session，服务拥有事务。成功响应只包含 external_id 和 username，不包含哈希，也不设置登录 Cookie。
 
-项目证据：`apps/api/tests/test_registration_api.py` 的 21 条测试覆盖成功持久化、重复用户名、无效输入/非法 JSON、未知数据库约束错误、恢复、日志与响应脱敏、Session 关闭、线程执行和 OpenAPI/既有路由行为。2026-09-13 后端 240 条通过，Ruff 通过，注册路由、响应模型和接口测试 Pyright 零错误、零警告；全部数据库测试使用独立 PostgreSQL，临时库已清理。课后归档不代表已经通过模拟面试。
+项目证据：`apps/api/tests/auth/test_registration_api.py` 的 21 条测试覆盖成功持久化、重复用户名、无效输入/非法 JSON、未知数据库约束错误、恢复、日志与响应脱敏、Session 关闭、线程执行和 OpenAPI/既有路由行为。2026-09-13 后端 240 条通过，Ruff 通过，注册路由、响应模型和接口测试 Pyright 零错误、零警告；全部数据库测试使用独立 PostgreSQL，临时库已清理。课后归档不代表已经通过模拟面试。
 
 ## 追问：登录如何处理中文用户名与凭证错误？
 

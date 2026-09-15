@@ -4,13 +4,14 @@
 	"private": true,
 	"type": "module",
 	"scripts": {
-		"dev": "next dev",
+		"dev": "next dev --hostname 127.0.0.1",
 		"build": "next build",
-		"start": "next start",
+		"start": "next start --hostname 127.0.0.1",
 		"lint": "eslint",
 		"typecheck": "next typegen && tsc --noEmit",
 		"test:auth:page": "python test/browser/run-isolated.py",
 		"test:auth": "node --experimental-strip-types --test \"test/features/auth/**/*.test.ts\"",
+		"test:workspaces": "node --experimental-strip-types --test \"test/features/workspaces/**/*.test.ts\"",
 		"test:state": "node --experimental-strip-types --test \"test/features/chat/**/*.test.ts\""
 	},
 	"dependencies": {

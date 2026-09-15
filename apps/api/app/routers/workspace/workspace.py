@@ -1,0 +1,689 @@
+"""Workspace 创建接口：身份、来源校验与安全响应边界。"""
+
+import logging
+from collections.abc import Callable, Coroutine
+from typing import Annotated, Any
+
+from pydantic import BaseModel, ConfigDict
+
+from fastapi import APIRouter, Query, Path, Request, Response, status
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
+from fastapi.routing import APIRoute
+from starlette.exceptions import HTTPException as StarletteHTTPException
+
+from app.services.tasks.task_workspace import task_list, task_messages, summarize_title
+from app.config import settings
+from app.database import SessionLocal
+from app.dependencies import CurrentUser
+from app.repositories.workspace.workspace_repository import (
+    InvalidWorkspaceNameError,
+    WorkspaceNotAccessibleError,
+    list_owned_workspaces,
+    require_owned_workspace,
+)
+from app.schemas import (
+    WorkspaceCreateRequest,
+    WorkspaceDirectoryRequest,
+    WorkspaceDirectoryResponse,
+    WorkspaceDirectoryStateResponse,
+    WorkspaceErrorResponse,
+    WorkspaceListResponse,
+    WorkspaceResponse,
+    TaskCreateRequest,
+    TaskResponse,
+)
+from app.services.auth.login_session_resolver import InvalidLoginSessionError
+from app.services.workspace.workspace_service import create_user_workspace
+from app.services.workspace.workspace_binding import (
+    WorkspaceAlreadyBoundError,
+    bind_workspace_directory,
+)
+from app.services.workspace.workspace_directory import WorkspaceDirectoryError
+from app.services.workspace.directory_picker import DirectoryPickerError, select_directory
+from app.services.tasks.task_service import (
+    InvalidTaskTitleError,
+    create_workspace_task,
+)
+from app.schemas import TaskDetailResponse
+from app.services.tasks.task_workspace import task_detail
+
+logger = logging.getLogger(__name__)
+
+
+def _error_response(
+    status_code: int,
+    *,
+    code: str,
+    message: str,
+) -> JSONResponse:
+    """显式构建安全正文，不序列化原始异常或请求输入。"""
+
+    payload = WorkspaceErrorResponse(
+        code=code,
+        message=message,
+    )
+
+    return JSONResponse(
+        status_code=status_code,
+        content=payload.model_dump(),
+        headers={"Cache-Control": "no-store"},
+    )
+
+def _is_directory_request(request: Request) -> bool:
+    """依据已经匹配的路由模板识别目录接口，不检查用户输入的路径后缀。"""
+
+    route = request.scope.get("route")
+
+    # 目录读取、兼容 PUT 绑定与系统选择统一应用本地模式边界。
+    return (
+        getattr(route, "path", None)
+        in {"/workspaces/{workspace_id}/directory", "/workspaces/{workspace_id}/directory/select"}
+    )
+
+def _is_task_create_request(request: Request) -> bool:
+    """根据已匹配的路由模板识别任务创建，不猜测 URL 后缀。"""
+
+    route = request.scope.get("route")
+
+    return (
+        request.method == "POST"
+        and getattr(route, "path", None)
+        == "/workspaces/{workspace_id}/tasks"
+    )
+
+def _workspace_failure_response(request: Request) -> JSONResponse:
+    """按操作返回安全错误，不暴露 SQL、路径或原始异常。"""
+
+    if _is_task_create_request(request):
+        code = "task_creation_uncertain"
+        message = "任务创建结果未确认，请勿直接重复提交"
+    elif request.method == "GET" and _is_directory_request(request):
+        code = "workspace_directory_read_failed"
+        message = "读取项目目录状态失败，请稍后重试"
+    elif request.method == "GET":
+        code = "workspace_list_failed"
+        message = "读取工作空间列表失败，请稍后再试"
+    elif request.method == "PUT" or _is_directory_request(request):
+        code = "workspace_binding_failed"
+        message = "项目目录绑定结果未确认，请稍后检查"
+    else:
+        code = "workspace_creation_failed"
+        message = "创建工作空间失败，请稍后再试"
+
+    # 提交成功后，响应构造或序列化仍可能失败。
+    # 只记录固定错误码，不记录请求输入和原始异常详情。
+    logger.error(code)
+
+    return _error_response(
+        500,
+        code=code,
+        message=message,
+    )
+
+class WorkspaceRoute(APIRoute):
+    """覆盖依赖求解、路由执行以及响应生成阶段的错误。"""
+
+    def get_route_handler(
+        self,
+    ) -> Callable[[Request], Coroutine[Any, Any, Response]]:
+        original_handler = super().get_route_handler()
+
+        async def safe_handler(request: Request) -> Response:
+            try:
+
+                # Task 主流程目前仅服务本地工作台。
+                # 在身份解析和数据库操作之前拒绝非本地模式。
+                if (
+                    "/tasks" in getattr(request.scope.get("route"), "path", "")
+                    and settings.app_mode != "local"
+                ):
+                    return _error_response(
+                        403,
+                        code="local_mode_required",
+                        message="任务功能仅支持本地模式",
+                    )
+
+                # 目录读取和绑定都仅供本地工作台使用。
+                # 在身份解析及数据库查询前拒绝非本地模式。
+                if _is_directory_request(request) and settings.app_mode != "local":
+                    return _error_response(
+                        403,
+                        code="local_mode_required",
+                        message="项目目录功能仅支持本地模式",
+                    )
+
+                # 创建和绑定都是写操作，都要求可信来源与 JSON 正文。
+                if request.method in {"POST", "PUT"}:
+                    # 沿用现有允许来源配置，精确匹配，不使用前缀匹配。
+                    origin = request.headers.get("origin")
+
+                    if origin not in settings.login_allowed_origins:
+                        return _error_response(
+                            403,
+                            code="workspace_origin_rejected",
+                            message="工作空间请求来源不被允许",
+                        )
+
+                    # 接受 application/json; charset=utf-8 等合法参数形式。
+                    content_type = (
+                        request.headers.get("content-type", "")
+                        .split(";", 1)[0]
+                        .strip()
+                        .lower()
+                    )
+
+                    if content_type != "application/json":
+                        return _error_response(
+                            415,
+                            code="unsupported_workspace_content_type",
+                            message="工作空间请求必须使用 application/json",
+                        )
+
+                # 原始 handler 会解析请求、执行 CurrentUser 依赖并调用接口。
+                response = await original_handler(request)
+                response.headers["Cache-Control"] = "no-store"
+                return response
+
+            except InvalidLoginSessionError:
+                return _error_response(
+                    401,
+                    code="invalid_login_session",
+                    message="登录状态无效，请重新登录",
+                )
+
+            except RequestValidationError:
+                # 路径、正文类型和额外字段错误统一脱敏。
+                # 不返回原始输入或 Pydantic 校验详情。
+                if _is_task_create_request(request):
+                    return _error_response(
+                        422,
+                        code="invalid_task_input",
+                        message="任务请求参数不符合要求",
+                    )
+
+                return _error_response(
+                    422,
+                    code="invalid_workspace_input",
+                    message="工作空间请求参数不符合要求",
+                )
+
+            except InvalidTaskTitleError:
+                # 字符串类型正确但规范化后标题非法，保留业务错误分类。
+                return _error_response(
+                    422,
+                    code=InvalidTaskTitleError.code,
+                    message="任务标题去除首尾空白后须为 1～200 个字符",
+                )
+
+            except InvalidWorkspaceNameError:
+                # 业务校验与请求类型校验都归为 422，但保留不同错误码。
+                return _error_response(
+                    422,
+                    code=InvalidWorkspaceNameError.code,
+                    message="工作空间名称去除首尾空白后须为 1～100 个字符",
+                )
+
+            except WorkspaceNotAccessibleError:
+                # 未知与不可访问资源返回相同结果。
+                return _error_response(
+                    404,
+                    code=WorkspaceNotAccessibleError.code,
+                    message="工作空间不存在或不可访问",
+                )
+
+            except WorkspaceAlreadyBoundError:
+                return _error_response(
+                    409,
+                    code=WorkspaceAlreadyBoundError.code,
+                    message="工作空间已绑定其他项目目录",
+                )
+
+            except DirectoryPickerError as error:
+                picker_errors = {
+                    "directory_picker_busy": (409, "已有目录选择窗口，请先完成或取消选择"),
+                    "directory_picker_timeout": (408, "目录选择已超时，请重新选择"),
+                    "directory_picker_unsupported": (501, "当前系统暂不支持目录选择"),
+                    "directory_picker_unavailable": (503, "无法打开系统目录选择窗口，请检查本地桌面环境"),
+                }
+                status_code, message = picker_errors[error.code]
+                return _error_response(status_code, code=error.code, message=message)
+
+            except WorkspaceDirectoryError as error:
+                # 使用固定映射，不把异常正文直接作为 HTTP 响应。
+                directory_errors = {
+                    "invalid_directory_path": (
+                        422, "项目目录路径不符合要求",
+                    ),
+                    "directory_not_found": (
+                        422, "项目目录不存在或路径中包含非目录项",
+                    ),
+                    "directory_access_denied": (
+                        422, "没有权限访问项目目录",
+                    ),
+                    "not_a_directory": (
+                        422, "请选择目录，而不是文件",
+                    ),
+                    "root_directory_not_allowed": (
+                        422, "不能将文件系统根目录作为项目目录",
+                    ),
+                    "directory_unavailable": (
+                        503, "暂时无法访问项目目录，请稍后再试",
+                    ),
+                }
+
+                mapped_error = directory_errors.get(error.code)
+
+                # 未知错误码按内部失败处理，不能直接反射给客户端。
+                if mapped_error is None:
+                    return _workspace_failure_response(request)
+
+                status_code, message = mapped_error
+
+                return _error_response(
+                    status_code,
+                    code=error.code,
+                    message=message,
+                )
+            except StarletteHTTPException as error:
+                if error.status_code == 400:
+                    return _error_response(
+                        400,
+                        code="invalid_workspace_request",
+                        message="工作空间请求无法解析",
+                    )
+
+                return _workspace_failure_response(request)
+
+            except Exception:  # noqa: BLE001 -- HTTP 边界统一脱敏
+                return _workspace_failure_response(request)
+
+        return safe_handler
+
+
+router = APIRouter(
+    prefix="/workspaces",
+    tags=["workspaces"],
+    route_class=WorkspaceRoute,
+)
+
+
+@router.post(
+    "",
+    status_code=status.HTTP_201_CREATED,
+    response_model=WorkspaceResponse,
+    responses={
+        400: {
+            "model": WorkspaceErrorResponse,
+            "description": "请求无法解析",
+        },
+        401: {
+            "model": WorkspaceErrorResponse,
+            "description": "登录状态无效",
+        },
+        403: {
+            "model": WorkspaceErrorResponse,
+            "description": "请求来源不被允许",
+        },
+        415: {
+            "model": WorkspaceErrorResponse,
+            "description": "请求内容类型不支持",
+        },
+        422: {
+            "model": WorkspaceErrorResponse,
+            "description": "请求字段或名称不符合要求",
+        },
+        500: {
+            "model": WorkspaceErrorResponse,
+            "description": "创建工作空间失败",
+        },
+    },
+)
+def create_workspace(
+    payload: WorkspaceCreateRequest,
+    current_user: CurrentUser,
+) -> WorkspaceResponse:
+    """创建本人工作空间；服务管理事务，路由管理 Session 生命周期。"""
+
+    # 普通 def 路由由 FastAPI 在线程池执行，同步数据库调用不会阻塞事件循环。
+    # 认证依赖已关闭自己的 Session，这里为业务创建新的独立 Session。
+    with SessionLocal() as session:
+        result = create_user_workspace(
+            session=session,
+            user_id=current_user.id,
+            name=payload.name,
+        )
+
+    # 服务结果是普通数据，关闭 Session 后仍可安全组装响应。
+    return WorkspaceResponse(
+        external_id=result.external_id,
+        name=result.name,
+        created_at=result.created_at,
+    )
+
+@router.get(
+    "",
+    response_model=WorkspaceListResponse,
+    responses={
+        401: {
+            "model": WorkspaceErrorResponse,
+            "description": "账号模式下登录状态无效",
+        },
+        403: {
+            "model": WorkspaceErrorResponse,
+            "description": "本地访问边界拒绝请求",
+        },
+        422: {
+            "model": WorkspaceErrorResponse,
+            "description": "列表查询参数不符合要求",
+        },
+        500: {
+            "model": WorkspaceErrorResponse,
+            "description": "读取工作空间列表失败",
+        },
+    },
+)
+def list_workspaces(
+    current_user: CurrentUser,
+    limit: Annotated[
+        int,
+        Query(
+            ge=1,
+            le=100,
+            description="返回条数，默认 20，最多 100",
+        ),
+    ] = 20,
+) -> WorkspaceListResponse:
+    """读取当前身份的工作空间，返回关闭 Session 后仍可使用的响应。"""
+
+    # 同步数据库操作继续使用普通 def 路由，由 FastAPI 在线程池执行。
+    # 身份依赖已经关闭自己的 Session，这里创建独立的查询 Session。
+    with SessionLocal() as session:
+        workspaces = list_owned_workspaces(
+            session=session,
+            user_id=current_user.id,
+            limit=limit + 1,
+        )
+
+        # 在 Session 关闭前提取公开字段，不让 ORM 对象进入响应边界。
+        result = WorkspaceListResponse(
+            items=[
+                WorkspaceResponse(
+                    external_id=workspace.external_id,
+                    name=workspace.name,
+                    created_at=workspace.created_at,
+                )
+                for workspace in workspaces[:limit]
+            ],
+            has_more=len(workspaces) > limit,
+        )
+
+    # 列表查询没有业务写入，无需 commit；上下文退出时释放读取事务。
+    return result
+
+@router.put(
+    "/{workspace_id}/directory",
+    response_model=WorkspaceDirectoryResponse,
+    responses={
+        400: {
+            "model": WorkspaceErrorResponse,
+            "description": "请求无法解析",
+        },
+        403: {
+            "model": WorkspaceErrorResponse,
+            "description": "非本地模式或本地访问边界拒绝",
+        },
+        404: {
+            "model": WorkspaceErrorResponse,
+            "description": "工作空间不存在或不可访问",
+        },
+        409: {
+            "model": WorkspaceErrorResponse,
+            "description": "工作空间已绑定其他目录",
+        },
+        415: {
+            "model": WorkspaceErrorResponse,
+            "description": "请求必须使用 application/json",
+        },
+        422: {
+            "model": WorkspaceErrorResponse,
+            "description": "标识、正文或目录不符合要求",
+        },
+        500: {
+            "model": WorkspaceErrorResponse,
+            "description": "绑定结果未确认",
+        },
+        503: {
+            "model": WorkspaceErrorResponse,
+            "description": "文件系统暂时不可用",
+        },
+    },
+)
+def bind_workspace_root(
+    workspace_id: Annotated[
+        str,
+        Path(
+            min_length=32,
+            max_length=32,
+            pattern=r"^[0-9a-f]{32}$",
+        ),
+    ],
+    payload: WorkspaceDirectoryRequest,
+    current_user: CurrentUser,
+) -> WorkspaceDirectoryResponse:
+    """绑定本人工作空间目录；路由管理 Session，服务管理事务。"""
+
+    # 普通 def 在线程池执行，避免同步数据库和文件系统调用阻塞事件循环。
+    # 身份依赖已关闭自己的 Session，业务使用新的独立 Session。
+    with SessionLocal() as session:
+        result = bind_workspace_directory(
+            session=session,
+            user_id=current_user.id,
+            workspace_id=workspace_id,
+            root_path=payload.root_path,
+        )
+
+    # 服务已提交并返回普通结果，关闭 Session 后仍可组装响应。
+    return WorkspaceDirectoryResponse(
+        external_id=result.external_id,
+        name=result.name,
+        root_path=result.root_path,
+    )
+
+
+@router.get(
+    "/{workspace_id}/directory",
+    response_model=WorkspaceDirectoryStateResponse,
+    responses={
+        403: {
+            "model": WorkspaceErrorResponse,
+            "description": "非本地模式或本地访问边界拒绝",
+        },
+        404: {
+            "model": WorkspaceErrorResponse,
+            "description": "工作空间不存在或不可访问",
+        },
+        422: {
+            "model": WorkspaceErrorResponse,
+            "description": "工作空间标识不符合要求",
+        },
+        500: {
+            "model": WorkspaceErrorResponse,
+            "description": "读取目录绑定状态失败",
+        },
+    },
+)
+def read_workspace_directory(
+    workspace_id: Annotated[
+        str,
+        Path(
+            min_length=32,
+            max_length=32,
+            pattern=r"^[0-9a-f]{32}$",
+        ),
+    ],
+    current_user: CurrentUser,
+) -> WorkspaceDirectoryStateResponse:
+    """读取本人工作空间的绑定记录，不修改数据或访问文件系统。"""
+
+    # 普通 def 在线程池执行，业务 Session 与身份解析 Session 分开。
+    with SessionLocal() as session:
+        workspace = require_owned_workspace(
+            session=session,
+            user_id=current_user.id,
+            workspace_id=workspace_id,
+        )
+
+        # 在 Session 关闭前复制响应字段，不把 ORM 对象交给外层序列化。
+        # 必须保留 None，不能替换为空字符串或猜测默认项目目录。
+        result = WorkspaceDirectoryStateResponse(
+            external_id=workspace.external_id,
+            name=workspace.name,
+            root_path=workspace.root_path,
+        )
+
+    # 只读操作无需 commit；Session 退出时结束读取事务并释放连接。
+    return result
+
+
+class DirectorySelectionRequest(BaseModel):
+    """选择行为不接受浏览器提供路径、命令或身份字段。"""
+
+    model_config = ConfigDict(extra="forbid")
+
+
+@router.post("/{workspace_id}/directory/select", response_model=WorkspaceDirectoryResponse)
+def select_workspace_directory(
+    workspace_id: Annotated[str, Path(min_length=32, max_length=32, pattern=r"^[0-9a-f]{32}$")],
+    payload: DirectorySelectionRequest,
+    current_user: CurrentUser,
+) -> WorkspaceDirectoryResponse | Response:
+    """用户选择后直接绑定；取消为 204，不产生绑定写入。"""
+
+    # 打开系统窗口前先授权，并在等待用户操作前关闭读取事务。
+    with SessionLocal() as session:
+        workspace = require_owned_workspace(
+            session=session, user_id=current_user.id, workspace_id=workspace_id,
+        )
+        if workspace.root_path is not None:
+            return WorkspaceDirectoryResponse(
+                external_id=workspace.external_id, name=workspace.name,
+                root_path=workspace.root_path,
+            )
+
+    # 同步路由在线程池运行，选择窗口不会阻塞 Agent 的事件循环。
+    path = select_directory()
+    if path is None:
+        return Response(status_code=204, headers={"Cache-Control": "no-store"})
+
+    # 用户选择期间可能发生并发绑定，保存时重新检查归属和行锁状态。
+    with SessionLocal() as session:
+        result = bind_workspace_directory(
+            session=session, user_id=current_user.id,
+            workspace_id=workspace_id, root_path=path,
+        )
+    return WorkspaceDirectoryResponse(
+        external_id=result.external_id, name=result.name, root_path=result.root_path,
+    )
+
+@router.post(
+    "/{workspace_id}/tasks",
+    status_code=status.HTTP_201_CREATED,
+    response_model=TaskResponse,
+    responses={
+        403: {
+            "model": WorkspaceErrorResponse,
+            "description": "非本地模式或访问来源不被允许",
+        },
+        404: {
+            "model": WorkspaceErrorResponse,
+            "description": "工作空间不存在或不可访问",
+        },
+        415: {
+            "model": WorkspaceErrorResponse,
+            "description": "请求必须使用 application/json",
+        },
+        422: {
+            "model": WorkspaceErrorResponse,
+            "description": "标识、正文或标题不符合要求",
+        },
+        500: {
+            "model": WorkspaceErrorResponse,
+            "description": "任务创建结果未确认",
+        },
+    },
+)
+def create_task(
+    workspace_id: Annotated[
+        str,
+        Path(
+            min_length=32,
+            max_length=32,
+            pattern=r"^[0-9a-f]{32}$",
+        ),
+    ],
+    payload: TaskCreateRequest,
+    current_user: CurrentUser,
+) -> TaskResponse:
+    """为本人项目创建任务与会话；服务管理事务，路由管理 Session。"""
+
+    # 普通 def 路由在线程池运行，避免同步数据库调用阻塞事件循环。
+    # 身份依赖已关闭自己的 Session，业务使用新的独立 Session。
+    with SessionLocal() as session:
+        result = create_workspace_task(
+            session=session,
+            user_id=current_user.id,
+            workspace_id=workspace_id,
+            title=payload.title,
+        )
+
+    # 业务 Session 关闭后只使用普通结果构造响应。
+    # 不返回 ORM 对象，也不额外提交或重新查询数据库。
+    return TaskResponse(
+        external_id=result.external_id,
+        workspace_id=result.workspace_id,
+        conversation_id=result.conversation_id,
+        title=result.title,
+        created_at=result.created_at,
+    )
+
+
+# 工作台只接受公开项目/任务标识，归属检查沿 Workspace 与 Conversation 双重确认。
+
+TaskIdentifier = Annotated[str, Path(pattern=r"^[0-9a-f]{32}$")]
+
+
+@router.get("/{workspace_id}/tasks")
+def read_tasks(workspace_id: TaskIdentifier, current_user: CurrentUser,
+    before: Annotated[int | None, Query(ge=1, le=2147483647)] = None,
+    limit: Annotated[int, Query(ge=1, le=100)] = 20):
+    return task_list(current_user.id, workspace_id, before, limit)
+
+@router.get(
+    "/{workspace_id}/tasks/{task_id}",
+    response_model=TaskDetailResponse,
+)
+def read_task_detail(
+    workspace_id: TaskIdentifier,
+    task_id: TaskIdentifier,
+    current_user: CurrentUser,
+) -> TaskDetailResponse:
+    """按公开标识定位任务，为 URL 刷新恢复提供可信数据。"""
+
+    # 身份来自依赖解析，不接受客户端指定用户。
+    # 普通 def 路由在线程池执行同步数据库读取。
+    return task_detail(
+        user_id=current_user.id,
+        workspace_id=workspace_id,
+        task_id=task_id,
+    )
+
+@router.get("/{workspace_id}/tasks/{task_id}/messages")
+def read_task_messages(workspace_id: TaskIdentifier, task_id: TaskIdentifier, current_user: CurrentUser):
+    return task_messages(current_user.id, workspace_id, task_id)
+
+
+@router.post("/{workspace_id}/tasks/{task_id}/title")
+async def update_task_title(workspace_id: TaskIdentifier, task_id: TaskIdentifier,
+    payload: DirectorySelectionRequest, current_user: CurrentUser):
+    return await summarize_title(current_user.id, workspace_id, task_id)

@@ -4,6 +4,9 @@
 
 ## 本地启动
 
+当前主模式为免登录本地工作台。推荐在仓库根目录用 `.venv/bin/python scripts/run_local.py` 同时启动 Web/API；配置与凭证由 `scripts/setup_local.py` 同步。不要把 `LOCAL_RUNTIME_TOKEN` 放入任何 `NEXT_PUBLIC_` 变量或客户端组件。
+
+
 先在项目根目录启动 Docker Compose 和 FastAPI；完整步骤见仓库根目录的 [ENVIRONMENT.md](../../ENVIRONMENT.md)。然后运行：
 
 ```bash
