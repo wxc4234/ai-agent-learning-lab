@@ -13,6 +13,15 @@ from app.models import Conversation, Task, User, Workspace
 from tests.migrations.test_workspace_migration import load_migration, metadata_before_tasks
 
 
+def metadata_at_task_revision():
+    # 历史修订只比较当时的表，后续迁移由各自测试验证。
+    snapshot = MetaData()
+    for table in Base.metadata.sorted_tables:
+        if table.name != "task_creation_requests":
+            table.to_metadata(snapshot)
+    return snapshot
+
+
 @pytest.fixture
 def migrated(empty_engine):
     # 从真实旧迁移建立上个版本，历史数据先提交，再单独运行新迁移。
@@ -46,7 +55,7 @@ def migrated(empty_engine):
 def test_old_data_round_trip_and_metadata(migrated):
     engine, old, before, migration = migrated
     with engine.begin() as connection:
-        assert compare_metadata(MigrationContext.configure(connection, opts={'compare_server_default': True}), Base.metadata) == []
+        assert compare_metadata(MigrationContext.configure(connection, opts={'compare_server_default': True}), metadata_at_task_revision()) == []
         assert {name: connection.execute(select(table).order_by(table.c.id)).all() for name, table in old.tables.items()} == before
         assert connection.execute(text('SELECT task_id FROM conversations ORDER BY id')).scalars().all() == [None, None]
         connection.execute(text("INSERT INTO tasks (external_id,workspace_id,title) VALUES ('new-task',1,'新任务')"))
@@ -59,7 +68,7 @@ def test_old_data_round_trip_and_metadata(migrated):
     with engine.begin() as connection, Operations.context(MigrationContext.configure(connection)):
         migration.upgrade()
     with engine.connect() as connection:
-        assert compare_metadata(MigrationContext.configure(connection), Base.metadata) == []
+        assert compare_metadata(MigrationContext.configure(connection), metadata_at_task_revision()) == []
         assert connection.execute(text('SELECT count(*) FROM tasks')).scalar_one() == 0
         assert connection.execute(text('SELECT task_id FROM conversations')).scalars().all() == [None, None]
 
@@ -120,5 +129,5 @@ def test_recover_empty_create_all_table_then_upgrade(migrated):
         assert compare_metadata(MigrationContext.configure(connection), metadata_before_tasks()) == []
         with Operations.context(MigrationContext.configure(connection)):
             migration.upgrade()
-        assert compare_metadata(MigrationContext.configure(connection), Base.metadata) == []
+        assert compare_metadata(MigrationContext.configure(connection), metadata_at_task_revision()) == []
         assert {name: connection.execute(select(table).order_by(table.c.id)).all() for name, table in old.tables.items()} == before

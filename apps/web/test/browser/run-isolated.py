@@ -29,7 +29,13 @@ runtime_token = secrets.token_hex(32)
 processes = []
 logs = ExitStack()
 try:
-    module.engine.__wrapped__(engine)
+    # 浏览器启动也走真实迁移链，禁止 create_all 绕过启动版本检查。
+    from alembic import command
+    from alembic.config import Config
+    migration_config = Config(str(API / "alembic.ini"))
+    with engine.begin() as connection:
+        migration_config.attributes["connection"] = connection
+        command.upgrade(migration_config, "head")
     from sqlalchemy.orm import Session
     from app.schemas import RegisterRequest
     from app.services.auth.registration_service import register_user
@@ -69,7 +75,7 @@ try:
             ROOT / "apps/web/src/app/api/auth/login/route.ts",
             web / "app/api/auth/login/route.ts",
         )
-        for route in ("auth/register", "workspaces", "workspaces/[workspaceId]/directory", "workspaces/[workspaceId]/directory/select", "workspaces/[workspaceId]/tasks", "workspaces/[workspaceId]/tasks/[taskId]/messages", "workspaces/[workspaceId]/tasks/[taskId]/title"):
+        for route in ("runs/[runId]", "auth/register", "workspaces", "workspaces/[workspaceId]/directory", "workspaces/[workspaceId]/directory/select", "workspaces/[workspaceId]/tasks", "workspaces/[workspaceId]/tasks/[taskId]", "workspaces/[workspaceId]/tasks/[taskId]/messages", "workspaces/[workspaceId]/tasks/[taskId]/runs", "workspaces/[workspaceId]/tasks/[taskId]/title"):
             destination = web / "app/api" / route
             destination.mkdir(parents=True)
             shutil.copyfile(ROOT / "apps/web/src/app/api" / route / "route.ts", destination / "route.ts")

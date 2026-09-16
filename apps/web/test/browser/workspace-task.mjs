@@ -10,7 +10,7 @@ const browser = await chromium.launch({ headless: true, executablePath: process.
 let passed = 0;
 const failures = [];
 async function scenario(name, run) {
-    if (process.env.BROWSER_SCENARIO && !name.startsWith(process.env.BROWSER_SCENARIO)) return;
+    if (process.env.BROWSER_SCENARIO && !process.env.BROWSER_SCENARIO.split(',').some(prefix => name.startsWith(prefix))) return;
     const context = await browser.newContext({ viewport: { width: 1366, height: 768 } });
     const page = await context.newPage();
     page.setDefaultTimeout(30000);
@@ -79,10 +79,21 @@ try {
         const task = (await list.json()).items[0];
         assert.equal(task.title, '自动总结的任务标题');
         assert.equal(task.conversation_id, sessionIds[0]);
+        const link = page.url();
+        assert.equal(new URL(link).searchParams.get('workspace'), workspace.external_id);
+        assert.equal(new URL(link).searchParams.get('task'), task.external_id);
         await page.reload();
-        await tasks(page, '对话交互项目').getByRole('button', { name: task.title, exact: true }).click();
+        // 刷新后必须自动恢复，不能通过手动点击掩盖恢复失败。
         await page.getByText('接着增加测试', { exact: true }).waitFor();
         assert.equal(await page.getByText('帮我实现搜索功能', { exact: true }).count(), 1);
+        const copied = await page.context().newPage();
+        await copied.goto(link);
+        await copied.getByText('接着增加测试', { exact: true }).waitFor();
+        await copied.close();
+        await send(page, '刷新后继续');
+        assert.equal(sessionIds.length, 3);
+        assert.equal(sessionIds[2], task.conversation_id);
+        assert.equal(creations, 1);
         await page.getByLabel('你的问题').fill('未发送的草稿');
         await page.getByRole('button', { name: '收起导航', exact: true }).click();
         await page.getByRole('button', { name: '展开导航', exact: true }).click();
@@ -100,9 +111,12 @@ try {
         await send(page, '甲项目的内容');
         await tasks(page, '项目甲').getByRole('button', { name: '自动总结的任务标题', exact: true }).waitFor();
         await openDraft(page, '项目乙');
+        assert.equal(new URL(page.url()).searchParams.has('task'), false);
+        assert.equal(new URL(page.url()).searchParams.has('workspace'), false);
         assert.equal(await page.getByText('甲项目的内容', { exact: true }).count(), 0);
         assert.equal(await page.getByRole('button', { name: '选择项目目录', exact: true }).count(), 0);
-        await page.getByRole('button', { name: '项目乙 项目设置', exact: true }).click();
+        await page.getByRole('button', { name: '项目乙 项目操作', exact: true }).click();
+        await page.getByRole('menuitem', { name: '项目设置', exact: true }).click();
         await page.getByRole('button', { name: '选择项目目录', exact: true }).waitFor();
         await page.getByRole('button', { name: '关闭项目设置', exact: true }).click();
         await page.getByLabel('你的问题').fill('尚未发送');
@@ -151,10 +165,127 @@ try {
                 : original(url, init);
         });
         await tasks(page, '历史异常项目').getByRole('button', { name: '已有任务', exact: true }).click();
-        await page.getByText('正在读取对话…', { exact: true }).waitFor();
+        await page.getByRole('status', { name: '正在读取对话', exact: true }).waitFor();
         await openDraft(page, '历史异常项目');
         await page.evaluate(() => window.releaseHistory());
         assert.equal(await page.getByText('旧会话污染', { exact: true }).count(), 0);
+    });
+    await scenario('URL invalid identifiers and missing task never become a draft', async page => {
+        const workspace = await project(page, '链接错误项目');
+        let creations = 0;
+        page.on('request', request => {
+            if (request.method() === 'POST' && /\/tasks$/.test(request.url())) creations++;
+        });
+        await page.goto(`${base}/?task=bad`);
+        await page.getByText('任务链接不完整或格式不正确，请从左侧重新选择任务。').waitFor();
+        assert.equal(await page.getByLabel('你的问题').count(), 0);
+        await page.goto(`${base}/?workspace=${workspace.external_id}&task=${'f'.repeat(32)}`);
+        await page.getByText('任务恢复失败，任务可能不可访问或本地服务暂时不可用。').waitFor();
+        assert.equal(await page.getByLabel('你的问题').count(), 0);
+        await openDraft(page, '链接错误项目');
+        assert.equal(new URL(page.url()).searchParams.has('task'), false);
+        assert.equal(creations, 0);
+    });
+    await scenario('URL detail failure retries and history failure still blocks send', async page => {
+        const workspace = await project(page, '恢复重试项目');
+        const response = await page.request.post(`${base}/api/workspaces/${workspace.external_id}/tasks`, { headers: { Origin: base }, data: { title: '恢复重试任务' } });
+        assert.equal(response.status(), 201);
+        const task = await response.json();
+        const detailUrl = `${base}/api/workspaces/${workspace.external_id}/tasks/${task.external_id}`;
+        await page.route(detailUrl, route => route.fulfill({ status: 502, body: '{}' }));
+        await page.goto(`${base}/?workspace=${workspace.external_id}&task=${task.external_id}`);
+        await page.getByRole('button', { name: '重新读取任务', exact: true }).waitFor();
+        assert.equal(await page.getByLabel('你的问题').count(), 0);
+        await page.unroute(detailUrl);
+        await page.route(`${detailUrl}/messages`, route => route.fulfill({ status: 502, body: '{}' }));
+        await page.getByRole('button', { name: '重新读取任务', exact: true }).click();
+        await page.getByText('历史读取失败。', { exact: false }).waitFor();
+        assert.equal(await page.getByLabel('你的问题').isDisabled(), true);
+        await page.unroute(`${detailUrl}/messages`);
+        await page.getByRole('button', { name: '重新读取', exact: true }).click();
+        await page.getByText('今天想完成什么？', { exact: true }).waitFor();
+        assert.equal(await page.getByLabel('你的问题').isEnabled(), true);
+    });
+    await scenario('URL restores outside project and task first pages', async page => {
+        const workspace = await project(page, '分页外恢复项目');
+        const response = await page.request.post(`${base}/api/workspaces/${workspace.external_id}/tasks`, { headers: { Origin: base }, data: { title: '分页外恢复任务' } });
+        assert.equal(response.status(), 201);
+        const task = await response.json();
+        for (let i = 0; i < 21; i++) {
+            const newer = await page.request.post(`${base}/api/workspaces/${workspace.external_id}/tasks`, { headers: { Origin: base }, data: { title: `较新任务${i}` } });
+            assert.equal(newer.status(), 201);
+            await project(page, `较新项目${i}`);
+        }
+        const list = await (await page.request.get(`${base}/api/workspaces?limit=20`)).json();
+        const taskList = await (await page.request.get(`${base}/api/workspaces/${workspace.external_id}/tasks`)).json();
+        assert.ok(!list.items.some(item => item.external_id === workspace.external_id));
+        assert.ok(!taskList.items.some(item => item.external_id === task.external_id));
+        await page.goto(`${base}/?workspace=${workspace.external_id}&task=${task.external_id}`);
+        await page.getByRole('heading', { name: task.title, exact: true }).waitFor();
+        await tasks(page, workspace.name).getByRole('button', { name: task.title, exact: true }).waitFor();
+        await page.getByText('今天想完成什么？', { exact: true }).waitFor();
+        assert.equal(await page.getByLabel('你的问题').isEnabled(), true);
+        await page.route('**/api/workspaces?limit=20', route => route.fulfill({ status: 502, body: '{}' }));
+        await page.reload();
+        await page.getByRole('button', { name: '项目读取失败，重试', exact: true }).waitFor();
+        await page.getByRole('heading', { name: task.title, exact: true }).waitFor();
+        await page.getByText('今天想完成什么？', { exact: true }).waitFor();
+        assert.equal(await page.getByLabel('你的问题').isEnabled(), true);
+        await page.screenshot({ path: `${artifacts}/task-url-restored.png`, animations: 'disabled' });
+    });
+    await scenario('URL stale detail ignoring abort cannot overwrite a new selection', async page => {
+        const workspace = await project(page, '恢复竞态项目');
+        const response = await page.request.post(`${base}/api/workspaces/${workspace.external_id}/tasks`, { headers: { Origin: base }, data: { title: '迟到任务' } });
+        assert.equal(response.status(), 201);
+        const task = await response.json();
+        await page.addInitScript(({ workspace, task }) => {
+            const original = window.fetch;
+            const releases = [];
+            window.releaseDetails = () => releases.splice(0).forEach(resolve => resolve(new Response(JSON.stringify({ workspace, task }))));
+            window.fetch = (url, init) => String(url).endsWith(`/tasks/${task.external_id}`)
+                ? new Promise(resolve => releases.push(resolve))
+                : original(url, init);
+        }, { workspace, task });
+        await page.goto(`${base}/?workspace=${workspace.external_id}&task=${task.external_id}`);
+        await page.getByText('正在恢复任务…', { exact: true }).waitFor();
+        await openDraft(page, workspace.name);
+        await page.getByLabel('你的问题').fill('新草稿不能被覆盖');
+        await page.evaluate(async () => {
+            window.releaseDetails();
+            await new Promise(resolve => setTimeout(resolve, 0));
+        });
+        assert.equal(await page.getByRole('heading', { name: '新对话', exact: true }).count(), 1);
+        assert.equal(await page.getByLabel('你的问题').inputValue(), '新草稿不能被覆盖');
+        assert.equal(new URL(page.url()).searchParams.has('task'), false);
+    });
+    await scenario('delete BFF empty task, repeat and history guard', async page => {
+        const workspace = await project(page, '删除代理验收');
+        const collection = `/api/workspaces/${workspace.external_id}/tasks`;
+        const created = await page.request.post(`${base}${collection}`, { headers: { Origin: base }, data: { title: '可删除空任务' } });
+        assert.equal(created.status(), 201);
+        const empty = await created.json();
+        await page.goto(base);
+        // 在浏览器发出同源 DELETE，由浏览器附加真实 Origin。
+        const remove = id => page.evaluate(async path => {
+            const response = await fetch(path, { method: 'DELETE' });
+            return { status: response.status, body: await response.text(), cache: response.headers.get('cache-control') };
+        }, `${collection}/${id}`);
+        assert.deepEqual(await remove(empty.external_id), { status: 204, body: '', cache: 'no-store' });
+        const repeated = await remove(empty.external_id);
+        assert.equal(repeated.status, 404);
+        assert.equal(JSON.parse(repeated.body).code, 'workspace_not_accessible');
+        assert.equal((await page.request.get(`${base}${collection}/${empty.external_id}`)).status(), 404);
+        assert.equal((await (await page.request.get(`${base}${collection}`)).json()).items.length, 0);
+        await page.reload();
+        await openDraft(page, workspace.name);
+        await send(page, '保留已有历史');
+        const used = (await (await page.request.get(`${base}${collection}`)).json()).items[0];
+        const rejected = await remove(used.external_id);
+        assert.equal(rejected.status, 409);
+        assert.equal(JSON.parse(rejected.body).code, 'task_has_history');
+        assert.equal((await page.request.get(`${base}${collection}/${used.external_id}`)).status(), 200);
+        await page.reload();
+        await page.getByText('保留已有历史', { exact: true }).waitFor();
     });
     console.log(`Task conversation: ${passed} passed, ${failures.length} failed`);
     if (failures.length) process.exitCode = 1;

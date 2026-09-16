@@ -961,7 +961,7 @@ cd apps/api
 
 开发库检查：版本为 e05f42c817ab，但启动 init_db/create_all 已提前创建 tasks 空表，conversations 缺少 task_id。没有盲目 upgrade 或直接 stamp：先比对完整部分结构，再单事务设置 5 秒 lock_timeout、锁 tasks、确认 count=0，移除仅此空表，确认上一版结构完全一致，运行 f16a53d928bc 的真实 upgrade，确认最新模型无差异后才更新版本账本并提交。失败可整体回滚。提交后 head=f16a53d928bc、Task 0 条、已关联会话 0 条，alembic check 无差异。没有修改旧业务行、回退开发数据库或启动额外服务。
 
-此为严格前置核对后的特例修复，不是通用迁移命令。API 启动 create_all 的职责尚未收口，后续新增模型迁移前应处理，避免再次产生部分结构。其他电脑仍须分别核对并升级，不能复制本机版本账本。
+此为严格前置核对后的特例修复，不是通用迁移命令。当时 API 启动 create_all 的职责尚未收口；现已在 2026-09-16 改为只读迁移版本检查，见后文。其他电脑仍须分别核对并升级，不能复制本机版本账本。
 
 
 ### Task 创建事务服务验收（2026-09-15）
@@ -1095,3 +1095,254 @@ pnpm test:workspaces
 ```
 
 启动命令仍为 python -m uvicorn app.main:app --reload，不改变接口 URL、数据库模型或 Alembic 修订。若已有进程未启用 reload，重启原服务即可，不需要额外创建服务或重新初始化数据库。当日进度更新在 LEARNING_HANDOFF.md，学习内容与完成范围更新在 LEARNING_CURRICULUM.md；唯一下一课保持 Task 详情 BFF。
+
+
+### Task 详情 BFF 验收（2026-09-16）
+
+学习者实现 readTaskDetail、taskProxy 的 detail 分支与同源详情 GET 路由；教练补 task-detail-route.test.ts 58 条。详情与既有读取代理共 73 条通过；Workspace 全量 383 条通过，TypeScript、全量 ESLint 与 diff check 通过。核心逻辑无需修正，仅补新路由文件末尾换行。
+
+```bash
+cd apps/web
+node --experimental-strip-types --test test/features/workspaces/task-detail-route.test.ts test/features/workspaces/task-read-route.test.ts
+pnpm test:workspaces
+pnpm typecheck
+pnpm lint
+```
+
+测试直接导入真实 GET 路由并模拟上游 fetch，覆盖公开字段白名单、Unicode 长度、项目/任务错配、会话标识格式、非法参数提前拒绝、本地凭证与来源、no-store、上游状态/正文脱敏和不重试。用可控 AbortSignal 验证浏览器取消与 20 秒超时预算，分别覆盖 fetch 等待、响应正文读取及 JSON 完成后的取消检查。既有列表/messages/title 随全量测试回归。
+
+本轮没有修改后端或 UI，未重复执行数据库/浏览器测试，也未调用模型；本记录不代表已完成真实浏览器刷新恢复。下一课接 URL 选中状态与刷新自动恢复。
+
+
+### URL 选中状态与刷新自动恢复验收（2026-09-16）
+
+学习者完成 URL 解析/写入、工作台恢复与错误态、侧栏展开。首次静态检查发现参考代码在 effect 中同步 setState；教练调整为挂载后微任务，并用 active 标记阻止 StrictMode 已清理挂载启动请求。仅另补两个文件末尾换行，保留学习者其他格式改动。
+
+新增 task-url.test.ts 13 条，Workspace 全量 396 条及聊天状态 84 条通过；TypeScript、全量 ESLint、启动器 Ruff、browser 脚本语法与 diff check 通过。隔离启动器补复制详情 GET 路由，workspace-task.mjs 扩展为 8 组，全部通过。
+
+```bash
+pnpm --dir apps/web typecheck
+pnpm --dir apps/web lint
+pnpm --dir apps/web test:workspaces
+pnpm --dir apps/web test:state
+.venv/bin/python -m ruff check apps/web/test/browser/run-isolated.py
+BROWSER_APP_MODE=local BROWSER_TEST_SCRIPT=workspace-task.mjs \
+PLAYWRIGHT_MODULE=/Users/wanxiancheng/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright \
+CHROME_EXECUTABLE='/Applications/Google Chrome.app/Contents/MacOS/Google Chrome' \
+.venv/bin/python apps/web/test/browser/run-isolated.py
+```
+
+真实 BFF/API/隔离 PostgreSQL 验证首发只创建一次且不中断、同会话续聊、刷新无需点击任务即可恢复、新标签页复制链接恢复；空草稿清除 URL、创建已提交但响应丢失、历史失败阻止发送及旧历史隔离继续通过。新增非法/不存在链接不回退草稿、详情重试后历史失败仍禁止发送、项目和任务均在第一页外直接恢复、项目列表失败不阻止详情恢复、忽略 abort 的旧详情不覆盖新草稿。React StrictMode 开启，控制台未出现水合或重复 key 错误。
+
+1366×768、1920×1080、2560×1318 空白态检查及截图通过；1366/1920 恢复后聊天截图已视查，无横向溢出。截图位于 /private/tmp/agent-ui-preview/output/playwright/task-conversation-1366.png、task-conversation-1920.png 和 task-url-restored.png。聊天与标题模型出口模拟，不代表真实模型质量或历史运行摘要恢复已验收。
+
+初次启动遇到本机数据库不可用，启动 Docker Desktop 后通过 docker compose -f infra/compose.yaml up -d --wait 恢复现有 PostgreSQL/Redis，保留命名卷，无开发库重置或迁移。浏览器结束后临时 BFF/API 与独立测试 schema/database 已自动清理；基础容器保持运行。
+
+
+### 空任务删除事务验收（2026-09-16）
+
+学习者完成 task_deletion_service.py；教练新增 tests/tasks/test_task_deletion_service.py 27 条。专项 27 passed（2.14s），Task 领域 116 passed（9.14s），均 -W error；领域 Ruff 和 diff check 通过。核心无需修正，仅补末尾换行。
+
+```bash
+cd apps/api
+../../.venv/bin/python -W error -m pytest -q tests/tasks/test_task_deletion_service.py
+../../.venv/bin/python -W error -m pytest -q tests/tasks
+../../.venv/bin/python -m ruff check app/services/tasks tests/tasks
+```
+
+复用根 conftest.py 的随机独立 PostgreSQL 数据库与私有 schema。覆盖真实提交后任务/会话消失、普通结果脱离 Session、重复删除、错误项目/归属/缺失会话、任意消息及 running/done/aborted/error/未知 Run 状态拒绝、运行事件保留、调用方已有事务不被回滚、结果构造/第二次 DELETE/提交前真实 SQL 故障整体回滚及 Session 可复用。
+
+六个并发用例分别针对 Message/AgentRun：用 pg_blocking_pids 观察真实锁等待，删除先持锁时 INSERT 等待，删除提交后同一次 INSERT 得到外键错误 23503，删除回滚后 INSERT 成功；插入先持有外键父行锁时删除等待，插入提交后删除重新查询并拒绝。线程各用独立 Session，等待有超时且清理时释放阻塞。测试结束自动清理测试库/schema，不连接开发业务表，不运行迁移、浏览器或模型。
+
+当前仅完成空任务删除服务；未新增 HTTP/BFF/UI，未宣称已经解决聊天自动重建会话或取消后协程清理问题。下一课收紧本地任务聊天的隐式会话创建，再继续删除闭环。
+
+
+### 本地任务聊天禁止隐式重建会话（2026-09-16）
+
+学习者修改 conversation_repository.py，在 local 模式下联查 Conversation/Task/Workspace 归属，并在原 get-or-create 的 INSERT 前返回已授权且锁定的会话。核心无需修正，仅补末尾换行。教练新增 tests/local/test_task_conversation_boundary.py 40 条，专项 40 passed（4.65s），受影响领域合计 189 passed（14.21s），-W error；Ruff、修改浏览器脚本 ESLint/语法及 diff check 通过。
+
+```bash
+cd apps/api
+../../.venv/bin/python -W error -m pytest -q tests/local/test_task_conversation_boundary.py
+../../.venv/bin/python -W error -m pytest -q tests/local tests/tasks tests/chat/test_chat_api.py tests/chat/test_chat_stream.py tests/runtime/test_run_repository.py
+../../.venv/bin/python -m ruff check app/repositories/chat/conversation_repository.py tests/local/test_task_conversation_boundary.py
+```
+
+真实 HTTP 验证普通/流式聊天对不存在、已删除、无 Task、会话/项目归属错配均返回安全 404，且有无旧缓存都不创建会话、Run、事件或调用模型；SQL 捕获确认无会话 INSERT。仓储 ensure/load/save 直接调用也拒绝；已有任务可多轮持久化并在清空缓存后恢复。模型调用期间另一个连接可 NOWAIT 锁会话，证明短授权事务已经结束。两个竞争测试通过 pg_blocking_pids 验证：删除先提交后 Run 创建拒绝且无重建；Run 先取得会话锁并提交后，删除等待并因 Run 存在拒绝。
+
+真实 BFF/API/隔离 PostgreSQL 的 workspace-task.mjs first send 定向 1 组通过，覆盖首发、续聊、URL 刷新及新标签页恢复。local-mode.mjs 补齐先创建项目、打开草稿和展开运行详情的旧夹具前置步骤，3 组全部通过，包含无登录聊天、真实取消及项目基础流程。运行命令沿用上述隔离启动器：工作台设置 BROWSER_TEST_SCRIPT=workspace-task.mjs、BROWSER_SCENARIO='first send'；本地模式设置 BROWSER_TEST_SCRIPT=local-mode.mjs 并取消 BROWSER_SCENARIO。模型出口模拟，临时服务和随机测试库/schema 自动清理；未修改开发业务表或执行迁移。
+
+本课不增加删除 HTTP/BFF/UI；下一课接空任务删除 HTTP。账号分支只保留兼容，未推进账号专项。普通非流式请求若已经开始调用模型，本课不自动取消它，但后续保存仍重新检查会话，不能重建已删除记录。
+
+### 空任务删除 HTTP 与 BFF（2026-09-16）
+
+学习者完成 DELETE HTTP；教练按本轮明确授权实现删除 BFF。成功返回 204 空正文，后端独立 Session 负责完整删除事务。BFF 仅转发服务端内部凭证及已校验 Origin；拒绝正文，按状态与错误码白名单返回安全文案。转发前取消与转发后结果未确认分开处理，取消/超时覆盖响应正文，不自动重试。
+
+```bash
+cd apps/api
+../../.venv/bin/python -W error -m pytest -q tests/tasks/test_task_delete_api.py
+../../.venv/bin/python -W error -m pytest -q tests/tasks tests/workspace tests/local
+../../.venv/bin/python -m ruff check app/routers/workspace app/services/tasks tests/tasks tests/workspace tests/local
+cd ../web
+pnpm test:workspaces
+pnpm typecheck
+pnpm lint
+```
+
+HTTP 专项新增 42 passed（4.19s），后端相关领域 422 passed（30.91s），-W error 与 Ruff 通过；BFF 新增 43 条，Workspace 全量 439 条通过；TypeScript、全量 ESLint 与 diff check 通过。HTTP 覆盖授权、来源、无正文、任意 Run 状态拒绝、事务中 SQL 失败回滚和提交后异常；BFF 覆盖 204、状态/错误码匹配、脱敏、取消、超时、正文读取与不重试。
+
+仓库根目录运行真实浏览器→BFF→API→隔离 PostgreSQL 定向验收：
+
+```bash
+BROWSER_APP_MODE=local BROWSER_TEST_SCRIPT=workspace-task.mjs BROWSER_SCENARIO='delete BFF' \
+PLAYWRIGHT_MODULE=/Users/wanxiancheng/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright \
+CHROME_EXECUTABLE='/Applications/Google Chrome.app/Contents/MacOS/Google Chrome' \
+.venv/bin/python apps/web/test/browser/run-isolated.py
+```
+
+1 组通过：浏览器同源 DELETE 空任务返回 204/空正文/no-store，重复删除和详情读取 404，列表为空；正常发送消息后删除返回 409，任务仍可读取，刷新恢复消息。PC 1366×768，模型出口模拟，无真实模型费用；临时服务与随机独立数据库/schema 已自动清理，未操作开发业务表。当前没有删除 UI，下一课接侧栏入口、确认、防重及删除后选中状态恢复。
+
+### 侧栏删除 UI、项目菜单与加载体验（2026-09-16）
+
+学习者完成删除状态、ref 防重、204/409/404/结果未确认处理、详情查询与选中状态清理；教练最初仅修正两处缩进。之后按用户明确要求和两张 Codex 截图，调整任务行悬停删除图标、Radix 确认框及项目省略号菜单；菜单接入新建任务、项目设置和刷新任务，不增加未实现的归档/置顶/移除项目。
+
+按用户要求修复加载闪烁：将 WorkbenchShell 移出 keyed TaskChat，导航不随会话切换重建；通过 Portal 将当前任务详情放入固定右栏。ProjectGroup 以项目标识为稳定 key，保留展开状态与已有列表；revision 负责后台刷新并将分页请求重置到第一页，确认删除后立即排除旧列表目标。历史查询仍真实执行且阻止提前发送；250ms 后才显示静态、带无障碍标签的骨架，不引入跨任务消息缓存。
+
+```bash
+cd apps/web
+pnpm typecheck
+pnpm lint
+pnpm test:workspaces
+pnpm test:state
+```
+
+Workspace 439 条、聊天状态 84 条通过，TypeScript 与全量 ESLint 通过。新增 task-delete.mjs 共 10 个场景：删除/菜单 9 组已通过，加载保持 1 组在 Shell 调整后定向通过。最后针对布局影响重复运行删除、菜单与既有聊天流程，命令如下（从仓库根目录运行）：
+
+```bash
+BROWSER_APP_MODE=local BROWSER_TEST_SCRIPT=workbench-regression.mjs \
+BROWSER_SCENARIO='project menu,delete UI confirm,delete UI late,delete UI cancels,first send,new draft,history failure' \
+PLAYWRIGHT_MODULE=/Users/wanxiancheng/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright \
+CHROME_EXECUTABLE='/Applications/Google Chrome.app/Contents/MacOS/Google Chrome' \
+.venv/bin/python apps/web/test/browser/run-isolated.py
+```
+
+单跑新增完整场景时设置 BROWSER_TEST_SCRIPT=task-delete.mjs 并移除 BROWSER_SCENARIO；定向加载体验设置 BROWSER_SCENARIO='loading UX'。workbench-regression.mjs 依次运行新旧脚本，共用一轮临时服务，各自关闭浏览器。所有数据库操作均为自动生成的隔离 PostgreSQL 数据库/schema；模型出口模拟，无开发业务表改动，也未运行开发库迁移。
+
+覆盖：确认取消和键盘焦点、真实空任务删除和历史任务拒绝、同一事件循环双击、刷新/收起侧栏时操作不丢、迟到响应不覆盖任务或草稿、提交后响应丢失、详情查询现存/畸形/异常/404、恢复详情期间删除、项目菜单三个操作、列表 DOM 保持与慢历史骨架。首次测试将已有 Task 的首发错误地当作草稿创建并期待自动标题，已修正测试前提；菜单测试以实际 Radix 无障碍角色定位。加载回归发现父级 TaskChat 销毁整个 Shell 后，修正布局边界再验收，未用隐藏文案掩盖组件重建。
+
+截图位于 /private/tmp/agent-ui-preview/output/playwright/：delete-ui-hover.png、delete-ui-confirm.png、project-actions-menu.png、project-actions-menu-dark.png、history-loading-placeholder.png。默认 1366×768，另检查 1920×1080；重要界面已人工视查。
+
+已知边界：仅支持空任务；详情 200 不证明先前 DELETE 已停止，因此仍保留未确认态。刷新页面会丢失客户端操作提示；服务端幂等和最终操作记录仍待后续课程。
+
+最终结果：Shell 外移后，删除/项目菜单定向 5 组和既有聊天主流程 3 组全部通过；加上加载体验定向 1 组，验证列表节点在新建/切换/后台刷新时保持同一 DOM，历史完成前禁止发送。新脚本共 10 个场景已分别验收通过。浅/深色菜单、悬停删除、确认框和历史骨架截图已视查；临时服务及独立 PostgreSQL 数据库/schema 已清理。最终 TypeScript、全量 ESLint、Workspace 439 条、聊天状态 84 条与 git diff --check 通过；改动未提交。
+
+### 任务运行历史只读查询（2026-09-16）
+
+学习者完成 apps/api/app/services/tasks/task_run_query.py 与 TaskRunItemResponse/TaskRunListResponse。核心无需修正，仅补文件末尾换行。新增 tests/tasks/test_task_run_query.py 44 条专项通过（2.67s）；Task/runtime/local/workspace 相关领域 560 条通过（38.31s），启用 -W error；后端全量 Ruff 与 git diff --check 通过。
+
+```bash
+cd apps/api
+../../.venv/bin/python -W error -m pytest -q tests/tasks/test_task_run_query.py
+../../.venv/bin/python -W error -m pytest -q tests/tasks tests/runtime tests/local tests/workspace
+../../.venv/bin/python -m ruff check app tests
+```
+
+复用根 conftest.py 创建随机独立 PostgreSQL 数据库/schema，真实提交准备数据并自动清理。覆盖空任务也先授权、错误项目与会话归属、分页上下界、bool/字符串拒绝、多页无漏项/重复、游标记录删除后继续翻页、新记录只在刷新第一页出现、未知状态与最终耗时、兄弟会话隔离。SQL 记录断言只有 SELECT、不读取事件、不加行锁；服务 Session.commit 被禁止，成功与实际 PostgreSQL 除零错误、响应校验失败均验证 Session 关闭。
+
+本课没有增加 HTTP/BFF/UI，没有执行开发库迁移、浏览器或模型调用。下一课接运行列表 HTTP；仅以 Run ID 定义顺序，不宣称数据库快照或严格提交时间排序。改动未提交。
+
+### 任务运行历史 HTTP（2026-09-16）
+
+学习者完成 GET /workspaces/{workspace_id}/tasks/{task_id}/runs。核心无需修改；新增 tests/tasks/test_task_run_api.py 42 条专项通过（4.53s），受影响 Task/runtime/local/workspace 共 602 条通过（44.08s）。全量后端 Ruff 与 git diff --check 通过。
+
+```bash
+cd apps/api
+../../.venv/bin/python -W error -m pytest -q --tb=short tests/tasks/test_task_run_api.py
+../../.venv/bin/python -W error -m pytest -q --tb=short tests/tasks tests/runtime tests/local tests/workspace
+../../.venv/bin/python -m ruff check app tests
+```
+
+使用真实 FastAPI ASGI 请求和 PostgreSQL 隔离库/schema，允许夹具真实提交并自动清理。首次执行因沙箱禁止连接 127.0.0.1:5432 失败，获得执行权限后通过；不属于应用测试失败。覆盖分页、概要字段、空结果授权、项目/会话归属、422 参数错误、本地边界先于身份、SQL 和响应结构异常脱敏、no-store 及 OpenAPI。未触碰开发业务表、未执行迁移或模型调用；BFF/UI 留待下一课。
+
+### 任务运行历史 BFF（2026-09-16）
+
+用户明确授权本课直接实现。新增 task-run-data.ts、task-run-proxy.ts 与 GET /api/workspaces/[workspaceId]/tasks/[taskId]/runs；79 条专项与 Workspace 全量 518 条通过，TypeScript、ESLint、diff check 通过。
+
+```bash
+cd apps/web
+node --experimental-strip-types --test test/features/workspaces/task-run-route.test.ts
+pnpm test:workspaces
+pnpm typecheck
+pnpm lint
+```
+
+测试直接调用实际 GET 路由，模拟上游 fetch 与超时信号；覆盖本地边界、凭证隔离、分页参数、资源匹配、倒序/游标、概要字段重建、异常脱敏、请求/正文/JSON 完成阶段取消超时。不代表浏览器或真实 BFF/API 网络联调；本课没有 UI 改动、数据库操作和模型调用。
+
+### 运行历史列表 UI（2026-09-16）
+
+学习者完成 task-run-history.tsx 及详情区接入。教练恢复被替换掉的 RunSummaryCard、补末尾换行，并在隔离启动器中补复制 runs 路由。新增 task-run-history.mjs，最终 5 组场景通过：真实 BFF/API 空列表、分页失败保留与原游标重试、刷新替换/失败保留及快请求无骨架、慢请求骨架/切换旧响应隔离、重新展开读取第一页。分页及故障通过浏览器拦截模拟，不宣称真实数据库多页运行联调；无真实模型调用。
+
+```bash
+BROWSER_APP_MODE=local BROWSER_TEST_SCRIPT=task-run-history.mjs \
+PLAYWRIGHT_MODULE=/Users/wanxiancheng/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright \
+CHROME_EXECUTABLE='/Applications/Google Chrome.app/Contents/MacOS/Google Chrome' \
+.venv/bin/python apps/web/test/browser/run-isolated.py
+```
+
+首次夹具未复制新增路由导致 404，修正后通过；React Strict Mode 可能重跑 effect，重开断言检查第一页语义而非恰好一次请求。1366/1920×900 截图已视查（/private/tmp/agent-ui-preview/output/playwright/run-history-*.png）。Workspace 518、聊天状态 84 条通过，pnpm typecheck、pnpm lint、夹具 Ruff、git diff --check 通过。临时服务与独立 PostgreSQL 库/schema 已自动清理；没有开发库迁移。
+
+### 运行详情读取 BFF（2026-09-16）
+
+按用户明确授权新增 GET /api/runs/[runId]、run-detail-proxy.ts、run-detail-data.ts。新增 run-detail-route.test.ts 61 条（包含在 Workspace 全量 579 条中）通过，聊天状态 84 条、TypeScript、ESLint、夹具 Ruff 和 diff check 通过。
+
+```bash
+cd apps/web
+pnpm typecheck
+pnpm lint
+pnpm test:workspaces
+pnpm test:state
+```
+
+直接调用真实 GET 路由，上游 fetch 模拟；覆盖本地凭证边界、规范 Run ID、未知查询参数、错误脱敏、请求/正文/JSON 完成阶段取消超时、事件顺序与公开字段、取消型 RUN_ERROR、运行指标嵌套重建。未知事件保留 id/type/time，payload 返回空对象。此次未运行浏览器、数据库或模型，隔离启动器已补复制新路由供后续 UI 验收。详情按 Run 授权，不声称提供当前 Task 的关联证明。
+
+### 历史详情 UI（2026-09-16）
+
+按用户明确授权完成 TaskRunPanel、TaskRunHistory 选择回调和 ChatPanel 接入。扩展 task-run-history.mjs，原列表 5 组与详情 3 组共 8 组通过；详情覆盖错误重试、未知 payload 过滤、HTML 文本显示、草稿和列表节点保留、返回/切换任务迟到结果隔离、空事件、收起重开回列表。命令沿用上一节运行历史 UI 的隔离启动器。
+
+详情/分页/故障通过浏览器路由模拟，空列表为真实 BFF/API/隔离 PostgreSQL；无真实模型调用。1366/1920×900 截图已视查，路径 /private/tmp/agent-ui-preview/output/playwright/run-detail-*.png。pnpm typecheck、pnpm lint、Workspace 579 条、聊天状态 84 条及 git diff --check 通过。临时服务与测试库/schema 自动清理。
+
+### 启动迁移职责收口（2026-09-16）
+
+API lifespan 只调用 check_database_ready，不再自动建表。数据库当前 heads 必须与 apps/api/migrations 的 heads 一致；检查不 commit、不写版本，空库/旧版本/未知版本拒绝启动。版本一致不等同于逐列结构验证。显式迁移后启动：
+
+```bash
+cd apps/api
+../../.venv/bin/python -m alembic upgrade head
+../../.venv/bin/python -m uvicorn app.main:app --reload
+```
+
+此次没有对开发库执行迁移；只读就绪检查已通过。tests/migrations/test_database_readiness.py 新增 7 条通过；后端全量 1101 条通过（79.95s，-W error），Ruff 与 diff check 通过。Alembic env 支持 config.attributes.connection，用于隔离测试的真实迁移；浏览器夹具已改为从空 schema 执行 upgrade head 后再种测试数据和启动 API。
+
+### 右侧栏调宽与摘要布局（2026-09-16）
+
+右侧栏默认 400px，最小 320px、最大 720px，并根据容器宽度及左栏状态为中栏预留 400px。拖动左边界调宽，方向键每次 16px、Shift 48px，Home/End 到边界，双击恢复 400px；localStorage 的 agent-workbench-details-width 保存用户偏好。改变宽度不重挂载聊天或详情。窄屏空间不足时仍优先保持右栏 320px；本产品验收为 PC 场景。
+
+摘要从屏幕断点控制的三列卡片改成标签/数值行，数值不拆行；当前运行取消重复卡片边框。task-run-history.mjs 共 9 组通过，新增真实聊天/API/隔离 PostgreSQL 场景，模型出口模拟；另替换流指标为 757 Token、¥0.00128420、1499 ms 复现用户截图。断言 320px 摘要不溢出、拖动和键盘改变宽度、草稿与 textarea 节点保持、刷新后恢复宽度。1366×900 窄/宽截图已视查：/private/tmp/agent-ui-preview/output/playwright/details-narrow.png 与 details-wide.png。
+
+沿用 BROWSER_TEST_SCRIPT=task-run-history.mjs 的启动命令；测试库由真实 Alembic upgrade 创建，临时服务和隔离库/schema 自动清理。前端 pnpm typecheck、全量 lint、Workspace 579 条、聊天状态 84 条通过；新脚本 lint、后端全量 Ruff 与 git diff --check 通过。
+
+### Markdown 回复展示（2026-09-16）
+
+新增 MarkdownMessage 复用 react-markdown 10.1.0 与 remark-gfm 4.0.1，依赖与 pnpm-lock.yaml 同步。历史助手消息和流式回复使用相同渲染，用户消息保持纯文本；不修改存储和流协议。原始 HTML 不执行，危险协议由库默认 URL 变换过滤；远程图片提供显式打开入口，不自动加载。
+
+浏览器 markdown-message.mjs 三组通过：模拟分块流的中间态、格式/安全链接/HTML/代码内部滚动、刷新后历史 Markdown 与用户原文。通过真实 BFF 创建隔离项目/任务，回复和历史内容模拟；没有真实模型调用。启动命令沿用隔离启动器，设置 BROWSER_TEST_SCRIPT=markdown-message.mjs。1366×900 浅/深色截图已视查：/private/tmp/agent-ui-preview/output/playwright/markdown-light.png、markdown-dark.png。TypeScript、全量 ESLint、聊天状态84条、Workspace579条及 diff check 通过；临时服务和测试库/schema 已清理。
+
+### 2026-09-16：Task 创建请求模型与迁移验收
+
+- 修正模型表名为 `task_creation_requests`、主键参数为 `primary_key`；迁移核心无需修改。
+- 新增 `tests/migrations/test_task_creation_request_migration.py` 17 条，整个迁移目录 43 条通过（5.92s，`-W error`）。使用根夹具自动清理的隔离 PostgreSQL 库/schema；验证升级/回退/再升级保留旧数据、约束、ORM 与真实删除服务后的 SET NULL/请求键保留。
+- 旧迁移测试比较对应版本的模型快照，排除后续新表，避免用当前 head 要求历史版本。
+- 在 `apps/api` 执行：`../../.venv/bin/python -W error -m pytest -q --tb=short tests/migrations`。
+- 开发库先以 `alembic current` 确认为 `f16a53d928bc`，再执行 `../../.venv/bin/python -m alembic upgrade head` 升级至 `0a7b64e039cd`；`alembic check` 无新增结构操作。开发库未执行回退，新增表不回填历史任务。
+- 当前仅完成存储基础，HTTP/BFF/UI 尚未提供创建幂等。未调用真实模型或运行浏览器测试。
+- 全量回归：在 `apps/api` 执行 `../../.venv/bin/python -W error -m pytest -q --tb=short`，1118 passed（75.03s）；`../../.venv/bin/python -m ruff check app tests` 与 `git diff --check` 通过。

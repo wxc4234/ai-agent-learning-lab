@@ -19,12 +19,20 @@ async function scenario(name, run) {
 }
 try {
     await scenario('local: no login, real chat and cancellation', async (page,context) => {
+        // 本地聊天从项目草稿首发创建 Task，不再隐式创建无任务会话。
+        const project = await context.request.post(`${base}/api/workspaces`, {
+            headers: { Origin: base }, data: { name: '本机聊天项目' },
+        });
+        assert.equal(project.status(), 201);
         await page.goto(base);
+        await page.getByRole('button', { name: '在 本机聊天项目 新建任务', exact: true }).click();
         await page.getByLabel('你的问题').waitFor();
         assert.equal((await context.cookies()).some(cookie => cookie.name === 'agent_session'),false);
         await page.getByLabel('你的问题').fill('本机聊天测试');
         await page.getByRole('button',{name:'发送',exact:true}).click();
         await page.getByText('隔离模型：认证聊天成功。',{exact:true}).waitFor();
+        // 运行详情默认收起，展开后观察工具事件与取消终态。
+        await page.getByRole('button', { name: '展开详情', exact: true }).click();
         await page.getByLabel('你的问题').fill('[cancel-test] 本机取消');
         await page.getByRole('button',{name:'发送',exact:true}).click();
         await page.getByRole('button',{name:'停止生成',exact:true}).waitFor();

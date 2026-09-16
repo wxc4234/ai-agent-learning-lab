@@ -2,7 +2,16 @@
 
 from datetime import datetime
 
-from sqlalchemy import JSON, CheckConstraint, DateTime, ForeignKey, String, Text, func
+from sqlalchemy import (
+    JSON,
+    CheckConstraint,
+    DateTime,
+    ForeignKey,
+    String,
+    Text,
+    UniqueConstraint,
+    func,
+)
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -169,6 +178,77 @@ class Task(Base):
     conversation: Mapped["Conversation | None"] = relationship(
         back_populates="task",
     )
+
+class TaskCreationRequest(Base):
+    """保存一次任务创建操作，重试时找回结果，删除后保留请求键。"""
+
+    __tablename__ = "task_creation_requests"
+
+    __table_args__ = (
+        # 同一个用户、同一个项目中的请求键只能对应一条记录。
+        # 数据库唯一约束负责兜底，不能只依赖应用层先查再插。
+        UniqueConstraint(
+            "user_id",
+            "workspace_id",
+            "request_key",
+            name="uq_task_creation_requests_scope_key",
+        ),
+        CheckConstraint(
+            "request_key ~ '^[0-9a-f]{32}$'",
+            name="ck_task_creation_requests_key",
+        ),
+        CheckConstraint(
+            "request_hash ~ '^[0-9a-f]{64}$'",
+            name="ck_task_creation_requests_hash",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+
+    # 身份必须来自服务端解析；请求键不是访问凭证。
+    # 上面的联合唯一索引以 user_id 开头，不再重复建立单列索引。
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id"),
+        nullable=False,
+    )
+
+    # 请求键在项目内生效，不能拿其他项目的记录重放结果。
+    workspace_id: Mapped[int] = mapped_column(
+        ForeignKey("workspaces.id"),
+        index=True,
+        nullable=False,
+    )
+
+    # 后续由浏览器为一次创建意图生成；网络重试必须复用。
+    request_key: Mapped[str] = mapped_column(
+        String(32),
+        nullable=False,
+    )
+
+    # 后续由服务端对规范化请求计算 SHA-256，不信任客户端提供的摘要。
+    request_hash: Mapped[str] = mapped_column(
+        String(64),
+        nullable=False,
+    )
+
+    # 删除 Task 时保留请求记录，只把关联置空。
+    # NULL 表示这个键不能再返回一个有效任务，不能当成可重新创建。
+    # 不增加 ORM relationship，避免 ORM 级联干预数据库的 SET NULL。
+    task_id: Mapped[int | None] = mapped_column(
+        ForeignKey(
+            "tasks.id",
+            ondelete="SET NULL",
+        ),
+        index=True,
+        nullable=True,
+    )
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+    )
+
 
 class LoginSession(Base):
     """某次登录的服务端记录；不保存原始会话令牌。"""

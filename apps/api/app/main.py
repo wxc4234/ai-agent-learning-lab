@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from app.local_boundary import local_access_boundary
 
-from app.repositories.chat.conversation_repository import init_db
+from app.database import check_database_ready
 from app.routers.chat.chat import router as chat_router
 from app.routers.chat.conversation import router as conversation_router
 from app.routers.system.health import router as health_router
@@ -20,8 +20,8 @@ from app.services.runtime.run_cancellation import close_cancellation_broker
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
-    # 数据库只应在服务启动时初始化，避免测试或脚本导入 main.py 时产生副作用。
-    await asyncio.to_thread(init_db)
+    # 启动只读检查迁移版本；失败时不接受请求，不隐式修改数据库结构。
+    await asyncio.to_thread(check_database_ready)
 
     try:
         yield

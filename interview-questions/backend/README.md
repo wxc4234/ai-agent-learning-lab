@@ -53,4 +53,4 @@
 
 <!-- ORGANIZED-INTERVIEW-IMPORT:END -->
 
-Task 专题（含创建事务、HTTP 提交后失败、前端防重边界与异步标题）：[Task、Conversation 和 AgentRun 建模](web/task-model.md)，复习优先级高，参考答案已整理、尚未模拟。
+Task 专题（含创建事务、HTTP 提交后失败、前端防重边界、异步标题、详情 BFF 资源匹配、URL 恢复竞态、空任务删除锁竞争、禁止隐式重建、DELETE 结果未确认、UI 迟到结果隔离与运行列表授权分页/HTTP 错误边界/BFF 契约校验/历史列表请求隔离/历史事件契约/启动迁移职责/创建幂等请求键与删除保留）：[Task、Conversation 和 AgentRun 建模](web/task-model.md)，复习优先级高，参考答案已整理、尚未模拟。

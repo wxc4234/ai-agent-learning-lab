@@ -164,7 +164,7 @@ image: pgvector/pgvector:0.8.6-pg17-bookworm
 | 第 1 周 | 08-24 ～ 08-30 | Python、FastAPI、DeepSeek、SQLite、最小 Tool Calling | 持久化对话和时间工具闭环 | 已完成 |
 | 第 2 周 | 08-31 ～ 09-06 | 后端底座与跨平台：分层、配置、异步、PostgreSQL、ORM、迁移、测试、Docker | FastAPI 成为分层项目；macOS/Windows 使用相同数据库环境 | 已完成 |
 | 第 3 周 | 09-07 ～ 09-13 | 流式 Agent UI + **最小 Agent Runtime**：状态、取消、Tool Registry、参数校验、顺序循环、结构化事件、run_id 与冒烟评测 | 浏览器能观察并取消真实多步骤工具运行；任意运行可按 run_id 还原 | 已完成全部验收 |
-| 第 4 周 | 09-14 ～ 09-20 | 本地工作台：单用户模式、Workspace/目录、Task、会话恢复、幂等/并发预算、成本与错误摘要 | 免登录使用本地 Workspace 与 Task；文件范围受控；刷新可恢复运行上下文 | 进行中：本地 Workspace/目录、Task 创建与详情 HTTP 已验收；对话式侧栏与历史读取已接通，详情 BFF、URL 自动恢复与幂等待完成 |
+| 第 4 周 | 09-14 ～ 09-20 | 本地工作台：单用户模式、Workspace/目录、Task、会话恢复、幂等/并发预算、成本与错误摘要 | 免登录使用本地 Workspace 与 Task；文件范围受控；刷新可恢复运行上下文 | 进行中：本地 Workspace/目录、Task 创建与详情 HTTP/BFF 已验收；对话式侧栏、历史读取与 URL 自动恢复已接通，空任务删除事务与本地会话禁止隐式重建已验收，删除 HTTP/BFF/UI 已接通；运行列表服务、HTTP/BFF/UI 已验收；运行详情 BFF/只读时间线 UI 已验收；迁移职责已收口；创建幂等模型与迁移已验收，事务服务待实现；通用删除生命周期、历史运行恢复与并发预算待完成 |
 | 第 5 周 | 09-21 ～ 09-27 | **Coding Tools + Sandbox**：文件、搜索、Shell、Apply Patch、Git Diff、测试、审批策略 | Agent 能在隔离样例仓库完成一次小改动，展示 Diff 并通过测试 | 未开始 |
 | 第 6 周 | 09-28 ～ 10-04 | **代码上下文工程 + RAG**：仓库扫描、符号/关键词/向量检索、混合排序、引用、Token 裁剪和检索评测 | Agent 能为跨文件任务找到正确上下文，并说明引用来源 | 未开始 |
 | 第 7 周 | 10-05 ～ 10-11 | **高级 Agent Runtime**：Plan、Memory、Compaction、Reflection、LangGraph Checkpoint、暂停/恢复、轨迹评测 | 长任务可中断恢复；失败后能修正；轨迹指标可度量 | 未开始；基础 Runtime 已在第 3 周完成 |

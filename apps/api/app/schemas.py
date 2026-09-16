@@ -278,3 +278,42 @@ class TaskDetailResponse(BaseModel):
     # 项目资料也来自服务端，不从 URL 中信任名称或归属。
     workspace: WorkspaceResponse
     task: TaskResponse
+
+class TaskRunItemResponse(BaseModel):
+    """任务运行列表中的单条概要，不包含事件正文。"""
+
+    model_config = ConfigDict(
+        strict=True,
+        extra="forbid",
+    )
+
+    # 沿用现有 /runs/{run_id} 的整数标识，便于后续读取详情。
+    # 标识只负责定位，不能替代资源授权。
+    run_id: int = Field(gt=0)
+
+    # 保留数据库中的真实状态，不把未知状态擅自映射为终态。
+    status: str = Field(min_length=1)
+
+    started_at: datetime
+    finished_at: datetime | None
+
+    # 没有结束时间时返回 None，不伪造最终耗时。
+    duration_ms: int | None = Field(ge=0)
+
+
+class TaskRunListResponse(BaseModel):
+    """指定任务的运行列表，以及下一页游标。"""
+
+    model_config = ConfigDict(
+        strict=True,
+        extra="forbid",
+    )
+
+    # 返回定位信息，后续 BFF 可以校验响应是否对应请求的任务。
+    workspace_id: str = Field(pattern=r"^[0-9a-f]{32}$")
+    task_id: str = Field(pattern=r"^[0-9a-f]{32}$")
+
+    items: list[TaskRunItemResponse]
+
+    # 取本页最后一条记录的 Run ID；没有下一页时明确返回 None。
+    next_cursor: str | None

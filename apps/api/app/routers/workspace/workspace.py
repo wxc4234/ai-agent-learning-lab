@@ -45,7 +45,17 @@ from app.services.tasks.task_service import (
     InvalidTaskTitleError,
     create_workspace_task,
 )
-from app.schemas import TaskDetailResponse
+from app.services.tasks.task_deletion_service import (
+    TaskHasHistoryError,
+    delete_workspace_task,
+)
+from app.schemas import TaskDetailResponse, TaskRunListResponse
+from app.services.tasks.task_run_query import (
+    MAX_PAGE_SIZE,
+    MAX_RUN_ID,
+    InvalidTaskRunQueryError,
+    list_task_runs,
+)
 from app.services.tasks.task_workspace import task_detail
 
 logger = logging.getLogger(__name__)
@@ -92,12 +102,40 @@ def _is_task_create_request(request: Request) -> bool:
         == "/workspaces/{workspace_id}/tasks"
     )
 
+def _is_task_delete_request(request: Request) -> bool:
+    """使用已匹配的路由模板识别任务删除，不猜测实际 URL。"""
+
+    route = request.scope.get("route")
+
+    return (
+        request.method == "DELETE"
+        and getattr(route, "path", None)
+        == "/workspaces/{workspace_id}/tasks/{task_id}"
+    )
+
+def _is_task_run_list_request(request: Request) -> bool:
+    """依据已匹配的路由模板识别运行列表，避免依赖用户输入的路径内容。"""
+
+    route = request.scope.get("route")
+
+    return (
+        request.method == "GET"
+        and getattr(route, "path", None)
+        == "/workspaces/{workspace_id}/tasks/{task_id}/runs"
+    )
+
 def _workspace_failure_response(request: Request) -> JSONResponse:
     """按操作返回安全错误，不暴露 SQL、路径或原始异常。"""
 
     if _is_task_create_request(request):
         code = "task_creation_uncertain"
         message = "任务创建结果未确认，请勿直接重复提交"
+    elif _is_task_delete_request(request):
+        code = "task_deletion_uncertain"
+        message = "任务删除结果未确认，请刷新任务列表后确认"
+    elif _is_task_run_list_request(request):
+        code = "task_run_list_failed"
+        message = "读取任务运行历史失败，请稍后重试"
     elif request.method == "GET" and _is_directory_request(request):
         code = "workspace_directory_read_failed"
         message = "读取项目目录状态失败，请稍后重试"
@@ -111,8 +149,8 @@ def _workspace_failure_response(request: Request) -> JSONResponse:
         code = "workspace_creation_failed"
         message = "创建工作空间失败，请稍后再试"
 
-    # 提交成功后，响应构造或序列化仍可能失败。
-    # 只记录固定错误码，不记录请求输入和原始异常详情。
+    # 写操作发生未知异常时，不能推断数据库一定没有提交；
+    # 读操作只报告读取失败。日志和响应均不拼接原始异常内容。
     logger.error(code)
 
     return _error_response(
@@ -152,6 +190,27 @@ class WorkspaceRoute(APIRoute):
                         code="local_mode_required",
                         message="项目目录功能仅支持本地模式",
                     )
+
+                if _is_task_delete_request(request):
+                    # 删除也是写操作，即使没有 JSON 正文，也必须检查来源。
+                    # 内部凭证和本机 Host 继续由既有本地访问边界检查。
+                    origin = request.headers.get("origin")
+
+                    if origin not in settings.login_allowed_origins:
+                        return _error_response(
+                            403,
+                            code="workspace_origin_rejected",
+                            message="工作空间请求来源不被允许",
+                        )
+
+                    # 删除目标完全由路径确定，不接受正文中的身份或资源字段。
+                    # 不要求 Content-Type，也不把空 JSON 对象当作无正文。
+                    if await request.body():
+                        return _error_response(
+                            422,
+                            code="invalid_task_input",
+                            message="任务删除请求不接受正文",
+                        )
 
                 # 创建和绑定都是写操作，都要求可信来源与 JSON 正文。
                 if request.method in {"POST", "PUT"}:
@@ -193,9 +252,18 @@ class WorkspaceRoute(APIRoute):
                 )
 
             except RequestValidationError:
-                # 路径、正文类型和额外字段错误统一脱敏。
-                # 不返回原始输入或 Pydantic 校验详情。
-                if _is_task_create_request(request):
+                # 路径、查询参数和正文校验错误统一脱敏，不反射原始输入。
+                if _is_task_run_list_request(request):
+                    return _error_response(
+                        422,
+                        code=InvalidTaskRunQueryError.code,
+                        message="任务运行历史查询参数不符合要求",
+                    )
+
+                if (
+                    _is_task_create_request(request)
+                    or _is_task_delete_request(request)
+                ):
                     return _error_response(
                         422,
                         code="invalid_task_input",
@@ -206,6 +274,14 @@ class WorkspaceRoute(APIRoute):
                     422,
                     code="invalid_workspace_input",
                     message="工作空间请求参数不符合要求",
+                )
+
+            except InvalidTaskRunQueryError:
+                # 服务层也会校验参数，统一映射为同一份安全 HTTP 契约。
+                return _error_response(
+                    422,
+                    code=InvalidTaskRunQueryError.code,
+                    message="任务运行历史查询参数不符合要求",
                 )
 
             except InvalidTaskTitleError:
@@ -230,6 +306,15 @@ class WorkspaceRoute(APIRoute):
                     404,
                     code=WorkspaceNotAccessibleError.code,
                     message="工作空间不存在或不可访问",
+                )
+
+            except TaskHasHistoryError:
+                # 服务在执行 DELETE 前拒绝，属于明确未删除的业务冲突。
+                # 使用固定文案，不直接输出异常字符串。
+                return _error_response(
+                    409,
+                    code=TaskHasHistoryError.code,
+                    message="当前仅支持删除没有消息和运行记录的空任务",
                 )
 
             except WorkspaceAlreadyBoundError:
@@ -676,6 +761,116 @@ def read_task_detail(
         user_id=current_user.id,
         workspace_id=workspace_id,
         task_id=task_id,
+    )
+
+@router.get(
+    "/{workspace_id}/tasks/{task_id}/runs",
+    response_model=TaskRunListResponse,
+    responses={
+        403: {
+            "model": WorkspaceErrorResponse,
+            "description": "非本地模式或本地访问边界校验失败",
+        },
+        404: {
+            "model": WorkspaceErrorResponse,
+            "description": "项目或任务不存在或不可访问",
+        },
+        422: {
+            "model": WorkspaceErrorResponse,
+            "description": "公开标识或分页参数不符合要求",
+        },
+        500: {
+            "model": WorkspaceErrorResponse,
+            "description": "读取任务运行历史失败",
+        },
+    },
+)
+def read_task_runs(
+    workspace_id: TaskIdentifier,
+    task_id: TaskIdentifier,
+    current_user: CurrentUser,
+    before: Annotated[
+        int | None,
+        Query(
+            ge=1,
+            le=MAX_RUN_ID,
+            description="仅返回运行 ID 小于该游标的记录；首页不传",
+        ),
+    ] = None,
+    limit: Annotated[
+        int,
+        Query(
+            ge=1,
+            le=MAX_PAGE_SIZE,
+            description="每页运行记录数量，默认 20，最多 50",
+        ),
+    ] = 20,
+) -> TaskRunListResponse:
+    """读取本人任务的运行历史概要，按运行 ID 倒序分页。"""
+
+    # 身份由 CurrentUser 提供，公开标识只用于定位资源；
+    # 项目和任务归属仍由查询服务检查。
+    # 使用普通 def，让同步数据库读取在线程池执行。
+    #
+    # 查询服务自行创建并关闭 Session，业务查询不提交写入。
+    # 路由不额外创建 Session，也不在服务返回后访问 ORM 对象。
+    return list_task_runs(
+        user_id=current_user.id,
+        workspace_id=workspace_id,
+        task_id=task_id,
+        before=before,
+        limit=limit,
+    )
+
+@router.delete(
+    "/{workspace_id}/tasks/{task_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    response_class=Response,
+    responses={
+        403: {
+            "model": WorkspaceErrorResponse,
+            "description": "非本地模式、内部凭证或请求来源不被允许",
+        },
+        404: {
+            "model": WorkspaceErrorResponse,
+            "description": "项目或任务不存在或不可访问",
+        },
+        409: {
+            "model": WorkspaceErrorResponse,
+            "description": "任务已有消息或运行记录，不能删除",
+        },
+        422: {
+            "model": WorkspaceErrorResponse,
+            "description": "公开标识不合法或请求携带正文",
+        },
+        500: {
+            "model": WorkspaceErrorResponse,
+            "description": "任务删除结果未确认",
+        },
+    },
+)
+def delete_task(
+    workspace_id: TaskIdentifier,
+    task_id: TaskIdentifier,
+    current_user: CurrentUser,
+) -> Response:
+    """删除本人项目中的空任务；路由管理 Session，服务管理事务。"""
+
+    # 同步数据库操作由 FastAPI 在线程池执行。
+    # 身份依赖已释放自己的 Session，业务使用无活动事务的独立 Session。
+    with SessionLocal() as session:
+        delete_workspace_task(
+            session=session,
+            user_id=current_user.id,
+            workspace_id=workspace_id,
+            task_id=task_id,
+        )
+
+    # 服务返回前已完成提交；路由不再次 commit，也不再查询已删除对象。
+    # 204 必须没有响应正文，不能返回 JSON null 或空对象。
+    return Response(
+        status_code=status.HTTP_204_NO_CONTENT,
+        headers={"Cache-Control": "no-store"},
     )
 
 @router.get("/{workspace_id}/tasks/{task_id}/messages")

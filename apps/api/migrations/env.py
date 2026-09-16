@@ -60,6 +60,15 @@ def run_migrations_online() -> None:
 
     """
 
+    # 隔离测试/脚本可显式提供连接，沿用同一迁移链和版本记录。
+    # 外部连接的事务与释放由调用者管理，不关闭或替换为开发库连接。
+    supplied_connection = config.attributes.get("connection")
+    if supplied_connection is not None:
+        context.configure(connection=supplied_connection, target_metadata=target_metadata)
+        with context.begin_transaction():
+            context.run_migrations()
+        return
+
     # 迁移与应用共用 .env 中的连接地址，避免维护两套数据库配置。
     config.set_main_option("sqlalchemy.url", settings.database_url)
 
