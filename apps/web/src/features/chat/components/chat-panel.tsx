@@ -31,6 +31,7 @@ import {
 } from "@/features/workbench/workbench-session";
 import {
     readTask,
+    record,
     readMessages,
     type HistoryMessage,
 } from "@/features/workbench/task-data";
@@ -114,13 +115,18 @@ function TaskChat() {
     const [historyError, setHistoryError] = useState(false);
     const [historyRetry, setHistoryRetry] = useState(0);
     const [creating, setCreating] = useState(false);
-    const [creationError, setCreationError] = useState<string | null>(null);
-    const [uncertain, setUncertain] = useState(false);
+    const savedIntent = useRef(workbench.creationIntent());
+    const [creationError, setCreationError] = useState<string | null>(
+        savedIntent.current ? "这份草稿的创建结果尚未确认，请重试找回任务。" : null,
+    );
+    const [uncertain, setUncertain] = useState(Boolean(savedIntent.current));
+    const [creationBlocked, setCreationBlocked] = useState(false);
+    const creationControllerRef = useRef<AbortController | null>(null);
     const creationRef = useRef(false);
     const mountedRef = useRef(true);
     const [prompt, setPrompt] = useReducer(
         (_current: string, next: string) => next,
-        "",
+        savedIntent.current?.prompt ?? "",
     );
     const [chatState, dispatch] = useReducer(chatReducer, initialChatState);
     const [activeRunId, setActiveRunId] = useState<string | null>(null);
@@ -144,6 +150,7 @@ function TaskChat() {
         return () => {
             mountedRef.current = false;
             controllerRef.current?.abort();
+            creationControllerRef.current?.abort();
         };
     }, []);
     useEffect(() => {
@@ -177,57 +184,90 @@ function TaskChat() {
         return () => controller.abort();
     }, [historyRetry]);
 
-    async function prepareTask(requestPrompt: string): Promise<boolean> {
+    async function prepareTask(requestPrompt: string, retry = false): Promise<boolean> {
         if (sessionIdRef.current) return true;
         const workspace = workbench.selection?.workspace;
-        if (!workspace || creationRef.current || uncertain) return false;
+        if (!workspace || creationRef.current || (!retry && uncertain)) return false;
+        const intent = workbench.beginCreation(requestPrompt);
+        if (!intent) return false;
         creationRef.current = true;
         setCreating(true);
         workbench.setBusy(true);
         setCreationError(null);
+        const controller = new AbortController();
+        creationControllerRef.current = controller;
+        const signal = AbortSignal.any([controller.signal, AbortSignal.timeout(15000)]);
+        const current = () => mountedRef.current && !controller.signal.aborted;
         try {
             const response = await fetch(
                 `/api/workspaces/${workspace.external_id}/tasks`,
                 {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        title: Array.from(requestPrompt).slice(0, 80).join(""),
-                    }),
-                    signal: AbortSignal.timeout(15000),
+                    // 重试使用首次保存的标题和键，不读取后来的输入或重新生成键。
+                    body: JSON.stringify({ title: intent.title, request_key: intent.requestKey }),
+                    cache: "no-store",
+                    signal,
                 },
             );
             const payload: unknown = await response.json();
-            const task =
-                response.status === 201
-                    ? readTask(payload, workspace.external_id)
-                    : null;
+            signal.throwIfAborted();
+            if (!current()) return false;
+            const task = response.status === 201 ? readTask(payload, workspace.external_id) : null;
             if (!task) {
-                // 只有经过 BFF 映射的明确拒绝才允许再次发送。
-                if ([400, 403, 404, 415, 422].includes(response.status)) {
-                    setCreationError(
-                        "任务未创建，请检查项目或本地服务后重试。",
-                    );
+                const code = record(payload) ? payload.code : null;
+                if (response.status === 409 && (
+                    code === "task_creation_conflict" || code === "task_creation_result_deleted"
+                )) {
+                    setCreationBlocked(true);
+                    setUncertain(true);
+                    setCreationError(code === "task_creation_conflict"
+                        ? "这次创建的内容与已保存记录冲突。请查看任务列表，或明确开始另一项任务。"
+                        : "这次创建对应的任务已删除。旧请求不会重建它，可以开始另一项任务。");
                     return false;
                 }
+                // 包括明确拒绝也保留原键：之前一次请求可能已经成功提交。
                 throw new Error();
             }
+            workbench.clearCreation();
             sessionIdRef.current = task.conversation_id;
             currentTaskRef.current = task;
+            setUncertain(false);
             workbench.adopt(task);
+            if (retry) {
+                // 找回任务只确认创建结果，不代表消息尚未发送；先读历史，等待明确发送。
+                initialTask.current = task;
+                setHistoryLoading(true);
+                setHistoryRetry(value => value + 1);
+                setCreationError("任务已找回。请查看历史并确认输入，再点击发送；本次没有自动发送消息。");
+            }
             return true;
         } catch {
-            setUncertain(true);
-            setCreationError(
-                "创建结果未确认。请先刷新项目并查看任务列表，避免重复创建。",
-            );
-            workbench.refresh();
+            if (current()) {
+                setUncertain(true);
+                setCreationError("创建结果未确认或请求被拒绝。可以重试同一次创建，不会自动发送消息。");
+                workbench.refresh();
+            }
             return false;
         } finally {
             creationRef.current = false;
-            setCreating(false);
-            workbench.setBusy(false);
+            if (current()) {
+                setCreating(false);
+                workbench.setBusy(false);
+            }
         }
+    }
+
+    async function retryCreation() {
+        const intent = workbench.creationIntent();
+        if (intent && !creationBlocked) await prepareTask(intent.prompt, true);
+    }
+
+    function startAnotherTask() {
+        const workspace = workbench.selection?.workspace;
+        if (!workspace || creationRef.current) return;
+        workbench.clearCreation();
+        workbench.select(workspace);
     }
 
     async function summarizeTitle() {
@@ -263,6 +303,7 @@ function TaskChat() {
     async function startRequest(requestPrompt: string, isRetry = false) {
         if (controllerRef.current) return;
         workbench.setBusy(true);
+        setCreationError(null);
         setPrompt("");
         if (
             !isRetry &&
@@ -703,11 +744,31 @@ function TaskChat() {
 
                         {creationError && (
                             <p
-                                role="alert"
-                                className="text-sm text-destructive"
+                                role={uncertain ? "alert" : "status"}
+                                className={uncertain ? "text-sm text-destructive" : "text-sm text-muted-foreground"}
                             >
                                 {creationError}
                             </p>
+                        )}
+                        {uncertain && (
+                            <div className="space-y-3 rounded-lg border p-4">
+                                <p className="text-sm text-muted-foreground">
+                                    切换项目后可回到这份草稿重试。刷新页面会清除未发送内容和重试信息；刷新前请先确认结果。
+                                </p>
+                                <div className="flex flex-wrap gap-3">
+                                    {!creationBlocked && (
+                                        <Button type="button" variant="outline" disabled={creating} onClick={retryCreation}>
+                                            重试创建
+                                        </Button>
+                                    )}
+                                    <Button type="button" variant="outline" disabled={creating} onClick={startAnotherTask}>
+                                        放弃本次重试，开始另一任务
+                                    </Button>
+                                </div>
+                                <p className="text-sm text-muted-foreground">
+                                    开始另一任务不会删除可能已创建的任务，可从左侧列表查看。
+                                </p>
+                            </div>
                         )}
                         {creating && (
                             <p

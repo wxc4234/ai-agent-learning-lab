@@ -249,6 +249,41 @@ class TaskCreationRequest(Base):
         nullable=False,
     )
 
+class ConversationExecutionSlot(Base):
+    """保存会话执行占用，与 Run 的业务终态分开管理。"""
+
+    __tablename__ = "conversation_execution_slots"
+
+    __table_args__ = (
+        # 执行标记由服务端生成；格式固定，便于后续安全地匹配释放。
+        CheckConstraint(
+            "owner_token ~ '^[0-9a-f]{32}$'",
+            name="ck_conversation_execution_slots_owner_token",
+        ),
+    )
+
+    # 一个会话最多有一条占用记录，主键同时承担唯一约束。
+    # 不使用级联删除：不能因为删除会话而静默清除执行占用。
+    conversation_id: Mapped[int] = mapped_column(
+        ForeignKey("conversations.id"),
+        primary_key=True,
+    )
+
+    # 标记当前持有者，不是用户身份，也不是访问凭证。
+    # 后续释放必须同时匹配 conversation_id 和 owner_token，
+    # 防止旧执行的迟到清理误删新执行的占用。
+    owner_token: Mapped[str] = mapped_column(
+        String(32),
+        nullable=False,
+    )
+
+    # 时间只用于观察和排查，不能仅凭占用时间长就认定执行已停止。
+    acquired_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+    )
+
 
 class LoginSession(Base):
     """某次登录的服务端记录；不保存原始会话令牌。"""

@@ -17,7 +17,7 @@ def metadata_at_task_revision():
     # 历史修订只比较当时的表，后续迁移由各自测试验证。
     snapshot = MetaData()
     for table in Base.metadata.sorted_tables:
-        if table.name != "task_creation_requests":
+        if table.name not in {"task_creation_requests", "conversation_execution_slots"}:
             table.to_metadata(snapshot)
     return snapshot
 

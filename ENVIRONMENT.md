@@ -1346,3 +1346,113 @@ cd apps/api
 - 开发库先以 `alembic current` 确认为 `f16a53d928bc`，再执行 `../../.venv/bin/python -m alembic upgrade head` 升级至 `0a7b64e039cd`；`alembic check` 无新增结构操作。开发库未执行回退，新增表不回填历史任务。
 - 当前仅完成存储基础，HTTP/BFF/UI 尚未提供创建幂等。未调用真实模型或运行浏览器测试。
 - 全量回归：在 `apps/api` 执行 `../../.venv/bin/python -W error -m pytest -q --tb=short`，1118 passed（75.03s）；`../../.venv/bin/python -m ruff check app tests` 与 `git diff --check` 通过。
+
+
+### 2026-09-17：Task 创建幂等事务服务验收
+
+学习者完成 task_service.py 核心；教练仅将参考中的嵌套 if 等价合并以通过 Ruff，并补末尾换行。新增 tests/tasks/test_task_creation_idempotency.py 37 条，复用根 PostgreSQL 独立库/schema 夹具与已有项目夹具。覆盖规范化重放、严格键格式、作用域、冲突、当前标题与原指纹、授权先于请求查询、资源归属重查、删除后保留键、SQL 故障整体回滚、提交确认丢失后的重试、旧身份映射刷新，以及创建/删除提交和回滚的真实锁等待。
+
+从 apps/api 执行：
+
+```bash
+../../.venv/bin/python -W error -m pytest -xq --tb=short tests/tasks/test_task_creation_idempotency.py
+../../.venv/bin/python -W error -m pytest -xq --tb=short tests/tasks tests/workspace tests/local
+../../.venv/bin/python -m ruff check app tests
+```
+
+首批专项 34 passed（2.47s）；增加确认丢失和旧 Session 缓存 3 条后，全部 37 条随相关回归共 545 passed（41.45s，-W error）。后端全量 Ruff 与 git diff --check 通过。并发场景使用 pg_blocking_pids 确認数据库真实等待后才放行事务，不用固定睡眠推断竞争结果。独立测试库/schema 已自动清理。
+
+环境恢复：首次沙箱禁止本机 TCP；受控权限重跑后确认 PostgreSQL 拒绝连接，Docker daemon 未启动。启动 Docker Desktop 并执行 docker compose -f infra/compose.yaml up -d --wait postgres redis 后两者健康，才完成以上验收。未迁移或改动开发业务表，未调用模型。当前 HTTP 仍不传 request_key，因此本轮不宣称浏览器创建已幂等；未运行前端/浏览器或后端全量回归。
+
+
+### 2026-09-17：Task 创建幂等 HTTP 接入验收
+
+学习者完成 schemas.py 和 workspace.py 的请求键校验/转交与安全异常映射，核心与参考一致，无需修正。新增 tests/tasks/test_task_idempotency_api.py 37 条真实 app/隔离 PostgreSQL 测试，专项 37 passed（3.83s）；Task/Workspace/local 相关回归 582 passed（42.15s，-W error）。后端全量 Ruff 与 git diff --check 通过。
+
+从 apps/api 执行：
+
+```bash
+../../.venv/bin/python -W error -m pytest -xq --tb=short tests/tasks/test_task_idempotency_api.py
+../../.venv/bin/python -W error -m pytest -xq --tb=short tests/tasks tests/workspace tests/local
+../../.venv/bin/python -m ruff check app tests
+```
+
+覆盖真实同键重放/内容冲突/删除后拒绝、新项目作用域、缺省与 null 兼容、非法键/额外可信字段拒绝、服务异常脱敏、Host/Origin/内部凭证/本地模式边界、公开字段及 no-store。SQL 写入失败整体回滚；提交后结果构造、非法服务结果、实际 response_model 校验及确认异常返回 500 后，同键重试返回已存标识，独立连接确认仅一组三条记录。
+
+使用根夹具随机独立测试库与私有 schema，正常结束并自动清理；没有访问开发业务表或执行迁移。未改 BFF/UI，未运行前端、浏览器或模型；未重复账号专项或后端全量。HTTP 暂允许缺省/null 键，成功创建与重放均 201；现有 BFF 仍仅发送 title，浏览器尚无创建幂等保证。
+
+
+### 2026-09-17：Task 创建幂等 BFF 接入验收
+
+按本课明确授权修改现有 tasks/route.ts：只允许 title 与可选 request_key，缺省/null 兼容旧 UI；合法键严格为 32 位小写十六进制并原样转发，不生成、规范化、更换或自动重试。显式长度检查拒绝 JavaScript 正则 $ 可匹配的尾换行。新增两种 409 和非法键 422 白名单，状态与错误码须同时匹配；不反射上游 message 或复制内部字段/响应头。
+
+创建路由 task-create-route.test.ts 新增 33 条，总计 92 条通过；既有取消矩阵补带键请求验证，覆盖转发前、请求 JSON、fetch、响应 JSON 及解析完成后的取消/超时。覆盖合法/null/缺省键、畸形/尾换行、额外可信字段、状态错配/原型键，以及网络/JSON/服务器失败后不自动重试，调用方再次调用时复用相同输入与键。
+
+从 apps/web 执行：
+
+```bash
+node --experimental-strip-types --test test/features/workspaces/task-create-route.test.ts
+pnpm test:workspaces
+pnpm typecheck
+pnpm lint
+```
+
+结果：创建路由 92 条、Workspace 全量 612 条通过，TypeScript、全量 ESLint 和 git diff --check 通过。使用真实路由 Request/Response，上游 fetch 模拟；未运行浏览器、数据库或模型。Next.js 仍提示本机 Node 经 Rosetta 运行，不影响本轮检查通过。UI 尚未持有请求键，因此不能宣称现有浏览器创建流程已经幂等。
+
+### 2026-09-17：Task 创建幂等 UI 接入
+
+用户明确要求教练直接完成并说明实现。修改 workbench-session.tsx 和 chat-panel.tsx：首次创建意图生成去掉连字符的 UUID v4 请求键，Provider 按项目保留草稿 key、原始标题和正文；切换项目后回到草稿仍能重试。同步 ref 防双提交；卸载取消及 mounted 检查隔离旧结果，超时覆盖正文解析。未知结果保留同键和输入，409 冲突/删除拒绝不自动换键；明确开始另一任务才清除意图。首次成功沿用自动首发，重试成功只找回任务、写 URL、读取历史，等待用户明确发送。
+
+新增 task-create-idempotency.mjs 4 组 PC 浏览器测试通过：真实 BFF/API/隔离 PostgreSQL 提交后故意丢响应、项目切换后同键重放和双击、两种 409 后明确新意图换键、重复 504 仍保留原键且不发送消息。冲突及 504 响应模拟，模型出口沿用隔离替身。原 workspace-task.mjs 仅同步未确认提示文案。
+
+从仓库根目录运行：
+
+```bash
+BROWSER_APP_MODE=local BROWSER_TEST_SCRIPT=task-create-idempotency.mjs \
+PLAYWRIGHT_MODULE=/Users/wanxiancheng/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright \
+CHROME_EXECUTABLE='/Applications/Google Chrome.app/Contents/MacOS/Google Chrome' \
+.venv/bin/python apps/web/test/browser/run-isolated.py
+```
+
+可添加 CREATION_REGRESSION=1 和 BROWSER_SCENARIO='committed,first send,new draft,history failure'，在同轮隔离服务补跑首发/项目切换/列表找回/历史失败与旧请求隔离。截图位于 /private/tmp/agent-ui-preview/output/playwright/creation-uncertain-1366.png 和 creation-recovered-1920.png，浅深色截图已视查；视查后修正找回提示颜色及发送后清除。
+
+前端 pnpm test:workspaces 612 条、pnpm test:state 84 条、pnpm typecheck 和全量 pnpm lint 通过。测试夹具运行真实迁移，结束自动清理临时服务和独立库/schema；未修改开发业务表，不重复后端全量测试。创建意图仅存页面内存，不写 localStorage/sessionStorage；刷新或关闭会丢失重试键与未发送内容，UI 已明确提示，不能宣称跨刷新恢复或聊天消息幂等。
+
+最终回归：提示修正后关键恢复场景再跑 1 组通过；既有首发/同会话续聊与刷新恢复、项目切换、从列表找回、历史失败与迟到结果隔离共 4 组全部通过。两轮隔离服务及 PostgreSQL 库/schema 均正常清理，git diff --check 通过。
+
+
+### 2026-09-17：会话执行占用模型与迁移验收
+
+学习者完成 ConversationExecutionSlot 和 revision 1b8c75f140de，核心与参考一致，仅补迁移末尾换行。新增 tests/migrations/test_conversation_execution_slot_migration.py 13 条；历史 Task/Workspace 迁移测试的模型快照排除后续新增表。
+
+从 apps/api 执行：
+
+```bash
+../../.venv/bin/python -W error -m pytest -xq --tb=short tests/migrations
+../../.venv/bin/python -W error -m pytest -xq --tb=short
+../../.venv/bin/python -m ruff check app tests migrations
+../../.venv/bin/python -m alembic current
+../../.venv/bin/python -m alembic upgrade head
+../../.venv/bin/python -m alembic current
+../../.venv/bin/python -m alembic check
+```
+
+结果：迁移目录56 passed（7.42s），后端全量1205 passed（82.51s，-W error），Ruff/diff check通过。覆盖真实升级/回退/再升级与旧 Task/Conversation/Run 数据保留、历史 Run 不回填、主键唯一、格式/非空/外键、ORM 提交与带时区时间、禁止静默删除会话、真实空任务删除失败的整体回滚。
+
+隔离测试库/schema 已清理。测试全部通过后，开发库由 0a7b64e039cd 升级至 1b8c75f140de (head)，alembic check 返回 No new upgrade operations detected；仅新增占用表，不删除或回填业务数据。回退只在隔离测试库执行。本课没有接入运行流程，也未运行前端或浏览器；不能宣称已经拦截并发，崩溃遗留占用恢复仍待后续设计。
+
+
+### 2026-09-17：会话执行占用获取与释放事务服务验收
+
+学习者完成 app/services/runtime/conversation_execution_service.py，核心与参考一致，无需修正。教练新增 tests/runtime/test_conversation_execution_service.py 共 42 条专项，使用公共 PostgreSQL 隔离夹具。
+
+从 apps/api 执行：
+
+```bash
+../../.venv/bin/python -W error -m pytest -xq --tb=short tests/runtime tests/tasks tests/local
+../../.venv/bin/python -m ruff check app tests
+```
+
+首批专项 40 passed（2.89s）；补齐返回值构造失败回滚、陈旧占用与取消终态不自动放行后，最终 42 条专项随相关回归共 508 passed（36.91s，-W error）。Ruff 与仓库根目录 git diff --check 通过。覆盖本地归属与先授权、精确释放/重复释放/迟到释放、拒绝已有事务且不影响调用方工作、真实 SQL 与提交前后故障、Session 可复用。并发测试使用 pg_blocking_pids 确认真正等待行锁，分别验证获取/释放提交或回滚后的竞争结果，以及不同会话可独立获取。
+
+隔离数据库/schema 随夹具清理；本课未修改数据库结构或开发业务表，未运行前端、浏览器或真实模型调用。服务尚未接入聊天运行，不能宣称已拦截页面端并发；取消终态、占用时间和等待协程取消均不能自动触发释放，进程崩溃遗留占用恢复仍待后续设计。

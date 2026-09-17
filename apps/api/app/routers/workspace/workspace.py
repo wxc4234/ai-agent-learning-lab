@@ -42,7 +42,10 @@ from app.services.workspace.workspace_binding import (
 from app.services.workspace.workspace_directory import WorkspaceDirectoryError
 from app.services.workspace.directory_picker import DirectoryPickerError, select_directory
 from app.services.tasks.task_service import (
+    InvalidTaskRequestKeyError,
     InvalidTaskTitleError,
+    TaskCreationConflictError,
+    TaskCreationResultDeletedError,
     create_workspace_task,
 )
 from app.services.tasks.task_deletion_service import (
@@ -282,6 +285,32 @@ class WorkspaceRoute(APIRoute):
                     422,
                     code=InvalidTaskRunQueryError.code,
                     message="任务运行历史查询参数不符合要求",
+                )
+
+            except InvalidTaskRequestKeyError:
+                # 正文通常先被 Pydantic 校验；服务层拒绝也须有安全映射。
+                # 不输出原始请求键或异常正文。
+                return _error_response(
+                    422,
+                    code=InvalidTaskRequestKeyError.code,
+                    message="任务创建请求键须为 32 位小写十六进制字符串",
+                )
+
+            except TaskCreationConflictError:
+                # 原键已经对应另一份内容，不能替换原请求记录。
+                return _error_response(
+                    409,
+                    code=TaskCreationConflictError.code,
+                    message="该请求键已用于不同的任务创建内容",
+                )
+
+            except TaskCreationResultDeletedError:
+                # 原结果已删除，但请求键仍然保留。
+                # 不把旧请求当成新创建，也不在路由中自动更换请求键。
+                return _error_response(
+                    409,
+                    code=TaskCreationResultDeletedError.code,
+                    message="该请求对应的任务已删除，请使用新的请求键创建",
                 )
 
             except InvalidTaskTitleError:
@@ -671,6 +700,7 @@ def select_workspace_directory(
         external_id=result.external_id, name=result.name, root_path=result.root_path,
     )
 
+
 @router.post(
     "/{workspace_id}/tasks",
     status_code=status.HTTP_201_CREATED,
@@ -684,13 +714,17 @@ def select_workspace_directory(
             "model": WorkspaceErrorResponse,
             "description": "工作空间不存在或不可访问",
         },
+        409: {
+            "model": WorkspaceErrorResponse,
+            "description": "同请求键内容冲突，或原创建结果已删除",
+        },
         415: {
             "model": WorkspaceErrorResponse,
             "description": "请求必须使用 application/json",
         },
         422: {
             "model": WorkspaceErrorResponse,
-            "description": "标识、正文或标题不符合要求",
+            "description": "标识、正文、标题或请求键不符合要求",
         },
         500: {
             "model": WorkspaceErrorResponse,
@@ -710,20 +744,22 @@ def create_task(
     payload: TaskCreateRequest,
     current_user: CurrentUser,
 ) -> TaskResponse:
-    """为本人项目创建任务与会话；服务管理事务，路由管理 Session。"""
+    """创建或重放任务；服务管理事务，路由管理 Session。"""
 
     # 普通 def 路由在线程池运行，避免同步数据库调用阻塞事件循环。
-    # 身份依赖已关闭自己的 Session，业务使用新的独立 Session。
+    # 身份取自可信依赖；请求键不能替代项目、任务和会话归属检查。
     with SessionLocal() as session:
         result = create_workspace_task(
             session=session,
             user_id=current_user.id,
             workspace_id=workspace_id,
             title=payload.title,
+            request_key=payload.request_key,
         )
 
-    # 业务 Session 关闭后只使用普通结果构造响应。
-    # 不返回 ORM 对象，也不额外提交或重新查询数据库。
+    # 服务已经完成事务，业务 Session 关闭后只使用普通结果。
+    # 新建和重放使用同一公开结构，不暴露请求记录、指纹或内部主键。
+    # 此处响应生成失败也不能说明数据库未提交，沿用外层未确认错误。
     return TaskResponse(
         external_id=result.external_id,
         workspace_id=result.workspace_id,

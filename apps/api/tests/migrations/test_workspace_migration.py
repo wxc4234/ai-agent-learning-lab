@@ -25,7 +25,7 @@ def metadata_before_tasks():
     # 历史版本没有 Task 表和会话关联字段，移除其索引与外键后再比较。
     snapshot = MetaData()
     for table in Base.metadata.sorted_tables:
-        if table.name not in {"tasks", "task_creation_requests"}:
+        if table.name not in {"tasks", "task_creation_requests", "conversation_execution_slots"}:
             table.to_metadata(snapshot)
     conversation = snapshot.tables["conversations"]
     for constraint in list(conversation.constraints):

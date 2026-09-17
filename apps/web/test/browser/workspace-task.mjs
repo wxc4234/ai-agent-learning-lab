@@ -134,7 +134,7 @@ try {
         await page.goto(base); await openDraft(page, '丢包恢复项目');
         await page.getByLabel('你的问题').fill('丢包但已创建');
         await page.getByRole('button', { name: '发送', exact: true }).click();
-        await page.getByText('创建结果未确认。请先刷新项目并查看任务列表，避免重复创建。', { exact: true }).waitFor();
+        await page.getByText('创建结果未确认或请求被拒绝。可以重试同一次创建，不会自动发送消息。', { exact: true }).waitFor();
         assert.equal(await page.getByRole('button', { name: '发送', exact: true }).isDisabled(), true);
         assert.equal(writes, 1); assert.equal(chats, 0);
         await tasks(page, '丢包恢复项目').getByRole('button', { name: '丢包但已创建', exact: true }).click();

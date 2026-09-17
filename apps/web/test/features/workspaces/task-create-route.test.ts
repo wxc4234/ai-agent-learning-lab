@@ -7,6 +7,7 @@ process.env.AUTH_ALLOWED_ORIGINS = "http://localhost:3000";
 process.env.LOCAL_RUNTIME_TOKEN = "a".repeat(64);
 const { POST } = await import("../../../src/app/api/workspaces/[workspaceId]/tasks/route.ts");
 const ID = "b".repeat(32);
+const KEY = "0123456789abcdef0123456789abcdef";
 const DATA = { external_id: "c".repeat(32), workspace_id: ID, conversation_id: "d".repeat(32), title: "任务", created_at: "2026-09-15T08:00:00Z" };
 const context = (id = ID) => ({ params: Promise.resolve({ workspaceId: id }) });
 function request(body: unknown = { title: " 任务 " }, overrides: Record<string, string | null> = {}, signal?: AbortSignal, host = "localhost") {
@@ -102,6 +103,7 @@ test("malformed JSON never reaches upstream", async t => {
 for (const [status, code] of [
     [400, "invalid_workspace_request"], [403, "local_mode_required"], [403, "local_access_rejected"], [403, "workspace_origin_rejected"],
     [404, "workspace_not_accessible"], [415, "unsupported_workspace_content_type"], [422, "invalid_task_input"], [422, "invalid_task_title"], [500, "task_creation_uncertain"],
+    [409, "task_creation_conflict"], [409, "task_creation_result_deleted"], [422, "invalid_task_request_key"],
 ] as const) {
     test(`maps ${status}:${code}`, async t => {
         const mock = t.mock.method(globalThis, "fetch", async () => Response.json({ code, message: "PRIVATE" }, { status }));
@@ -143,15 +145,16 @@ for (const phase of ["before", "request-json", "after-request-json", "fetch", "r
             const timeout = new AbortController();
             t.mock.method(AbortSignal, "timeout", (ms: number) => { assert.equal(ms, 10000); return timeout.signal; });
             const abort = () => (kind === "client" ? client : timeout).abort();
-            const req = request(undefined, {}, client.signal);
+            const req = request({ title: "任务", request_key: KEY }, {}, client.signal);
             const beforeFetch = phase === "before" || phase.includes("request-json");
             if (phase === "before") abort();
             if (phase.includes("request-json")) t.mock.method(req, "json", async () => {
                 abort();
                 if (phase === "request-json") throw new Error("aborted");
-                return { title: "任务" };
+                return { title: "任务", request_key: KEY };
             });
             const mock = t.mock.method(globalThis, "fetch", async (_url: string, init: RequestInit) => {
+                assert.deepEqual(JSON.parse(String(init.body)), { title: "任务", request_key: KEY });
                 if (phase === "fetch") { abort(); init.signal?.throwIfAborted(); }
                 const response = Response.json(DATA, { status: 201 });
                 if (phase.includes("response-json")) t.mock.method(response, "json", async () => {
@@ -165,4 +168,69 @@ for (const phase of ["before", "request-json", "after-request-json", "fetch", "r
             assert.equal(mock.mock.callCount(), beforeFetch ? 0 : 1);
         });
     }
+}
+
+
+// 请求键保持字节级不变；null 兼容 HTTP，缺省兼容性由既有测试覆盖。
+for (const key of [KEY, "0".repeat(32), "f".repeat(32), null]) {
+    test(`preserves request key ${key}`, async t => {
+        const mock = t.mock.method(globalThis, "fetch", async (_url: string, init: RequestInit) => {
+            assert.deepEqual(JSON.parse(String(init.body)), { title: " 任务 ", request_key: key });
+            assert.deepEqual(Object.fromEntries(new Headers(init.headers)), {
+                origin: "http://localhost:3000", "content-type": "application/json",
+                "x-local-runtime-token": "a".repeat(64),
+            });
+            return Response.json({ ...DATA, request_key: key, request_hash: "PRIVATE" }, { status: 201 });
+        });
+        const response = await POST(request({ title: " 任务 ", request_key: key }), context());
+        assert.equal(response.status, 201);
+        assert.deepEqual(await response.json(), DATA);
+        assert.equal(response.headers.get("cache-control"), "no-store");
+        assert.equal(mock.mock.callCount(), 1);
+    });
+}
+for (const key of ["", "a".repeat(31), "a".repeat(33), "A".repeat(32), "g".repeat(32),
+    ` ${KEY}`, `${KEY}\n`, `${KEY}\r`, `${KEY}\r\n`, 123, false, [], {}]) {
+    test(`rejects malformed request key ${JSON.stringify(key)}`, async t => {
+        const mock = t.mock.method(globalThis, "fetch", async () => Response.json(DATA, { status: 201 }));
+        await error(await POST(request({ title: "任务", request_key: key }), context()), 422, "invalid_task_input");
+        assert.equal(mock.mock.callCount(), 0);
+    });
+}
+for (const field of ["request_hash", "user_id", "task_id", "conversation_id"]) {
+    test(`key does not allow trusted field ${field}`, async t => {
+        const mock = t.mock.method(globalThis, "fetch", async () => Response.json(DATA, { status: 201 }));
+        await error(await POST(request({ title: "任务", request_key: KEY, [field]: "PRIVATE" }), context()), 422, "invalid_task_input");
+        assert.equal(mock.mock.callCount(), 0);
+    });
+}
+for (const [status, code] of [[422, "task_creation_conflict"], [404, "task_creation_result_deleted"],
+    [409, "invalid_task_request_key"], [409, "toString"], [409, "__proto__"], [409, "unknown"]] as const) {
+    test(`rejects idempotency status mismatch ${status}:${code}`, async t => {
+        const mock = t.mock.method(globalThis, "fetch", async () => Response.json({ code, message: "PRIVATE" }, { status }));
+        await error(await POST(request({ title: "任务", request_key: KEY }), context()), 502, "task_creation_uncertain");
+        assert.equal(mock.mock.callCount(), 1);
+    });
+}
+for (const kind of ["network", "json", "server"]) {
+    test(`explicit retry preserves key after ${kind} uncertainty`, async t => {
+        const forwarded: unknown[] = [];
+        const mock = t.mock.method(globalThis, "fetch", async (_url: string, init: RequestInit) => {
+            forwarded.push(JSON.parse(String(init.body)));
+            if (forwarded.length === 1) {
+                if (kind === "network") throw new Error("PRIVATE");
+                if (kind === "json") return new Response("PRIVATE", { status: 201 });
+                return Response.json({ code: "task_creation_uncertain", message: "PRIVATE" }, { status: 500 });
+            }
+            return Response.json(DATA, { status: 201 });
+        });
+        const body = { title: " 任务 ", request_key: KEY };
+        await error(await POST(request(body), context()), kind === "server" ? 500 : 502, "task_creation_uncertain");
+        // 第一次失败后不得主动再发请求；只有调用方明确重试才发生第二次 fetch。
+        assert.equal(mock.mock.callCount(), 1);
+        const retry = await POST(request(body), context());
+        assert.equal(retry.status, 201);
+        assert.deepEqual(await retry.json(), DATA);
+        assert.deepEqual(forwarded, [body, body]);
+    });
 }

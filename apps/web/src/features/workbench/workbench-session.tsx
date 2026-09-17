@@ -29,6 +29,13 @@ type TaskDeletion = {
     message: string;
 };
 
+export type TaskCreationIntent = {
+    draftKey: string;
+    requestKey: string;
+    title: string;
+    prompt: string;
+};
+
 type Session = {
     localMode: boolean;
     leftOpen: boolean;
@@ -49,6 +56,9 @@ type Session = {
     reload: () => void;
     select: (workspace: WorkspaceListItem, task?: TaskItem) => void;
     adopt: (task: TaskItem) => void;
+    creationIntent: () => TaskCreationIntent | null;
+    beginCreation: (prompt: string) => TaskCreationIntent | null;
+    clearCreation: () => void;
     rename: (id: string, title: string) => void;
     deletion: TaskDeletion | null;
     deleteTask: (workspace: WorkspaceListItem, task: TaskItem) => Promise<void>;
@@ -93,6 +103,8 @@ export function WorkbenchProvider({
     const selectionRef = useRef<Selection | null>(null);
     const projectsRef = useRef<WorkspaceListItem[]>([]);
     const busyRef = useRef(false);
+    // 未确认的创建属于项目草稿，不随 TaskChat 卸载丢失；不持久化未发送内容。
+    const creationsRef = useRef(new Map<string, TaskCreationIntent>());
     const restoreControllerRef = useRef<AbortController | null>(null);
 
     // 只有没有任务定位参数时，项目列表才能自动打开默认草稿。
@@ -293,10 +305,37 @@ export function WorkbenchProvider({
         setRestoreStatus('ready');
 
         commitSelection({
-            key: task?.external_id ?? crypto.randomUUID(),
+            key: task?.external_id ?? creationsRef.current.get(workspace.external_id)?.draftKey ?? crypto.randomUUID(),
             workspace,
             task: task ?? null,
         });
+    };
+
+    const creationIntent = () => {
+        const current = selectionRef.current;
+        return current && !current.task
+            ? creationsRef.current.get(current.workspace.external_id) ?? null
+            : null;
+    };
+
+    const beginCreation = (prompt: string) => {
+        const current = selectionRef.current;
+        if (!current || current.task) return null;
+        const existing = creationsRef.current.get(current.workspace.external_id);
+        if (existing) return existing;
+        const intent: TaskCreationIntent = {
+            draftKey: current.key,
+            requestKey: crypto.randomUUID().replaceAll("-", ""),
+            title: Array.from(prompt).slice(0, 80).join(""),
+            prompt,
+        };
+        creationsRef.current.set(current.workspace.external_id, intent);
+        return intent;
+    };
+
+    const clearCreation = () => {
+        const current = selectionRef.current;
+        if (current) creationsRef.current.delete(current.workspace.external_id);
     };
 
     const adopt = (task: TaskItem) => {
@@ -600,6 +639,9 @@ export function WorkbenchProvider({
                 },
                 select,
                 adopt,
+                creationIntent,
+                beginCreation,
+                clearCreation,
                 rename,
                 deletion,
                 deleteTask,

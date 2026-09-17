@@ -28,12 +28,17 @@ const BACKEND_ERRORS: Record<number, Record<string, string>> = {
     404: {
         workspace_not_accessible: "工作空间不存在或不可访问",
     },
+    409: {
+        task_creation_conflict: "该请求键已用于不同的任务创建内容",
+        task_creation_result_deleted: "该请求对应的任务已删除，请使用新的请求键创建",
+    },
     415: {
         unsupported_workspace_content_type: "任务请求必须使用 JSON",
     },
     422: {
         invalid_task_input: "任务请求参数不符合要求",
         invalid_task_title: "任务标题去除首尾空白后须为 1～200 个字符",
+        invalid_task_request_key: "任务创建请求键须为 32 位小写十六进制字符串",
     },
     500: {
         task_creation_uncertain: "任务创建结果未确认，请勿直接重复提交",
@@ -157,18 +162,27 @@ export async function POST(
         );
     }
 
-    // 只允许 title，拒绝用户身份、内部主键及客户端指定的会话标识。
+    // 仅接受创建内容与可选请求键，不接受身份、指纹或资源内部主键。
     // 不在 BFF 重复 strip，避免两端维护不同的标题规范化规则。
     if (
         !isRecord(body) ||
-        Object.keys(body).length !== 1 ||
+        Object.keys(body).some(key => key !== "title" && key !== "request_key") ||
         !Object.hasOwn(body, "title") ||
-        typeof body.title !== "string"
+        typeof body.title !== "string" ||
+        (
+            Object.hasOwn(body, "request_key") &&
+            body.request_key !== null &&
+            (
+                typeof body.request_key !== "string" ||
+                body.request_key.length !== 32 ||
+                !IDENTIFIER.test(body.request_key)
+            )
+        )
     ) {
         return errorResponse(
             422,
             "invalid_task_input",
-            "任务请求只能包含字符串类型的 title",
+            "任务请求须包含字符串标题及可选的 32 位小写十六进制请求键",
         );
     }
 
@@ -202,6 +216,11 @@ export async function POST(
                 },
                 body: JSON.stringify({
                     title: body.title,
+                    // 缺省保持旧 UI 行为；显式 null 与合法键原样转发。
+                    // 键属于一次创建意图，BFF 不生成、改写或自动重试。
+                    ...(Object.hasOwn(body, "request_key")
+                        ? { request_key: body.request_key }
+                        : {}),
                 }),
                 signal,
                 cache: "no-store",

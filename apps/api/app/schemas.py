@@ -237,7 +237,7 @@ class WorkspaceDirectoryStateResponse(BaseModel):
     root_path: str | None
 
 class TaskCreateRequest(BaseModel):
-    """创建任务只接收标题，归属和资源标识由服务端确定。"""
+    """接收创建内容和可选请求键，归属与资源标识由服务端确定。"""
 
     model_config = ConfigDict(
         strict=True,
@@ -245,9 +245,23 @@ class TaskCreateRequest(BaseModel):
         hide_input_in_errors=True,
     )
 
-    # HTTP 层检查类型；规范化及长度规则由事务服务统一处理。
+    # HTTP 层检查类型；标题规范化和长度规则由事务服务统一处理。
     title: str = Field(
-        description="任务标题，去除首尾空白后为 1～200 个字符",
+        description="任务标题，去除首尾空白后须为 1～200 个字符",
+    )
+
+    # 暂时兼容只发送标题的 BFF；缺省或 null 时不启用幂等。
+    # 同一次创建的重试必须复用原键，不能每次请求重新生成。
+    # 不接受客户端指纹，摘要始终由服务端根据规范化内容计算。
+    request_key: str | None = Field(
+        default=None,
+        min_length=32,
+        max_length=32,
+        pattern=r"^[0-9a-f]{32}$",
+        description=(
+            "可选的 32 位小写十六进制创建请求键；"
+            "同一次创建重试须复用，缺省或 null 时不启用幂等"
+        ),
     )
 
 
