@@ -9,7 +9,7 @@ if not os.environ.get("DATABASE_URL", "").split("?")[0].rsplit("/", 1)[-1].start
 from app.main import app  # noqa: F401 -- uvicorn entry point after isolation guard
 from app.services.chat import chat_service
 from app.routers.runtime import runs
-from app.services.runtime.agent_runtime import FinalAnswer, ModelUsage, ToolAction
+from app.services.runtime.agent.agent_runtime import FinalAnswer, ModelUsage, ToolAction
 
 
 class BrowserDecisionMaker:

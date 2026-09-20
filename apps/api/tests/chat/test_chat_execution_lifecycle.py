@@ -1,4 +1,4 @@
-from app.services.runtime.execution_budget import ExecutionBudget
+from app.services.runtime.execution.execution_budget import ExecutionBudget
 """真实 ASGI 请求、PostgreSQL 与受控模型验证执行占用生命周期。"""
 
 import asyncio
@@ -19,11 +19,12 @@ from app.repositories.runtime import run_repository
 from app.routers.chat import chat, chat_execution
 from app.services.auth.authentication_service import AuthenticatedUser
 from app.services.chat import chat_service
-from app.services.runtime import conversation_execution_scope, tool_execution_context
-from app.services.runtime.agent_runtime import FinalAnswer
-from tests.runtime import test_conversation_execution_service as service_tests
-from tests.runtime.test_conversation_execution_service import tokens
-from tests.runtime.test_execution_threads import checkpoint
+from app.services.runtime.execution import conversation_execution_scope
+from app.services.runtime.agent import tool_execution_context
+from app.services.runtime.agent.agent_runtime import FinalAnswer
+from tests.runtime.execution import test_conversation_execution_service as service_tests
+from tests.runtime.execution.test_conversation_execution_service import tokens
+from tests.runtime.execution.test_execution_threads import checkpoint
 
 
 scope_target = service_tests.target
@@ -206,9 +207,9 @@ def test_cancel_during_database_commit_waits_then_finishes(lab, engine, monkeypa
 
 @pytest.mark.parametrize("spec", ["2.0", "2.4"])
 def test_disconnect_during_real_tool_keeps_slot_until_thread_stops(lab, engine, monkeypatch, spec):
-    from app.services.runtime.agent_runtime import ToolAction, ModelUsage
+    from app.services.runtime.agent.agent_runtime import ToolAction, ModelUsage
     from app.tools.registry import TOOL_REGISTRY, ToolDefinition, GetCurrentTimeArguments
-    from tests.runtime.test_execution_threads import ControlledWork
+    from tests.runtime.execution.test_execution_threads import ControlledWork
 
     async def scenario():
         lab[0].state.execution_budget = ExecutionBudget(capacity=1)

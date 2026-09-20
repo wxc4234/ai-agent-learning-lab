@@ -5,7 +5,7 @@ from decimal import Decimal
 
 import pytest
 
-from app.services.runtime.agent_runtime import ModelUsage
+from app.services.runtime.agent.agent_runtime import ModelUsage
 from app.services.model.model_pricing import (
     BEIJING_TIMEZONE,
     DeepSeekPricingSchedule,

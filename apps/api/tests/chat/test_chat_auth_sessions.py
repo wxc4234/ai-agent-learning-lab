@@ -1,4 +1,4 @@
-from app.services.runtime.execution_budget import ExecutionBudget
+from app.services.runtime.execution.execution_budget import ExecutionBudget
 """Real PostgreSQL sessions at both chat boundaries; no external model calls."""
 
 from datetime import UTC, datetime, timedelta

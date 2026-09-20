@@ -1444,7 +1444,7 @@ CHROME_EXECUTABLE='/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
 
 ### 2026-09-17：会话执行占用获取与释放事务服务验收
 
-学习者完成 app/services/runtime/conversation_execution_service.py，核心与参考一致，无需修正。教练新增 tests/runtime/test_conversation_execution_service.py 共 42 条专项，使用公共 PostgreSQL 隔离夹具。
+学习者完成 app/services/runtime/execution/conversation_execution_service.py，核心与参考一致，无需修正。教练新增 tests/runtime/execution/test_conversation_execution_service.py 共 42 条专项，使用公共 PostgreSQL 隔离夹具。
 
 从 apps/api 执行：
 
@@ -1460,13 +1460,13 @@ CHROME_EXECUTABLE='/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
 
 ### 2026-09-18：执行后台线程跟踪器验收
 
-学习者完成 app/services/runtime/execution_threads.py，核心与参考一致，仅补末尾换行。教练新增 tests/runtime/test_execution_threads.py 共 12 条，使用真实线程和 Event 主动控制开始/结束，不通过固定毫秒延时猜测线程是否完成；线程等待设置故障保险，finally 放行线程，避免失败时遗留阻塞。
+学习者完成 app/services/runtime/execution/execution_threads.py，核心与参考一致，仅补末尾换行。教练新增 tests/runtime/execution/test_execution_threads.py 共 12 条，使用真实线程和 Event 主动控制开始/结束，不通过固定毫秒延时猜测线程是否完成；线程等待设置故障保险，finally 放行线程，避免失败时遗留阻塞。
 
 从 apps/api 执行：
 
 ```bash
-../../.venv/bin/python -W error -m pytest -xq --tb=short tests/runtime/test_execution_threads.py
-../../.venv/bin/python -W error -m pytest -xq --tb=short tests/runtime/test_execution_threads.py tests/runtime/test_agent_runtime.py
+../../.venv/bin/python -W error -m pytest -xq --tb=short tests/runtime/execution/test_execution_threads.py
+../../.venv/bin/python -W error -m pytest -xq --tb=short tests/runtime/execution/test_execution_threads.py tests/runtime/agent/test_agent_runtime.py
 ../../.venv/bin/python -m ruff check app tests
 ```
 
@@ -1477,12 +1477,12 @@ CHROME_EXECUTABLE='/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
 
 ### 2026-09-18：会话执行作用域验收
 
-学习者完成 conversation_execution_scope.py，按对话纠正为 AsyncGenerator[ExecutionThreads, None] 标注；不是 asynccontextmanager 本身弃用。核心行为无需修正，教练仅补换行及预期异常捕获的 BLE001 豁免说明。新增 tests/runtime/test_conversation_execution_scope.py，复用已有本地任务夹具及根 conftest 的隔离 PostgreSQL 数据库/schema。
+学习者完成 conversation_execution_scope.py，按对话纠正为 AsyncGenerator[ExecutionThreads, None] 标注；不是 asynccontextmanager 本身弃用。核心行为无需修正，教练仅补换行及预期异常捕获的 BLE001 豁免说明。新增 tests/runtime/execution/test_conversation_execution_scope.py，复用已有本地任务夹具及根 conftest 的隔离 PostgreSQL 数据库/schema。
 
 从 apps/api 执行：
 
 ```bash
-../../.venv/bin/python -W error -m pytest -xq --tb=short tests/runtime/test_conversation_execution_scope.py
+../../.venv/bin/python -W error -m pytest -xq --tb=short tests/runtime/execution/test_conversation_execution_scope.py
 ../../.venv/bin/python -W error -m pytest -xq --tb=short tests/runtime
 ../../.venv/bin/python -m ruff check app tests
 ```
@@ -1494,7 +1494,7 @@ CHROME_EXECUTABLE='/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
 
 ### 2026-09-18：Agent Loop 工具线程接入验收
 
-学习者完成 agent_runtime.py 的可选 execution_threads 参数、工具执行转交以及 run_agent_loop 透传，核心无需修改。教练新增 tests/runtime/test_agent_execution_threads.py 共 12 条；两种 Runtime 调用路径覆盖成功、失败、超时与取消，注册/参数校验拒绝时不进入跟踪器；成功后跟踪器仍可登记工作，由外层负责关闭。
+学习者完成 agent_runtime.py 的可选 execution_threads 参数、工具执行转交以及 run_agent_loop 透传，核心无需修改。教练新增 tests/runtime/agent/test_agent_execution_threads.py 共 12 条；两种 Runtime 调用路径覆盖成功、失败、超时与取消，注册/参数校验拒绝时不进入跟踪器；成功后跟踪器仍可登记工作，由外层负责关闭。
 
 从 apps/api 执行：
 
@@ -1551,7 +1551,7 @@ CHROME_EXECUTABLE='/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
 
 ### 2026-09-18：会话执行占用只读查询服务
 
-学习者完成 services/runtime/conversation_execution_query.py，核心无需修改，教练仅补末尾换行；新增 tests/runtime/test_conversation_execution_query.py 共 12 条。复用公共 PostgreSQL 隔离数据库/私有 schema 和本地任务夹具，允许真实提交，结束自动清理；未使用开发业务表。
+学习者完成 services/runtime/execution/conversation_execution_query.py，核心无需修改，教练仅补末尾换行；新增 tests/runtime/execution/test_conversation_execution_query.py 共 12 条。复用公共 PostgreSQL 隔离数据库/私有 schema 和本地任务夹具，允许真实提交，结束自动清理；未使用开发业务表。
 
 ```bash
 cd apps/api
@@ -1570,7 +1570,7 @@ cd apps/api
 
 ```bash
 cd apps/api
-../../.venv/bin/python -W error -m pytest -xq --tb=short tests/chat/test_conversation_execution_api.py tests/runtime/test_conversation_execution_query.py tests/local/test_local_mode.py tests/local/test_task_conversation_boundary.py tests/chat/test_chat_execution_lifecycle.py
+../../.venv/bin/python -W error -m pytest -xq --tb=short tests/chat/test_conversation_execution_api.py tests/runtime/execution/test_conversation_execution_query.py tests/local/test_local_mode.py tests/local/test_task_conversation_boundary.py tests/chat/test_chat_execution_lifecycle.py
 ../../.venv/bin/python -m ruff check app tests
 ```
 
@@ -1616,11 +1616,11 @@ CHROME_EXECUTABLE='/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
 
 ### 2026-09-20：进程内执行并发预算组件
 
-学习者完成 services/runtime/execution_budget.py，核心无需修改；教练新增 tests/runtime/test_execution_budget.py 共23条。使用真实 asyncio 事件循环与事件同步、AnyIO 取消域，不依赖数据库或模型。执行：
+学习者完成 services/runtime/execution/execution_budget.py，核心无需修改；教练新增 tests/runtime/execution/test_execution_budget.py 共23条。使用真实 asyncio 事件循环与事件同步、AnyIO 取消域，不依赖数据库或模型。执行：
 
 ```bash
 cd apps/api
-../../.venv/bin/python -W error -m pytest -xq --tb=short tests/runtime/test_execution_budget.py tests/runtime/test_execution_threads.py
+../../.venv/bin/python -W error -m pytest -xq --tb=short tests/runtime/execution/test_execution_budget.py tests/runtime/execution/test_execution_threads.py
 ../../.venv/bin/python -m ruff check app tests
 ```
 
@@ -1688,7 +1688,7 @@ CHROME_EXECUTABLE='/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
 
 ```bash
 ../../.venv/bin/python -m pytest tests/tasks/test_task_deletion_service.py -q -W error -x --tb=short
-../../.venv/bin/python -m pytest tests/tasks tests/runtime/test_conversation_execution_service.py tests/local/test_task_conversation_boundary.py -q -W error -x --tb=short
+../../.venv/bin/python -m pytest tests/tasks tests/runtime/execution/test_conversation_execution_service.py tests/local/test_task_conversation_boundary.py -q -W error -x --tb=short
 ../../.venv/bin/python -m ruff check app tests
 ```
 
@@ -1786,11 +1786,11 @@ CHROME_EXECUTABLE='/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
 
 ## 2026-09-20 工具可信上下文构造验收
 
-学习者完成tools/context.py及services/runtime/tool_execution_context.py，核心与参考一致，仅补末尾换行；新增tests/runtime/test_tool_execution_context.py。在apps/api执行：
+学习者完成tools/context.py及services/runtime/agent/tool_execution_context.py，核心与参考一致，仅补末尾换行；新增tests/runtime/agent/test_tool_execution_context.py。在apps/api执行：
 
 ```bash
-../../.venv/bin/python -W error -m pytest -xq --tb=short tests/runtime/test_tool_execution_context.py
-../../.venv/bin/python -m ruff check app/tools/context.py app/services/runtime/tool_execution_context.py tests/runtime/test_tool_execution_context.py
+../../.venv/bin/python -W error -m pytest -xq --tb=short tests/runtime/agent/test_tool_execution_context.py
+../../.venv/bin/python -m ruff check app/tools/context.py app/services/runtime/agent/tool_execution_context.py tests/runtime/agent/test_tool_execution_context.py
 ```
 
 24条通过（1.20s，-W error），定向Ruff和git diff --check通过；仅运行本课单文件，不扩展Runtime、账号、路径或读取回归。测试复用根夹具的独立PostgreSQL库/schema并自动清理。验证local/account下相同归属条件、缺失/他人会话/他人项目/无Task拒绝、同用户不同会话和项目的正确定位、未绑定或不存在目录仍可构造上下文、只SELECT且无commit、真实SQL错误传播并关闭Session、不可变字段及拒绝独立Task/Workspace/root_path输入。未访问开发业务表/执行迁移，无浏览器或模型调用。
@@ -1800,11 +1800,11 @@ CHROME_EXECUTABLE='/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
 
 ## 2026-09-20 工具执行器上下文透传验收
 
-核心与参考一致，仅补registry.py类间空行。新增tests/runtime/test_tool_context_dispatch.py 20条；按用户要求只选直接受影响的既有工具/线程/超时/取消/事件测试23条，共43条通过（1.17s，-W error）。在apps/api运行：
+核心与参考一致，仅补registry.py类间空行。新增tests/runtime/agent/test_tool_context_dispatch.py 20条；按用户要求只选直接受影响的既有工具/线程/超时/取消/事件测试23条，共43条通过（1.17s，-W error）。在apps/api运行：
 
 ```bash
-../../.venv/bin/python -W error -m pytest -xq --tb=short tests/runtime/test_tool_context_dispatch.py tests/tools/test_time_tool.py tests/runtime/test_agent_execution_threads.py::test_success_and_error_preserve_protocol_and_tracker_ownership tests/runtime/test_agent_execution_threads.py::test_abandoned_tool_is_still_tracked tests/runtime/test_agent_execution_threads.py::test_rejected_tool_never_reaches_tracker tests/runtime/test_agent_runtime.py::test_agent_loop_returns_timeout_as_observation tests/runtime/test_agent_runtime.py::test_agent_loop_propagates_cancellation_during_tool_execution tests/runtime/test_agent_runtime_events.py::test_stream_agent_loop_emits_successful_tool_sequence tests/runtime/test_agent_runtime_events.py::test_stream_agent_loop_emits_failure_before_model_recovers
-../../.venv/bin/python -m ruff check app/tools/registry.py app/services/runtime/agent_runtime.py tests/runtime/test_tool_context_dispatch.py
+../../.venv/bin/python -W error -m pytest -xq --tb=short tests/runtime/agent/test_tool_context_dispatch.py tests/tools/test_time_tool.py tests/runtime/agent/test_agent_execution_threads.py::test_success_and_error_preserve_protocol_and_tracker_ownership tests/runtime/agent/test_agent_execution_threads.py::test_abandoned_tool_is_still_tracked tests/runtime/agent/test_agent_execution_threads.py::test_rejected_tool_never_reaches_tracker tests/runtime/agent/test_agent_runtime.py::test_agent_loop_returns_timeout_as_observation tests/runtime/agent/test_agent_runtime.py::test_agent_loop_propagates_cancellation_during_tool_execution tests/runtime/agent/test_agent_runtime_events.py::test_stream_agent_loop_emits_successful_tool_sequence tests/runtime/agent/test_agent_runtime_events.py::test_stream_agent_loop_emits_failure_before_model_recovers
+../../.venv/bin/python -m ruff check app/tools/registry.py app/services/runtime/agent/agent_runtime.py tests/runtime/agent/test_tool_context_dispatch.py
 ```
 
 定向Ruff、git diff --check通过。新增验证缺失/错误类型上下文在启动线程前拒绝、直接execute防绕过、同一对象经两个入口和真实跟踪线程透传、并发两次执行不串上下文、无上下文工具签名兼容、保留字段及别名注册拒绝、额外参数不能覆盖context、错误参数模型拒绝、模型Schema不暴露上下文及注入参数校验拒绝。缺失上下文使用既有tool_execution_failed与固定details，不新增事件协议码。
@@ -1817,8 +1817,8 @@ CHROME_EXECUTABLE='/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
 核心与参考一致，教练仅补errors.py/read_file.py末尾换行；更新test_time_tool.py旧断言，使默认TOOLS只包含无需上下文的注册工具。新增test_read_file_tool.py 37条；在apps/api运行：
 
 ```bash
-../../.venv/bin/python -W error -m pytest -xq --tb=short tests/tools/test_read_file_tool.py tests/tools/test_time_tool.py tests/tools/test_tools_api.py tests/model/test_model_decision.py tests/runtime/test_tool_context_dispatch.py
-../../.venv/bin/python -m ruff check app/tools/errors.py app/tools/read_file.py app/tools/registry.py app/services/model/model_decision.py app/services/runtime/agent_runtime.py tests/tools/test_read_file_tool.py tests/tools/test_time_tool.py
+../../.venv/bin/python -W error -m pytest -xq --tb=short tests/tools/test_read_file_tool.py tests/tools/test_time_tool.py tests/tools/test_tools_api.py tests/model/test_model_decision.py tests/runtime/agent/test_tool_context_dispatch.py
+../../.venv/bin/python -m ruff check app/tools/errors.py app/tools/read_file.py app/tools/registry.py app/services/model/model_decision.py app/services/runtime/agent/agent_runtime.py tests/tools/test_read_file_tool.py tests/tools/test_time_tool.py
 ```
 
 合计83条通过（0.93s，-W error），定向Ruff与git diff --check通过。仅回归直接受影响的注册、演示API、模型适配和派发，不重复文件系统/数据库/浏览器或全量Runtime。模型及读取服务模拟，无真实模型调用。
@@ -1920,11 +1920,11 @@ node --check apps/web/test/browser/readonly-tools.mjs
 
 ## 2026-09-20 受限命令请求与结果契约验收
 
-command_contracts.py核心与参考一致，仅清理末尾空白。新增tests/runtime/test_command_contracts.py，在apps/api执行：
+command_contracts.py核心与参考一致，仅清理末尾空白。新增tests/runtime/command/test_command_contracts.py，在apps/api执行：
 
 ```bash
-../../.venv/bin/python -W error -m pytest tests/runtime/test_command_contracts.py -q
-../../.venv/bin/python -m ruff check app/services/runtime/command_contracts.py tests/runtime/test_command_contracts.py
+../../.venv/bin/python -W error -m pytest tests/runtime/command/test_command_contracts.py -q
+../../.venv/bin/python -m ruff check app/services/runtime/command/command_contracts.py tests/runtime/command/test_command_contracts.py
 ```
 
 120条通过（0.10s，-W error），两文件Ruff与git diff --check通过。覆盖argv类型、数量、单项/总量上限、NUL及空程序拒绝、空参数和含空格/Shell字符参数保留；跨平台相对路径规则；额外身份/环境/超时/资源字段拒绝；公开Schema与JSON入口；零/非零/负退出码，超时/取消保留实际退出码，5类启动失败与矛盾字段拒绝；结果严格类型、两路65536字符上限、独立截断、JSON往返及不可变字段。
@@ -1934,11 +1934,11 @@ command_contracts.py核心与参考一致，仅清理末尾空白。新增tests/
 
 ## 2026-09-20 命令输出有界捕获缓冲验收
 
-command_output.py核心与参考一致，Ruff发现参考实现的__slots__未排序，教练仅机械排序。新增tests/runtime/test_command_output.py，在apps/api运行：
+command_output.py核心与参考一致，Ruff发现参考实现的__slots__未排序，教练仅机械排序。新增tests/runtime/command/test_command_output.py，在apps/api运行：
 
 ```bash
-../../.venv/bin/python -W error -m pytest tests/runtime/test_command_output.py -q
-../../.venv/bin/python -m ruff check app/services/runtime/command_output.py tests/runtime/test_command_output.py
+../../.venv/bin/python -W error -m pytest tests/runtime/command/test_command_output.py -q
+../../.venv/bin/python -m ruff check app/services/runtime/command/command_output.py tests/runtime/command/test_command_output.py
 ```
 
 41条通过（0.05s，-W error），格式修正后两文件Ruff通过，git diff --check通过。覆盖两种额度严格类型及服务端硬上限、零额度/空输出、65535/65536/65537边界、大块及持续超限保存量保持、每个分块位置与逐字节UTF-8解码、非法及末尾不完整序列、控制字符保留、字节/字符独立及双重截断、非法输入不污染缓冲、finish幂等及拒绝后续空/非空块、不可变快照、两路独立与CommandResult JSON往返。
@@ -1948,11 +1948,11 @@ command_output.py核心与参考一致，Ruff发现参考实现的__slots__未�
 
 ## 2026-09-20 单路异步输出排空验收
 
-command_stream.py核心与参考一致，无需修改。新增tests/runtime/test_command_stream.py，在apps/api运行：
+command_stream.py核心与参考一致，无需修改。新增tests/runtime/command/test_command_stream.py，在apps/api运行：
 
 ```bash
-../../.venv/bin/python -W error -m pytest tests/runtime/test_command_stream.py -q
-../../.venv/bin/python -m ruff check app/services/runtime/command_stream.py tests/runtime/test_command_stream.py
+../../.venv/bin/python -W error -m pytest tests/runtime/command/test_command_stream.py -q
+../../.venv/bin/python -m ruff check app/services/runtime/command/command_stream.py tests/runtime/command/test_command_stream.py
 ```
 
 31条通过（0.06s，-W error），两文件Ruff及git diff --check通过。真实内存StreamReader覆盖空流、4096/4097/70000字节、Unicode及延迟供给/EOF；受控读取器验证每次请求4096字节、短块不是EOF、零/已满额度继续排空、展示字符截断不提前结束、无效额度在读取前拒绝、错误返回类型/过大块拒绝、部分读取后异常原样传播。取消覆盖空流/部分输出后的阻塞读取，以及持续立即返回且保存额度为零时仍能调度取消；取消后流仍可使用，并发调用保持隔离。
@@ -1962,11 +1962,11 @@ command_stream.py核心与参考一致，无需修改。新增tests/runtime/test
 
 ## 2026-09-20 双路输出并发排空与失败收尾验收
 
-command_capture.py核心与参考一致，无需修改。新增tests/runtime/test_command_capture.py，在apps/api执行：
+command_capture.py核心与参考一致，无需修改。新增tests/runtime/command/test_command_capture.py，在apps/api执行：
 
 ```bash
-../../.venv/bin/python -W error -m pytest tests/runtime/test_command_capture.py -q
-../../.venv/bin/python -m ruff check app/services/runtime/command_capture.py tests/runtime/test_command_capture.py
+../../.venv/bin/python -W error -m pytest tests/runtime/command/test_command_capture.py -q
+../../.venv/bin/python -m ruff check app/services/runtime/command/command_capture.py tests/runtime/command/test_command_capture.py
 ```
 
 12条通过（0.05s，-W error）。Ruff初次因目标版本未识别内置ExceptionGroup报告F821，测试显式从builtins导入后两文件检查通过；未调整仓库全局配置。git diff --check通过。
@@ -1978,11 +1978,11 @@ command_capture.py核心与参考一致，无需修改。新增tests/runtime/tes
 
 ## 2026-09-20 命令环境显式白名单验收
 
-command_environment.py核心与参考一致，无需修改。新增tests/runtime/test_command_environment.py，在apps/api运行：
+command_environment.py核心与参考一致，无需修改。新增tests/runtime/command/test_command_environment.py，在apps/api运行：
 
 ```bash
-../../.venv/bin/python -W error -m pytest tests/runtime/test_command_environment.py -q
-../../.venv/bin/python -m ruff check app/services/runtime/command_environment.py tests/runtime/test_command_environment.py
+../../.venv/bin/python -W error -m pytest tests/runtime/command/test_command_environment.py -q
+../../.venv/bin/python -m ruff check app/services/runtime/command/command_environment.py tests/runtime/command/test_command_environment.py
 ```
 
 62条通过（0.05s，-W error），两文件Ruff及git diff --check通过。覆盖精确11字段映射与目标路径派生；测试哨兵环境中的模型密钥、数据库/代理、解释器/动态加载注入变量不继承，替换os.environ为禁止读取对象仍可构造；两个路径字段的严格类型、绝对路径/非根/控制字符/上级引用/规范语法/长度边界；合法Unicode/空格原样保留、额外env/PATH/身份字段拒绝、独立返回字典及Path文件系统方法禁止调用。
@@ -2011,11 +2011,11 @@ SANDBOX_IMAGE=python@sha256:392307d22300de8b5986851a12d9176dfc0fc073e65bf6523ebd
 
 ## 2026-09-20 Docker Sandbox 创建参数构造验收
 
-sandbox_spec.py核心与参考一致。Ruff要求集合内隐式字符串拼接有括号，教练仅为两处tmpfs参数补括号，不改变内容。新增tests/runtime/test_sandbox_spec.py，在apps/api运行：
+sandbox_spec.py核心与参考一致。Ruff要求集合内隐式字符串拼接有括号，教练仅为两处tmpfs参数补括号，不改变内容。新增tests/runtime/sandbox/test_sandbox_spec.py，在apps/api运行：
 
 ```bash
-../../.venv/bin/python -W error -m pytest tests/runtime/test_sandbox_spec.py -q
-../../.venv/bin/python -m ruff check app/services/runtime/sandbox_spec.py tests/runtime/test_sandbox_spec.py
+../../.venv/bin/python -W error -m pytest tests/runtime/sandbox/test_sandbox_spec.py -q
+../../.venv/bin/python -m ruff check app/services/runtime/sandbox/sandbox_spec.py tests/runtime/sandbox/test_sandbox_spec.py
 ```
 
 44条通过（0.05s，-W error），两文件Ruff及git diff --check通过。首次测试收集因教练使用pytest保留参数名request失败，改名invalid_request后通过。
@@ -2027,11 +2027,11 @@ sandbox_spec.py核心与参考一致。Ruff要求集合内隐式字符串拼接�
 
 ## 2026-09-20 Sandbox 创建响应解析与身份确认验收
 
-sandbox_identity.py核心与参考一致，无需修改。新增tests/runtime/test_sandbox_identity.py，在apps/api执行：
+sandbox_identity.py核心与参考一致，无需修改。新增tests/runtime/sandbox/test_sandbox_identity.py，在apps/api执行：
 
 ```bash
-../../.venv/bin/python -W error -m pytest tests/runtime/test_sandbox_identity.py -q
-../../.venv/bin/python -m ruff check app/services/runtime/sandbox_identity.py tests/runtime/test_sandbox_identity.py
+../../.venv/bin/python -W error -m pytest tests/runtime/sandbox/test_sandbox_identity.py -q
+../../.venv/bin/python -m ruff check app/services/runtime/sandbox/sandbox_identity.py tests/runtime/sandbox/test_sandbox_identity.py
 ```
 
 95条通过（0.07s，-W error），两文件Ruff及git diff --check通过。覆盖64位小写ID、可选单个LF/CRLF与日志/多行拒绝；确认阶段拒绝未规范化ID；异常类型/JSON/深嵌套及65536字符边界；单元素数组与嵌套对象类型；ID/名称/镜像/标签缺失或不匹配；created/Running严格布尔/Pid严格整数零；重复字段（含嵌套）、NaN/Infinity拒绝；额外字段兼容、跨执行spec拒绝、不可变身份快照及固定安全错误。
@@ -2044,8 +2044,8 @@ sandbox_identity.py核心与参考一致，无需修改。新增tests/runtime/te
 从 apps/api 执行：
 
 ```bash
-../../.venv/bin/python -m pytest tests/runtime/test_docker_client.py tests/runtime/test_command_capture.py -q -W error
-../../.venv/bin/python -m ruff check app/services/runtime/docker_client.py tests/runtime/test_docker_client.py
+../../.venv/bin/python -m pytest tests/runtime/docker/test_docker_client.py tests/runtime/command/test_command_capture.py -q -W error
+../../.venv/bin/python -m ruff check app/services/runtime/docker/docker_client.py tests/runtime/docker/test_docker_client.py
 ```
 
 新增33条，连同直接相关双路捕获12条共45条通过（0.87s）；定向Ruff及git diff --check通过。核心与参考一致，仅补两处说明理由的BLE001豁免，统一异常脱敏与启动失败接收行为不变。
@@ -2060,9 +2060,9 @@ sandbox_identity.py核心与参考一致，无需修改。新增tests/runtime/te
 从 apps/api 执行：
 
 ```bash
-../../.venv/bin/python -m pytest tests/runtime/test_sandbox_creation.py tests/runtime/test_docker_client.py -q -W error
-RUN_SANDBOX_CREATION_DOCKER=1 ../../.venv/bin/python -m pytest tests/runtime/test_sandbox_creation.py -k real_docker -q -W error
-../../.venv/bin/python -m ruff check app/services/runtime/docker_client.py app/services/runtime/sandbox_creation.py tests/runtime/test_sandbox_creation.py
+../../.venv/bin/python -m pytest tests/runtime/sandbox/test_sandbox_creation.py tests/runtime/docker/test_docker_client.py -q -W error
+RUN_SANDBOX_CREATION_DOCKER=1 ../../.venv/bin/python -m pytest tests/runtime/sandbox/test_sandbox_creation.py -k real_docker -q -W error
+../../.venv/bin/python -m ruff check app/services/runtime/docker/docker_client.py app/services/runtime/sandbox/sandbox_creation.py tests/runtime/sandbox/test_sandbox_creation.py
 ```
 
 常规66条通过、2条Docker默认跳过（0.89s）；显式授权访问本机Docker socket后，2条真实Docker专项通过（0.27s）。新增合计35条，既有直接相关客户端33条；无全量回归。核心与参考一致，仅补客户端函数间空行/末尾换行，定向Ruff及diff check通过。
@@ -2077,9 +2077,9 @@ RUN_SANDBOX_CREATION_DOCKER=1 ../../.venv/bin/python -m pytest tests/runtime/tes
 从 apps/api 执行：
 
 ```bash
-../../.venv/bin/python -m pytest tests/runtime/test_sandbox_reconciliation.py tests/runtime/test_sandbox_identity.py -q -W error
-RUN_SANDBOX_RECONCILIATION_DOCKER=1 ../../.venv/bin/python -m pytest tests/runtime/test_sandbox_reconciliation.py -k real_docker -q -W error
-../../.venv/bin/python -m ruff check app/services/runtime/sandbox_identity.py app/services/runtime/sandbox_reconciliation.py tests/runtime/test_sandbox_reconciliation.py
+../../.venv/bin/python -m pytest tests/runtime/sandbox/test_sandbox_reconciliation.py tests/runtime/sandbox/test_sandbox_identity.py -q -W error
+RUN_SANDBOX_RECONCILIATION_DOCKER=1 ../../.venv/bin/python -m pytest tests/runtime/sandbox/test_sandbox_reconciliation.py -k real_docker -q -W error
+../../.venv/bin/python -m ruff check app/services/runtime/sandbox/sandbox_identity.py app/services/runtime/sandbox/sandbox_reconciliation.py tests/runtime/sandbox/test_sandbox_reconciliation.py
 ```
 
 新增50条常规专项，与直接相关身份解析95条共145条通过、1条Docker默认跳过（0.13s）；显式授权访问本机Docker socket后1条真实Docker通过（0.27s）。定向Ruff及diff check通过。核心与参考一致，仅补身份模块函数间空行/末尾换行。
@@ -2096,9 +2096,9 @@ RUN_SANDBOX_RECONCILIATION_DOCKER=1 ../../.venv/bin/python -m pytest tests/runti
 从 apps/api 执行：
 
 ```bash
-../../.venv/bin/python -m pytest tests/runtime/test_sandbox_cleanup.py tests/runtime/test_docker_client.py -q -W error
-RUN_SANDBOX_CLEANUP_DOCKER=1 ../../.venv/bin/python -m pytest tests/runtime/test_sandbox_cleanup.py -k real_cleanup -q -W error
-../../.venv/bin/python -m ruff check app/services/runtime/docker_client.py app/services/runtime/sandbox_cleanup.py tests/runtime/test_sandbox_cleanup.py
+../../.venv/bin/python -m pytest tests/runtime/sandbox/test_sandbox_cleanup.py tests/runtime/docker/test_docker_client.py -q -W error
+RUN_SANDBOX_CLEANUP_DOCKER=1 ../../.venv/bin/python -m pytest tests/runtime/sandbox/test_sandbox_cleanup.py -k real_cleanup -q -W error
+../../.venv/bin/python -m ruff check app/services/runtime/docker/docker_client.py app/services/runtime/sandbox/sandbox_cleanup.py tests/runtime/sandbox/test_sandbox_cleanup.py
 ```
 
 新增41条常规专项，直接相关客户端33条，共74条通过、2条真实Docker默认跳过（0.90s）。显式授权Docker socket后，2条真实专项通过（0.48s）。定向Ruff及diff check通过；测试字典写法按Ruff机械调整，无业务问题。
@@ -2113,9 +2113,9 @@ RUN_SANDBOX_CLEANUP_DOCKER=1 ../../.venv/bin/python -m pytest tests/runtime/test
 从 apps/api 执行：
 
 ```bash
-../../.venv/bin/python -m pytest tests/runtime/test_sandbox_execution_policy.py -q -W error
-RUN_SANDBOX_EXECUTION_POLICY_DOCKER=1 ../../.venv/bin/python -m pytest tests/runtime/test_sandbox_execution_policy.py -k real_unstarted -q -W error
-../../.venv/bin/python -m ruff check app/services/runtime/sandbox_execution_policy.py tests/runtime/test_sandbox_execution_policy.py
+../../.venv/bin/python -m pytest tests/runtime/sandbox/test_sandbox_execution_policy.py -q -W error
+RUN_SANDBOX_EXECUTION_POLICY_DOCKER=1 ../../.venv/bin/python -m pytest tests/runtime/sandbox/test_sandbox_execution_policy.py -k real_unstarted -q -W error
+../../.venv/bin/python -m ruff check app/services/runtime/sandbox/sandbox_execution_policy.py tests/runtime/sandbox/test_sandbox_execution_policy.py
 ```
 
 71条纯校验通过、1条Docker默认跳过（0.08s）；显式授权访问Docker socket后1条真实专项通过（0.22s）。核心与参考一致；两处隐式字符串拼接按Ruff加括号，定向Ruff/diff check通过。未改策略值。
@@ -2130,9 +2130,9 @@ RUN_SANDBOX_EXECUTION_POLICY_DOCKER=1 ../../.venv/bin/python -m pytest tests/run
 从 apps/api 执行：
 
 ```bash
-../../.venv/bin/python -m pytest tests/runtime/test_sandbox_isolation_policy.py -q -W error
-RUN_SANDBOX_ISOLATION_POLICY_DOCKER=1 ../../.venv/bin/python -m pytest tests/runtime/test_sandbox_isolation_policy.py -k real_created -q -W error
-../../.venv/bin/python -m ruff check app/services/runtime/sandbox_isolation_policy.py tests/runtime/test_sandbox_isolation_policy.py
+../../.venv/bin/python -m pytest tests/runtime/sandbox/test_sandbox_isolation_policy.py -q -W error
+RUN_SANDBOX_ISOLATION_POLICY_DOCKER=1 ../../.venv/bin/python -m pytest tests/runtime/sandbox/test_sandbox_isolation_policy.py -k real_created -q -W error
+../../.venv/bin/python -m ruff check app/services/runtime/sandbox/sandbox_isolation_policy.py tests/runtime/sandbox/test_sandbox_isolation_policy.py
 ```
 
 最终218条纯校验通过、1条Docker默认跳过（0.16s）；真实Docker专项1条通过（0.22s）。初版参数化包含5个值相同而提前返回的组合，已移除并重跑纯校验，最终计数不含这些空断言组合；真实测试内容未变化。核心与参考一致，无需修改；定向Ruff/diff check通过。
@@ -2149,9 +2149,9 @@ RUN_SANDBOX_ISOLATION_POLICY_DOCKER=1 ../../.venv/bin/python -m pytest tests/run
 从 apps/api 执行：
 
 ```bash
-../../.venv/bin/python -m pytest tests/runtime/test_sandbox_stop.py tests/runtime/test_sandbox_identity.py tests/runtime/test_docker_client.py -q -W error
-RUN_SANDBOX_STOP_DOCKER=1 ../../.venv/bin/python -m pytest tests/runtime/test_sandbox_stop.py -k real_stop -q -W error
-../../.venv/bin/python -m ruff check app/services/runtime/sandbox_stop.py app/services/runtime/sandbox_identity.py app/services/runtime/docker_client.py tests/runtime/test_sandbox_stop.py
+../../.venv/bin/python -m pytest tests/runtime/sandbox/test_sandbox_stop.py tests/runtime/sandbox/test_sandbox_identity.py tests/runtime/docker/test_docker_client.py -q -W error
+RUN_SANDBOX_STOP_DOCKER=1 ../../.venv/bin/python -m pytest tests/runtime/sandbox/test_sandbox_stop.py -k real_stop -q -W error
+../../.venv/bin/python -m ruff check app/services/runtime/sandbox/sandbox_stop.py app/services/runtime/sandbox/sandbox_identity.py app/services/runtime/docker/docker_client.py tests/runtime/sandbox/test_sandbox_stop.py
 ```
 
 新增53条常规，与身份95条/客户端33条共181条通过，1条Docker默认跳过（0.97s）；授权Docker专项1条通过（2.98s）。定向Ruff/diff check通过。
@@ -2170,9 +2170,9 @@ RUN_SANDBOX_STOP_DOCKER=1 ../../.venv/bin/python -m pytest tests/runtime/test_sa
 从 apps/api 执行：
 
 ```bash
-../../.venv/bin/python -m pytest tests/runtime/test_sandbox_start.py tests/runtime/test_docker_client.py -q -W error
-RUN_SANDBOX_START_DOCKER=1 ../../.venv/bin/python -m pytest tests/runtime/test_sandbox_start.py -k real_start -q -W error
-../../.venv/bin/python -m ruff check app/services/runtime/sandbox_start.py app/services/runtime/docker_client.py tests/runtime/test_sandbox_start.py
+../../.venv/bin/python -m pytest tests/runtime/sandbox/test_sandbox_start.py tests/runtime/docker/test_docker_client.py -q -W error
+RUN_SANDBOX_START_DOCKER=1 ../../.venv/bin/python -m pytest tests/runtime/sandbox/test_sandbox_start.py -k real_start -q -W error
+../../.venv/bin/python -m ruff check app/services/runtime/sandbox/sandbox_start.py app/services/runtime/docker/docker_client.py tests/runtime/sandbox/test_sandbox_start.py
 ```
 
 新增30条常规，客户端33条，共63条通过、4条Docker默认跳过（0.91s）；真实Docker4条通过（1.23s）。定向Ruff/diff check通过。统一异常处理增加有理由BLE001注释，取消不被吞掉。
@@ -2189,9 +2189,9 @@ RUN_SANDBOX_START_DOCKER=1 ../../.venv/bin/python -m pytest tests/runtime/test_s
 从 apps/api 执行：
 
 ```bash
-../../.venv/bin/python -m pytest tests/runtime/test_sandbox_exit.py -q -W error
-RUN_SANDBOX_EXIT_DOCKER=1 ../../.venv/bin/python -m pytest tests/runtime/test_sandbox_exit.py -k real_exit -q -W error
-../../.venv/bin/python -m ruff check app/services/runtime/sandbox_exit.py tests/runtime/test_sandbox_exit.py
+../../.venv/bin/python -m pytest tests/runtime/sandbox/test_sandbox_exit.py -q -W error
+RUN_SANDBOX_EXIT_DOCKER=1 ../../.venv/bin/python -m pytest tests/runtime/sandbox/test_sandbox_exit.py -k real_exit -q -W error
+../../.venv/bin/python -m ruff check app/services/runtime/sandbox/sandbox_exit.py tests/runtime/sandbox/test_sandbox_exit.py
 ```
 
 75条纯解析通过、3条Docker默认跳过（0.09s）；3条真实Docker专项通过。定向Ruff/diff check通过。覆盖退出码与OOM/daemon错误组合、不可变/无输入修改及错误脱敏、类型/范围/字段缺失、非exited和停止矛盾、严格JSON/身份失败、非法原请求仍属前置错误。
@@ -2204,8 +2204,8 @@ RUN_SANDBOX_EXIT_DOCKER=1 ../../.venv/bin/python -m pytest tests/runtime/test_sa
 从 apps/api 执行：
 
 ```bash
-../../.venv/bin/python -m pytest tests/runtime/test_docker_attach_parser.py -q -W error
-../../.venv/bin/python -m ruff check app/services/runtime/docker_attach_parser.py tests/runtime/test_docker_attach_parser.py
+../../.venv/bin/python -m pytest tests/runtime/docker/test_docker_attach_parser.py -q -W error
+../../.venv/bin/python -m ruff check app/services/runtime/docker/docker_attach_parser.py tests/runtime/docker/test_docker_attach_parser.py
 ```
 
 91条纯字节专项通过（0.09s），核心与参考一致，无需修改。定向Ruff/diff check通过。
@@ -2216,3 +2216,21 @@ RUN_SANDBOX_EXIT_DOCKER=1 ../../.venv/bin/python -m pytest tests/runtime/test_sa
 
 
 2026-09-20收尾：累计学习源码、配套测试和既有文档统一提交至main；此前各课“未提交推送”为当时状态。本次仅做累计变更静态检查与git差异检查，不重复各课已经通过的运行验收或全量回归。远端同步结果以Git记录为准。
+
+
+## Runtime 职责分组验证（2026-09-20）
+
+服务29个模块分到 agent/execution/command/sandbox/docker；31个测试模块对应移动。所有29个服务迁移前后的AST在还原导入路径后完全一致；没有业务逻辑修改或旧路径转发壳。调用方、字符串形式的monkeypatch目标、跨测试夹具引用、浏览器启动器和本文历史命令已同步新路径。
+
+从 `apps/api` 执行定向验证：
+
+```bash
+../../.venv/bin/python -W error -m pytest -xq --tb=short tests/runtime tests/chat/test_chat_execution_lifecycle.py tests/chat/test_chat_execution_budget.py tests/chat/test_chat_tool_context.py tests/chat/test_conversation_execution_api.py tests/chat/test_execution_recovery_api.py tests/local/test_task_conversation_boundary.py tests/tasks/test_task_deletion_service.py tests/tools tests/model
+../../.venv/bin/python -W error -m pytest -xq --tb=short tests/local/test_task_conversation_boundary.py tests/tasks/test_task_deletion_service.py tests/tools tests/model
+../../.venv/bin/python -W error -m pytest --collect-only -q
+../../.venv/bin/python -m ruff check app tests ../web/test/browser/chat_test_app.py ../web/test/browser/readonly_model.py ../web/test/browser/run-isolated.py
+```
+
+首次沙箱执行因本机TCP连接被禁止而产生数据库夹具错误；放行后第一批1457条通过、15条跳过，在本地流式会话用例发现既有夹具遗漏了工具上下文的SessionLocal替换。补齐隔离连接后，该组及尚未执行部分233条通过（8.21s）。两批去重合计1669条通过、15条跳过；未再次重跑已通过部分。测试使用随机独立PostgreSQL库和私有schema，自动清理。未开启显式Docker集成测试开关。
+
+全部2857条后端测试收集通过（只收集，不执行全量回归），后端及受影响浏览器Python夹具Ruff通过，旧服务路径扫描与git diff --check通过。本轮未运行真实浏览器、真实模型或Docker生命周期集成，不涉及数据库迁移。下一课仍是attach异步读取与收尾。

@@ -3,7 +3,7 @@ import asyncio
 from fastapi import APIRouter, Response
 from pydantic import BaseModel, ConfigDict
 
-from app.services.runtime.execution_recovery import recover_conversation_execution
+from app.services.runtime.execution.execution_recovery import recover_conversation_execution
 
 from app.dependencies import CurrentUser
 from app.repositories.chat.conversation_repository import load_conversation
@@ -13,7 +13,7 @@ from app.schemas import (
     ConversationHistoryResponse,
     ConversationMessage,
 )
-from app.services.runtime.conversation_execution_query import (
+from app.services.runtime.execution.conversation_execution_query import (
     get_conversation_execution_status,
 )
 

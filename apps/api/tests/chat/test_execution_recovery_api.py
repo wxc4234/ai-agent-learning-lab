@@ -7,8 +7,8 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
 from app.models import Conversation, ConversationExecutionSlot
-from app.services.runtime import execution_recovery as recovery
-from app.services.runtime.execution_process import host_identity
+from app.services.runtime.execution import execution_recovery as recovery
+from app.services.runtime.execution.execution_process import host_identity
 from tests.chat import test_conversation_execution_api as query_tests
 from tests.local.test_local_mode import HEADERS
 

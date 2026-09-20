@@ -10,7 +10,7 @@ from openai import AsyncOpenAI
 from openai.types.chat import ChatCompletionMessageParam
 
 import app.services.model.model_decision as model_decision_module
-from app.services.runtime.agent_runtime import (
+from app.services.runtime.agent.agent_runtime import (
     FinalAnswer,
     ModelUsage,
     ToolAction,

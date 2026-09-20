@@ -7,7 +7,7 @@ import pytest
 from openai import OpenAIError
 
 from app.services.chat import chat_service
-from app.services.runtime.agent_runtime import (
+from app.services.runtime.agent.agent_runtime import (
     AgentLoopCompleted,
     AgentLoopResult,
     ModelUsage,
@@ -879,7 +879,7 @@ def test_rollback_pending_turn_removes_user_and_partial_assistant():
 @pytest.fixture(autouse=True)
 def standalone_stream_owner(monkeypatch):
     """服务级测试由夹具履行调用方资源责任，不依赖 HTTP 生命周期。"""
-    from app.services.runtime.execution_threads import ExecutionThreads
+    from app.services.runtime.execution.execution_threads import ExecutionThreads
     original = chat_service.stream_chat_reply
 
     async def owned(**kwargs):

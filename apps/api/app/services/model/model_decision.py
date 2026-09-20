@@ -11,7 +11,7 @@ from openai.types.chat import (
     ChatCompletionToolMessageParam,
 )
 
-from app.services.runtime.agent_runtime import (
+from app.services.runtime.agent.agent_runtime import (
     AgentDecision,
     AgentObservation,
     FinalAnswer,

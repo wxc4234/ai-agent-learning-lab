@@ -10,7 +10,7 @@ from app.repositories.workspace.workspace_repository import (
     WorkspaceNotAccessibleError,
     require_owned_workspace_for_update,
 )
-from app.services.runtime.conversation_execution_service import ConversationBusyError
+from app.services.runtime.execution.conversation_execution_service import ConversationBusyError
 
 
 class TaskRunUnsettledError(Exception):

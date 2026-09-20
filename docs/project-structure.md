@@ -28,7 +28,12 @@ apps/api/
             workspace/          # 创建、目录校验、系统目录选择
             tasks/              # 任务创建、详情、列表、标题
             model/              # 模型客户端、决策适配和计价
-            runtime/            # Agent Loop、取消、预算和工具事件
+            runtime/            # 按运行时职责继续分组
+                agent/          # Agent Loop、Token 预算、工具上下文与事件
+                execution/      # 会话占用、并发、线程、取消及进程恢复
+                command/        # 命令契约、环境、有界输出与异步读取
+                sandbox/        # 容器策略、身份和生命周期
+                docker/         # Docker 客户端与 attach 协议
         repositories/
             auth/               # 用户和登录会话持久化
             chat/               # 会话与消息持久化
@@ -44,7 +49,7 @@ apps/api/
         local/
         migrations/             # Alembic 兼容性验证
         model/
-        runtime/
+        runtime/                # agent/execution/command/sandbox/docker 对应服务分组
         tasks/
         tools/
         workspace/
@@ -55,6 +60,23 @@ apps/api/
 分层职责不变：路由管理 HTTP 边界，服务编排业务，仓储负责数据访问。业务分组用于导航，不要求每个领域都机械建立所有层，也不为一个辅助函数再加一层文件夹。
 
 `models.py`、`schemas.py` 和运行配置仍是明确的公共入口，本轮不为目录美观拆散 ORM 注册与协议类型；后续确有独立演进需要再按领域拆分。前端已经采用 `src/features/` 领域结构与 Next.js `app/` 路由结构，继续沿用。
+
+## Runtime 内部导航与依赖
+
+`services/runtime/` 根目录只保留包说明，具体模块按职责存放。文件名保留业务含义，测试采用相同子目录；运行 HTTP/仓储测试仍放 `tests/runtime/` 根目录。
+
+| 要处理的问题 | 入口与阅读顺序 |
+|---|---|
+| Agent 决策与工具循环 | `agent/agent_runtime.py` → `token_budget.py`、`tool_event_payloads.py`；工具授权上下文见 `tool_execution_context.py` |
+| 执行占用与收尾 | `execution/conversation_execution_scope.py` → `conversation_execution_service.py`、`execution_threads.py` |
+| 执行容量、取消与恢复 | `execution/execution_budget.py`、`run_cancellation.py`；恢复见 `execution_recovery.py` → `execution_process.py` |
+| 命令输入与输出 | `command/command_contracts.py` → `command_output.py` → `command_stream.py` → `command_capture.py`；环境见 `command_environment.py` |
+| 沙箱策略与生命周期 | `sandbox/sandbox_spec.py`、`sandbox_identity.py`、两个 `*_policy.py`；操作按 creation → reconciliation → start → stop → exit/cleanup 阅读 |
+| Docker 传输与帧解析 | `docker/docker_client.py`、`docker/docker_attach_parser.py`；下一课 attach 异步读取也归此目录 |
+
+依赖约束：`command` 不依赖 Docker 或沙箱；`sandbox` 的策略模块依赖命令契约，生命周期模块调用 `docker` 客户端。Docker 客户端使用 `sandbox_spec` 的创建契约，但不反向导入生命周期服务。`agent` 使用 `execution` 的线程跟踪能力，`execution` 不依赖 Agent 循环。包的 `__init__.py` 只描述职责，不集中导出模块或执行装配，避免扩大导入副作用。
+
+新增模块按上述职责归位，不再向 runtime 根目录平铺，也不为了命名一致创建空子目录。此次仅重组路径，attach HTTP 握手与启动前订阅仍待后续课程完成。
 
 ## 导入与测试
 

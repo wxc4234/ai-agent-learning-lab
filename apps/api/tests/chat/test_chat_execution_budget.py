@@ -7,9 +7,9 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.models import AgentRun, Message
-from app.services.runtime.execution_budget import ExecutionBudget
+from app.services.runtime.execution.execution_budget import ExecutionBudget
 from tests.chat import test_chat_execution_lifecycle as lifecycle
-from tests.runtime.test_conversation_execution_service import tokens
+from tests.runtime.execution.test_conversation_execution_service import tokens
 
 scope_target = lifecycle.scope_target
 lab = lifecycle.lab

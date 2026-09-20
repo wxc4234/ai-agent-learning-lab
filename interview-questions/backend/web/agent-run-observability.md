@@ -77,7 +77,7 @@ duration：花了多久
 
 失败场景与取舍：数据库已提交但确认丢失时，获取可能报错而占用已经存在；后续获取必须仍拒绝。释放确认丢失后再次释放可以返回 False。当前选择保守保留占用，避免未知执行重叠；并未实现崩溃后的自动恢复，也不保证获取失败后客户端能找回 token。
 
-项目证据：app/services/runtime/conversation_execution_service.py；tests/runtime/test_conversation_execution_service.py 新增 42 条，覆盖授权顺序、错误 token、既有事务不受干扰、SQL/提交前后失败、返回值构造失败、旧占用与取消终态，以及通过 pg_blocking_pids 确认的真实锁等待。获取/释放分别提交或回滚时验证竞争结果，并验证不同会话独立获取；随 runtime/tasks/local 共 508 条通过。
+项目证据：app/services/runtime/execution/conversation_execution_service.py；tests/runtime/execution/test_conversation_execution_service.py 新增 42 条，覆盖授权顺序、错误 token、既有事务不受干扰、SQL/提交前后失败、返回值构造失败、旧占用与取消终态，以及通过 pg_blocking_pids 确认的真实锁等待。获取/释放分别提交或回滚时验证竞争结果，并验证不同会话独立获取；随 runtime/tasks/local 共 508 条通过。
 
 ## 为什么取消 to_thread 的等待不等于工具停止？
 
@@ -87,7 +87,7 @@ duration：花了多久
 
 收尾期间反复取消也不能放弃等待；组件记住取消请求，等待结束后重新抛出 CancelledError。集成方必须据此安排释放与取消传播，不能写成 wait_closed 之后无条件期待下一条语句一定执行。shield 不会屏蔽外层取消，也不提供线程强制终止能力。同步函数永久阻塞时需要工具自身超时、协作取消或进程隔离；不能用提前释放占用冒充安全恢复。
 
-项目证据：tests/runtime/test_execution_threads.py 的 12 条真实线程测试使用事件控制执行进度，验证取消/超时后的继续执行、重复取消与多个关闭者、失败任务及实例隔离；随 Agent Loop 回归共 28 条通过。当前仅验收独立 asyncio 组件，尚未接入聊天、工具和数据库调用，未验证 ASGI/AnyIO 取消域或应用停机。只跟踪通过本实例启动的同步函数，不自动覆盖工具自行派生的线程或子进程。
+项目证据：tests/runtime/execution/test_execution_threads.py 的 12 条真实线程测试使用事件控制执行进度，验证取消/超时后的继续执行、重复取消与多个关闭者、失败任务及实例隔离；随 Agent Loop 回归共 28 条通过。当前仅验收独立 asyncio 组件，尚未接入聊天、工具和数据库调用，未验证 ASGI/AnyIO 取消域或应用停机。只跟踪通过本实例启动的同步函数，不自动覆盖工具自行派生的线程或子进程。
 
 ## 获取执行占用时取消，为什么也需要收尾？
 
@@ -97,13 +97,13 @@ duration：花了多久
 
 清理覆盖线程排空与释放事务两个阶段。asyncio.shield 防止调用方 Task.cancel 连带取消清理任务，AnyIO CancelScope(shield=True) 避免外部取消域在每个等待点再次打断；外层取消延后到清理完成再传播。释放失败必须报错，原业务异常可通过异常上下文保留；若旧持有者不再匹配，不删除新占用。强制进程退出和工具自行派生工作不在这一保证范围。
 
-项目证据：tests/runtime/test_conversation_execution_scope.py 17 条真实 PostgreSQL 专项，用事件控制获取、工具与释放阶段，验证 asyncio/AnyIO 取消、提交确认丢失及替换持有者；Runtime 共 165 条通过。尚未接入 HTTP/ASGI 生命周期，不能从组件测试推断页面端并发已经受保护。
+项目证据：tests/runtime/execution/test_conversation_execution_scope.py 17 条真实 PostgreSQL 专项，用事件控制获取、工具与释放阶段，验证 asyncio/AnyIO 取消、提交确认丢失及替换持有者；Runtime 共 165 条通过。尚未接入 HTTP/ASGI 生命周期，不能从组件测试推断页面端并发已经受保护。
 
 ### Agent Loop 接入后的验证补充
 
 Runtime 显式接收调用方的 ExecutionThreads，run_agent_loop 与 stream_agent_loop 透传同一实例；不能各自创建跟踪器，也不能由 Runtime 关闭它，因为外层还可能登记数据库工作。只有校验通过的注册工具才进入跟踪器。wait_for 超时仍产生 tool_timeout，但同步工具可能继续运行，外层作用域要等待实际线程结束才释放占用；同一轮内后续工具可能与超时线程重叠，不能将本课解释为已实现工具强制停止或串行副作用保证。
 
-新增 tests/runtime/test_agent_execution_threads.py 12 条，覆盖两种入口的成功/失败/超时/取消及校验拒绝；两个真实 PostgreSQL 场景验证超时/取消后占用保留至工具结束。Runtime 共 177 条通过。此处补充既有重要考点，不新增独立题目；真实聊天入口接入仍待完成。
+新增 tests/runtime/agent/test_agent_execution_threads.py 12 条，覆盖两种入口的成功/失败/超时/取消及校验拒绝；两个真实 PostgreSQL 场景验证超时/取消后占用保留至工具结束。Runtime 共 177 条通过。此处补充既有重要考点，不新增独立题目；真实聊天入口接入仍待完成。
 
 ### 为什么执行占用应覆盖响应生命周期？
 
@@ -120,7 +120,7 @@ StreamingResponse 返回对象时响应体可能还未执行，路由函数内�
 
 查询只反映读取时的状态，读到空闲后其他请求可能立即取得占用。先查询再直接运行存在竞态，真正进入执行时仍必须原子获取。占用存在也不等于进程活着：旧时间和 Run 终态都不足以证明可以释放，恢复需要额外证据。查询服务先做会话/Task/Workspace 授权，只选择 acquired_at，不读取或暴露释放凭证 owner_token；数据库异常必须传播，不能伪装成空闲。返回不可变普通数据可在 Session 关闭后使用；该服务没有写入，但没有设置数据库强制 READ ONLY。
 
-项目证据：services/runtime/conversation_execution_query.py；tests/runtime/test_conversation_execution_query.py 新增 12 条真实 PostgreSQL 专项，随 Runtime 共 189 条通过。验证先授权、旧占用与 Run 状态独立、仅 SELECT、无提交/行锁/token 读取、获取和释放前后快照及数据库故障传播。接口及界面尚未接入，不把服务验收当成 UI 诊断完成。
+项目证据：services/runtime/execution/conversation_execution_query.py；tests/runtime/execution/test_conversation_execution_query.py 新增 12 条真实 PostgreSQL 专项，随 Runtime 共 189 条通过。验证先授权、旧占用与 Run 状态独立、仅 SELECT、无提交/行锁/token 读取、获取和释放前后快照及数据库故障传播。接口及界面尚未接入，不把服务验收当成 UI 诊断完成。
 
 
 2026-09-20 HTTP 证据补充：GET /sessions/{session_id}/execution 已接入，新增 test_conversation_execution_api.py 13 条专项，随相关回归 90 条通过。查询到占用仍是 200，竞争执行失败才是 409；数据库故障返回脱敏 500，不能伪装空闲。身份来自服务端依赖，客户端 user_id 无效；同步查询放入线程且不跨线程传 Session。成功与错误均 no-store，避免缓存旧快照；禁止缓存并不能消除查询与执行之间的竞争。HTTP 保持业务记录不变，但本地身份依赖可能初始化用户，需区分查询服务只读与整请求无写入。复习优先级仍为高，参考答案已整理、尚未模拟。

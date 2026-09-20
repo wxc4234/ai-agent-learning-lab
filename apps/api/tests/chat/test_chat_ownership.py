@@ -1,5 +1,5 @@
-from app.services.runtime.execution_budget import ExecutionBudget
-from app.services.runtime import conversation_execution_scope
+from app.services.runtime.execution.execution_budget import ExecutionBudget
+from app.services.runtime.execution import conversation_execution_scope
 """Real HTTP identities, ownership, cache and persistence with model calls mocked."""
 
 import asyncio
@@ -21,7 +21,7 @@ from app.routers.chat import chat
 from app.routers.chat import conversation
 from app.schemas import LoginRequest, RegisterRequest
 from app.services.chat import chat_service
-from app.services.runtime.agent_runtime import FinalAnswer
+from app.services.runtime.agent.agent_runtime import FinalAnswer
 from app.services.auth.login_session_service import issue_login_session
 from app.services.auth.registration_service import register_user
 

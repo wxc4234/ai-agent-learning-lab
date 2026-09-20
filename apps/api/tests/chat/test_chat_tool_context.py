@@ -16,9 +16,9 @@ from app.repositories.chat import conversation_repository
 from app.repositories.chat.conversation_repository import ConversationNotAccessibleError
 from app.repositories.runtime import run_repository
 from app.services.chat import chat_service as service
-from app.services.runtime import tool_execution_context
-from app.services.runtime.agent_runtime import AgentLoopCompleted, AgentLoopResult
-from app.services.runtime.execution_threads import ExecutionThreads
+from app.services.runtime.agent import tool_execution_context
+from app.services.runtime.agent.agent_runtime import AgentLoopCompleted, AgentLoopResult
+from app.services.runtime.execution.execution_threads import ExecutionThreads
 from app.services.workspace import workspace_path
 from app.tools.context import ToolExecutionContext
 from tests.model.test_model_decision import build_text_response, build_tool_response

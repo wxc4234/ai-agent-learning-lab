@@ -14,12 +14,12 @@ from app.services.auth.login_session_resolver import InvalidLoginSessionError
 from app.repositories.chat.conversation_repository import (
     ConversationNotAccessibleError,
 )
-from app.services.runtime.execution_budget import (
+from app.services.runtime.execution.execution_budget import (
     ExecutionCapacityExceededError,
 )
 
-from app.services.runtime.conversation_execution_service import ConversationBusyError
-from app.services.runtime.execution_recovery import ExecutionRecoveryRefusedError
+from app.services.runtime.execution.conversation_execution_service import ConversationBusyError
+from app.services.runtime.execution.execution_recovery import ExecutionRecoveryRefusedError
 
 
 logger = logging.getLogger(__name__)

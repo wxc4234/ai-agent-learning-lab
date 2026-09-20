@@ -1,4 +1,4 @@
-from app.services.runtime.execution_budget import ExecutionBudget
+from app.services.runtime.execution.execution_budget import ExecutionBudget
 from unittest.mock import AsyncMock
 
 from fastapi import FastAPI

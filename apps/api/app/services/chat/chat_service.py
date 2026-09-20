@@ -17,7 +17,7 @@ from app.repositories.runtime.run_repository import (
     get_run_cancellation_reason,
     record_run_event,
 )
-from app.services.runtime.agent_runtime import (
+from app.services.runtime.agent.agent_runtime import (
     AgentLoopCompleted,
     AgentLoopResult,
     ToolCallFailed,
@@ -36,13 +36,13 @@ from app.services.model.model_pricing import (
     ModelPricing,
     estimate_model_cost_cny,
 )
-from app.services.runtime.execution_threads import ExecutionThreads
-from app.services.runtime.run_cancellation import wait_for_run_cancellation
-from app.services.runtime.tool_event_payloads import (
+from app.services.runtime.execution.execution_threads import ExecutionThreads
+from app.services.runtime.execution.run_cancellation import wait_for_run_cancellation
+from app.services.runtime.agent.tool_event_payloads import (
     build_tool_call_error_payload,
     build_tool_call_result_payload,
 )
-from app.services.runtime.tool_execution_context import (
+from app.services.runtime.agent.tool_execution_context import (
     load_tool_execution_context,
 )
 from app.tools.context import ToolExecutionContext

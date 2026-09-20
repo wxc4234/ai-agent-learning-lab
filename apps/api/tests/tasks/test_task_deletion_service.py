@@ -296,7 +296,7 @@ def test_slot_blocks_empty_or_terminal_task_without_reading_token(engine, target
 
 def test_real_release_allows_empty_task_deletion_in_local_mode(engine, target, monkeypatch):
     from app.config import settings
-    from app.services.runtime.conversation_execution_service import (
+    from app.services.runtime.execution.conversation_execution_service import (
         acquire_conversation_execution,
         release_conversation_execution,
     )

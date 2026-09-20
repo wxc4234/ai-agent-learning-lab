@@ -9,7 +9,7 @@ from pydantic import ValidationError
 
 from app.repositories.workspace.workspace_repository import WorkspaceNotAccessibleError
 from app.services.model.model_decision import DeepSeekDecisionMaker
-from app.services.runtime.agent_runtime import ToolErrorObservation, ToolObservation, run_agent_loop
+from app.services.runtime.agent.agent_runtime import ToolErrorObservation, ToolObservation, run_agent_loop
 from app.services.workspace.workspace_directory import WorkspaceDirectoryError
 from app.services.workspace.workspace_file import WorkspaceFileError
 from app.services.workspace.workspace_listing import WorkspaceDirectoryListing, WorkspaceDirectoryEntry

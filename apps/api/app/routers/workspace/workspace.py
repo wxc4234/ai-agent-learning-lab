@@ -48,7 +48,7 @@ from app.services.tasks.task_service import (
     TaskCreationResultDeletedError,
     create_workspace_task,
 )
-from app.services.runtime.conversation_execution_service import ConversationBusyError
+from app.services.runtime.execution.conversation_execution_service import ConversationBusyError
 from app.services.tasks.task_deletion_service import (
     TaskRunUnsettledError,
     delete_workspace_task,

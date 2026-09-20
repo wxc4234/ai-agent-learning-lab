@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session
 from app.database import Base
 from app.models import ConversationExecutionSlot
 from app.services.tasks.task_deletion_service import delete_workspace_task
-from app.services.runtime.conversation_execution_service import ConversationBusyError
+from app.services.runtime.execution.conversation_execution_service import ConversationBusyError
 from tests.migrations.test_database_readiness import migrate
 from tests.migrations.test_task_creation_request_migration import snapshot
 from sqlalchemy import MetaData

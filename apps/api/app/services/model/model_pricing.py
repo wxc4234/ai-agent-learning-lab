@@ -5,7 +5,7 @@ from datetime import datetime, timedelta, timezone
 from decimal import Decimal, ROUND_HALF_UP
 from typing import Literal, TypeAlias
 
-from app.services.runtime.agent_runtime import ModelUsage
+from app.services.runtime.agent.agent_runtime import ModelUsage
 
 
 TOKENS_PER_MILLION = Decimal(1_000_000)

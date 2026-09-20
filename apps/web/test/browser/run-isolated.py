@@ -214,7 +214,7 @@ try:
             # 仅隔离夹具：模拟已退出执行者留下的持久化状态，不向生产增加测试接口。
             import json
             from app.models import Conversation, ConversationExecutionSlot, AgentRun, Message
-            from app.services.runtime.execution_process import host_identity
+            from app.services.runtime.execution.execution_process import host_identity
             from sqlalchemy import select
             def create(path, body):
                 request = urllib.request.Request(

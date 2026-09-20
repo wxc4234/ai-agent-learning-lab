@@ -9,8 +9,8 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from app.models import AgentRun, AgentRunEvent, Conversation, ConversationExecutionSlot, Message, User, Workspace
 from app.routers.chat import conversation
-from app.services.runtime import conversation_execution_query as query
-from app.services.runtime.conversation_execution_service import (
+from app.services.runtime.execution import conversation_execution_query as query
+from app.services.runtime.execution.conversation_execution_service import (
     acquire_conversation_execution,
     release_conversation_execution,
 )

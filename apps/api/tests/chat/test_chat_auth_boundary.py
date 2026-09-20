@@ -1,4 +1,4 @@
-from app.services.runtime.execution_budget import ExecutionBudget
+from app.services.runtime.execution.execution_budget import ExecutionBudget
 """Chat authentication must finish before creating a run or invoking a model."""
 
 from unittest.mock import AsyncMock, Mock

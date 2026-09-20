@@ -18,12 +18,12 @@ from app.repositories.chat.conversation_repository import (
 from app.repositories.runtime.run_repository import create_agent_run, finish_agent_run
 from app.schemas import ChatRequest
 from app.services.chat.chat_service import conversations
-from app.services.runtime.conversation_execution_scope import (
+from app.services.runtime.execution.conversation_execution_scope import (
     _wait_for_cleanup,
     conversation_execution,
 )
-from app.services.runtime.execution_threads import ExecutionThreads
-from app.services.runtime.execution_budget import ExecutionBudget
+from app.services.runtime.execution.execution_threads import ExecutionThreads
+from app.services.runtime.execution.execution_budget import ExecutionBudget
 
 
 logger = logging.getLogger(__name__)

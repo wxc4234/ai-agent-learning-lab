@@ -1,4 +1,4 @@
-from app.services.runtime import conversation_execution_scope
+from app.services.runtime.execution import conversation_execution_scope
 """本地任务会话不能隐式创建：真实 HTTP、缓存边界及删除竞争。"""
 
 import asyncio
@@ -17,7 +17,8 @@ from app.models import AgentRun, AgentRunEvent, Conversation, Message, User, Wor
 from app.repositories.chat import conversation_repository as conversations
 from app.repositories.runtime import run_repository as runs
 from app.services.chat import chat_service
-from app.services.runtime.agent_runtime import FinalAnswer
+from app.services.runtime.agent.agent_runtime import FinalAnswer
+from app.services.runtime.agent import tool_execution_context
 from app.services.tasks.task_deletion_service import TaskRunUnsettledError, delete_workspace_task
 from tests.local.test_local_mode import HEADERS
 from tests.local import test_local_mode as local_mode_tests
@@ -29,7 +30,8 @@ local_client = local_mode_tests.local_client
 @pytest.fixture
 def lab(local_client, engine, monkeypatch):
     factory = sessionmaker(engine)
-    for module in (conversations, runs, conversation_execution_scope):
+    # 本地流式入口还会读取工具上下文，必须与会话查询使用同一隔离测试库。
+    for module in (conversations, runs, conversation_execution_scope, tool_execution_context):
         monkeypatch.setattr(module, 'SessionLocal', factory)
     prompts = []
 

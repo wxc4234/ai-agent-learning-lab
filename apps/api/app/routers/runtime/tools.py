@@ -7,7 +7,7 @@ from openai import OpenAIError
 
 from app.config import settings
 from app.schemas import ToolTestRequest
-from app.services.runtime.agent_runtime import AgentObservation, run_agent_loop
+from app.services.runtime.agent.agent_runtime import AgentObservation, run_agent_loop
 from app.services.model.model_client import client
 from app.services.model.model_decision import (
     DEFAULT_SYSTEM_PROMPT,

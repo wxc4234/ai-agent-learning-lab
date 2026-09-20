@@ -9,7 +9,7 @@ from app.repositories.runtime.run_repository import (
 )
 from app.routers.runtime.run_boundary import RunRoute
 from app.schemas import CancelRunRequest
-from app.services.runtime.run_cancellation import publish_run_cancellation
+from app.services.runtime.execution.run_cancellation import publish_run_cancellation
 
 router = APIRouter(
     tags=["runs"],

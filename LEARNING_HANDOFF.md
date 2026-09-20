@@ -4,6 +4,10 @@
 
 这是新会话的唯一动态进度入口，长期规则见自动加载的 AGENTS.md。详细历史与验证记录按需查看，不再整篇加载计划或课程大纲。
 
+## Runtime 目录整理（2026-09-20）
+
+按用户要求，将29个运行时服务模块分入 `agent/`、`execution/`、`command/`、`sandbox/`、`docker/`，31个对应测试同步分组，导入、浏览器夹具与环境命令已更新；导航见 `docs/project-structure.md`。业务逻辑保持原样，下一课仍为 attach 异步读取与收尾，相关实现放 `services/runtime/docker/`。本次是工程整理，不推进课程或延续核心代写授权；本轮整理随代码与配套文档统一归档至 main，提交及远端同步以 Git 记录为准。验证结果见 `ENVIRONMENT.md` 末尾。
+
 ## 2026-09-20 当日收尾
 
 今天停止学习，本次将累计第5周改动统一归档到主仓库main：Workspace只读文件/目录/单文件搜索与可信工具上下文、local聊天接入及PC闭环；命令契约/输出缓冲/环境；Sandbox策略、创建/核对/清理/停止/启动/退出结果；Docker attach帧解析及对应测试、验收记录、题库。
@@ -70,7 +74,7 @@
 - 学习者完成ToolDefinition.requires_context、保留参数防覆盖、execute二次检查及Runtime前置拒绝/显式透传；核心与参考一致，教练仅补类间空行。新增test_tool_context_dispatch.py 20条，与23条直接相关工具/线程/超时/取消/事件回归合计43条通过（1.17s，-W error）；本课三文件Ruff及diff check通过。未连接数据库、运行浏览器或调用模型，无领域全量回归。
 - 缺失上下文沿用tool_execution_failed，固定details=tool_context_required且duration_ms=None；参数校验仍先执行，直接execute也拒绝缺失上下文。流式/非流式、真实跟踪线程和并发隔离已覆盖。上下文尚未从聊天入口装配，文件工具尚未注册；未提交推送。
 
-- 学习者完成 tools/context.py 与 services/runtime/tool_execution_context.py，核心与参考一致；教练仅补末尾换行。新增test_tool_execution_context.py共24条通过（1.20s，-W error），本课三文件Ruff及diff check通过。真实隔离PostgreSQL验证两模式同等归属条件、不同会话/项目定位、无Task拒绝、未绑定目录允许、仅SELECT无commit、SQL错误与Session关闭；对象不可变及不接受独立资源参数也已覆盖。
+- 学习者完成 tools/context.py 与 services/runtime/agent/tool_execution_context.py，核心与参考一致；教练仅补末尾换行。新增test_tool_execution_context.py共24条通过（1.20s，-W error），本课三文件Ruff及diff check通过。真实隔离PostgreSQL验证两模式同等归属条件、不同会话/项目定位、无Task拒绝、未绑定目录允许、仅SELECT无commit、SQL错误与Session关闭；对象不可变及不接受独立资源参数也已覆盖。
 - 本轮仅运行上述单个测试文件，无Runtime/账号/路径/读取或全量回归；独立测试资源自动清理，未操作开发业务表/迁移，未调用模型。上下文工厂已完成，Runtime透传和文件工具注册仍未接入。未提交、未推送。
 
 - 受限文本读取课：学习者完成 workspace_file.py，核心与参考一致，教练仅补末尾换行；新增35条读取测试，与路径边界63条合计98条通过（1.69s，-W error），本课两文件Ruff及diff check通过。真实描述符覆盖普通/空/中文/上限文件、非法文本、特殊文件、打开阶段替换、读取期间修改、有界读取与异常关闭；两条隔离PostgreSQL验证真实授权及Session先关闭。未运行领域/后端全量、浏览器或模型，未操作开发业务表/迁移；未提交推送。
@@ -100,7 +104,7 @@
 ## 2026-09-18 接续
 
 - 检查运行链路后，将占用接入先拆出后台线程跟踪这一前置课：asyncio.to_thread 的等待取消或超时不代表线程结束，不能立即释放占用。
-- 学习者完成 services/runtime/execution_threads.py：每次执行独立跟踪任务，shield 隔离调用方取消，关闭后拒绝新工作，等待全部线程工作结束后再传播收尾期间的取消。核心与参考一致，教练仅补末尾换行。
+- 学习者完成 services/runtime/execution/execution_threads.py：每次执行独立跟踪任务，shield 隔离调用方取消，关闭后拒绝新工作，等待全部线程工作结束后再传播收尾期间的取消。核心与参考一致，教练仅补末尾换行。
 - 教练新增 12 条真实线程专项；随既有 Agent Loop 回归共 28 条通过（0.82s，-W error），后端 app/tests Ruff 与 diff check 通过。未调用模型、数据库或浏览器，未修改运行入口。
 - 学习者已完成 conversation_execution_scope.py，采用 AsyncGenerator[ExecutionThreads, None] 标注。核心无需修正，教练仅补换行及说明预期异常捕获的 Ruff 豁免。新增 17 条隔离 PostgreSQL 专项，Runtime 共 165 条通过（12.45s，-W error），Ruff/diff check 通过。验证获取期间取消、线程收尾、重复取消、AnyIO 取消域、提交确认丢失和精确释放。
 - 学习者已完成 Agent Loop 的 execution_threads 可选参数、工具调用转交及非流式兼容函数透传，核心无需修正。新增 12 条工具接入测试，Runtime 共 177 条通过（13.70s，-W error）；Ruff/diff check 通过。两条真实 PostgreSQL 集成验证超时/取消后占用保留至工具线程结束。

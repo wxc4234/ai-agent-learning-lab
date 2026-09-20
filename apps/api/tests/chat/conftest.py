@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 import pytest
 
 from app.routers.chat import chat_execution
-from app.services.runtime.execution_threads import ExecutionThreads
+from app.services.runtime.execution.execution_threads import ExecutionThreads
 
 
 @pytest.fixture
