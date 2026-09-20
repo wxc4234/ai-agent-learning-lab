@@ -10,6 +10,7 @@ from pydantic import ValidationError
 
 from app.services.runtime.token_budget import evaluate_token_budget
 from app.tools.registry import TOOL_REGISTRY
+from app.services.runtime.execution_threads import ExecutionThreads
 
 
 @dataclass(frozen=True, slots=True)
@@ -244,8 +245,18 @@ async def stream_agent_loop(
     max_steps: int = 5,
     # None 表示保持原有行为，不启用预算
     max_total_tokens: int | None = None,
+    # 由外层执行作用域提供；Runtime 使用它，但不负责关闭
+    execution_threads: ExecutionThreads | None = None,
 ) -> AsyncIterator[AgentLoopEvent]:
     """逐步执行 Agent Loop，并在关键节点产生领域事件。"""
+
+    # 显式传入时，将工具登记到本次执行的线程集合。
+    # 未传入时保留既有独立调用兼容；这类调用不受作用域保护。
+    run_tool_in_thread = (
+        asyncio.to_thread
+        if execution_threads is None
+        else execution_threads.run
+    )
 
     if max_steps < 1:
         raise ValueError("max_steps 必须大于等于 1")
@@ -378,8 +389,11 @@ async def stream_agent_loop(
         tool_started_at_ns = perf_counter_ns()
 
         try:
+            # 超时仍按原协议产生 tool_timeout。
+            # 使用跟踪器时，停止等待不会丢失后台工作的完成状态；
+            # 外层作用域仍会等待该线程结束后再释放占用。
             tool_result = await asyncio.wait_for(
-                asyncio.to_thread(
+                run_tool_in_thread(
                     tool_definition.execute,
                     validated_arguments,
                 ),
@@ -449,19 +463,21 @@ async def stream_agent_loop(
     )
 
 
-# 兼容原有调用方式。
 async def run_agent_loop(
     decide: DecisionMaker,
     *,
     max_steps: int = 5,
     max_total_tokens: int | None = None,
+    execution_threads: ExecutionThreads | None = None,
 ) -> AgentLoopResult:
     """消费 Agent 事件流，并返回原有的最终结果。"""
 
+    # 两种调用方式共享同一个跟踪器，不能在这里另建实例。
     async for event in stream_agent_loop(
         decide,
         max_steps=max_steps,
         max_total_tokens=max_total_tokens,
+        execution_threads=execution_threads,
     ):
         if isinstance(event, AgentLoopCompleted):
             return event.result

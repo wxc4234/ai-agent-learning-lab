@@ -202,10 +202,10 @@ def test_redis_cancellation_signal_aborts_stream(monkeypatch):
     stream_blocker = asyncio.Event()
     finished_runs: list[tuple[int, str, dict[str, object]]] = []
 
-    async def fake_prepare_messages(*, user_id, session_id, prompt):
+    async def fake_prepare_messages(*, user_id, session_id, prompt, execution_threads):
         return history, list(history)
 
-    async def blocked_agent_loop(decide, *, max_steps, max_total_tokens):
+    async def blocked_agent_loop(decide, *, max_steps, max_total_tokens, execution_threads):
         yield ToolCallStarted(
             action=ToolAction(
                 tool_call_id="call-blocked",
@@ -281,10 +281,10 @@ def test_cancelled_stream_rolls_back_pending_user_message(monkeypatch):
     ]
     blocker = asyncio.Event()
 
-    async def fake_prepare_messages(*, user_id, session_id, prompt):
+    async def fake_prepare_messages(*, user_id, session_id, prompt, execution_threads):
         return history, list(history)
 
-    async def blocked_agent_loop(decide, *, max_steps, max_total_tokens):
+    async def blocked_agent_loop(decide, *, max_steps, max_total_tokens, execution_threads):
         yield ToolCallStarted(
             action=ToolAction(
                 tool_call_id="call-cancelled",
@@ -386,10 +386,10 @@ def test_completed_stream_records_chunks_and_finished_status(monkeypatch):
         tool_duration_ms=12,
     )
 
-    async def fake_prepare_messages(*, user_id, session_id, prompt):
+    async def fake_prepare_messages(*, user_id, session_id, prompt, execution_threads):
         return history, list(history)
 
-    async def fake_agent_loop(decide, *, max_steps, max_total_tokens):
+    async def fake_agent_loop(decide, *, max_steps, max_total_tokens, execution_threads):
         assert max_steps == 5
         assert max_total_tokens == chat_service.settings.agent_max_total_tokens
         yield ToolCallStarted(
@@ -515,10 +515,10 @@ def test_model_error_finishes_run_as_error_and_rolls_back_user_message(monkeypat
     ]
     finished_runs: list[tuple[int, str, dict[str, object]]] = []
 
-    async def fake_prepare_messages(*, user_id, session_id, prompt):
+    async def fake_prepare_messages(*, user_id, session_id, prompt, execution_threads):
         return history, list(history)
 
-    async def failing_agent_loop(decide, *, max_steps, max_total_tokens):
+    async def failing_agent_loop(decide, *, max_steps, max_total_tokens, execution_threads):
         raise OpenAIError("不应暴露的模型错误")
         yield
 
@@ -580,10 +580,10 @@ def test_timed_out_stream_finishes_as_error(monkeypatch):
     stream_blocker = asyncio.Event()
     finished_runs: list[tuple[int, str, dict[str, object]]] = []
 
-    async def fake_prepare_messages(*, user_id, session_id, prompt):
+    async def fake_prepare_messages(*, user_id, session_id, prompt, execution_threads):
         return history, list(history)
 
-    async def blocked_agent_loop(decide, *, max_steps, max_total_tokens):
+    async def blocked_agent_loop(decide, *, max_steps, max_total_tokens, execution_threads):
         yield ToolCallStarted(
             action=ToolAction(
                 tool_call_id="call-timeout",
@@ -666,10 +666,10 @@ def test_tool_error_is_emitted_and_model_can_still_finish(monkeypatch):
     )
     recorded_events: list[tuple[int, str, dict[str, object]]] = []
 
-    async def fake_prepare_messages(*, user_id, session_id, prompt):
+    async def fake_prepare_messages(*, user_id, session_id, prompt, execution_threads):
         return history, list(history)
 
-    async def fake_agent_loop(decide, *, max_steps, max_total_tokens):
+    async def fake_agent_loop(decide, *, max_steps, max_total_tokens, execution_threads):
         yield ToolCallStarted(
             action=ToolAction(
                 tool_call_id="call-unknown",
@@ -782,10 +782,10 @@ def test_non_completed_loop_emits_run_error_and_rolls_back_turn(
         tool_duration_ms=12,
     )
 
-    async def fake_prepare_messages(*, user_id, session_id, prompt):
+    async def fake_prepare_messages(*, user_id, session_id, prompt, execution_threads):
         return history, list(history)
 
-    async def fake_agent_loop(decide, *, max_steps, max_total_tokens):
+    async def fake_agent_loop(decide, *, max_steps, max_total_tokens, execution_threads):
         assert max_total_tokens == chat_service.settings.agent_max_total_tokens
         yield AgentLoopCompleted(result=loop_result)
 
@@ -874,3 +874,26 @@ def test_rollback_pending_turn_removes_user_and_partial_assistant():
     chat_service.rollback_pending_turn(history, 1)
 
     assert history == [{"role": "system", "content": "system"}]
+
+
+@pytest.fixture(autouse=True)
+def standalone_stream_owner(monkeypatch):
+    """服务级测试由夹具履行调用方资源责任，不依赖 HTTP 生命周期。"""
+    from app.services.runtime.execution_threads import ExecutionThreads
+    original = chat_service.stream_chat_reply
+
+    async def owned(**kwargs):
+        threads = ExecutionThreads()
+        monitors = []
+        stream = original(**kwargs, execution_threads=threads, monitors=monitors)
+        try:
+            async for line in stream:
+                yield line
+        finally:
+            for monitor in monitors:
+                monitor.cancel()
+            await asyncio.gather(*monitors, return_exceptions=True)
+            await stream.aclose()
+            await threads.wait_closed()
+
+    monkeypatch.setattr(chat_service, "stream_chat_reply", owned)

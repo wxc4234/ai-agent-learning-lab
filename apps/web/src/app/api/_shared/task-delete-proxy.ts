@@ -11,7 +11,10 @@ const ERRORS: Record<number, Record<string, string>> = {
         workspace_origin_rejected: '请求来源不被允许',
     },
     404: { workspace_not_accessible: '工作空间不存在或不可访问' },
-    409: { task_has_history: '当前仅支持删除没有消息和运行记录的空任务' },
+    409: {
+        task_run_unsettled: '存在未确认结束的运行，暂不能删除',
+        conversation_busy: '该任务仍有执行占用，请等待执行及收尾完成后重试',
+    },
     422: { invalid_task_input: '任务请求参数不符合要求' },
     500: { task_deletion_uncertain: UNCERTAIN },
 };

@@ -469,11 +469,21 @@ export function WorkbenchProvider({
                     ? raw.code
                     : null;
 
-            if (response.status === 409 && code === "task_has_history") {
+            if (response.status === 409 && code === "conversation_busy") {
+                // 明确拒绝不会删除任务；保留当前选择，允许稍后手动重试。
                 updateDeletion({
                     ...target,
                     phase: "rejected",
-                    message: "该任务已有消息或运行记录，目前只支持删除空任务。",
+                    message: "该任务仍有执行占用，暂不能删除。请等待执行及收尾完成后重试。",
+                });
+                return;
+            }
+
+            if (response.status === 409 && code === "task_run_unsettled") {
+                updateDeletion({
+                    ...target,
+                    phase: "rejected",
+                    message: "该任务存在未确认结束的运行，暂不能删除。请先检查执行状态。",
                 });
                 return;
             }

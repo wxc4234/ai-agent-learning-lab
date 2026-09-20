@@ -48,8 +48,9 @@ from app.services.tasks.task_service import (
     TaskCreationResultDeletedError,
     create_workspace_task,
 )
+from app.services.runtime.conversation_execution_service import ConversationBusyError
 from app.services.tasks.task_deletion_service import (
-    TaskHasHistoryError,
+    TaskRunUnsettledError,
     delete_workspace_task,
 )
 from app.schemas import TaskDetailResponse, TaskRunListResponse
@@ -337,13 +338,21 @@ class WorkspaceRoute(APIRoute):
                     message="工作空间不存在或不可访问",
                 )
 
-            except TaskHasHistoryError:
+            except ConversationBusyError:
+                # 删除服务在写入前拒绝；不将占用冲突误报为结果未确认。
+                return _error_response(
+                    409,
+                    code=ConversationBusyError.code,
+                    message="该任务仍有执行占用，请等待执行及收尾完成后重试",
+                )
+
+            except TaskRunUnsettledError:
                 # 服务在执行 DELETE 前拒绝，属于明确未删除的业务冲突。
                 # 使用固定文案，不直接输出异常字符串。
                 return _error_response(
                     409,
-                    code=TaskHasHistoryError.code,
-                    message="当前仅支持删除没有消息和运行记录的空任务",
+                    code=TaskRunUnsettledError.code,
+                    message="存在未确认结束的运行，暂不能删除",
                 )
 
             except WorkspaceAlreadyBoundError:
@@ -890,7 +899,7 @@ def delete_task(
     task_id: TaskIdentifier,
     current_user: CurrentUser,
 ) -> Response:
-    """删除本人项目中的空任务；路由管理 Session，服务管理事务。"""
+    """删除本人项目中已停止的任务及历史；路由管理 Session，服务管理事务。"""
 
     # 同步数据库操作由 FastAPI 在线程池执行。
     # 身份依赖已释放自己的 Session，业务使用无活动事务的独立 Session。

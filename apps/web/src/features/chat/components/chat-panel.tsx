@@ -22,6 +22,7 @@ import WorkbenchShell, { WorkbenchDetails } from "@/features/workbench/component
 import WorkbenchIcon from "@/features/workbench/components/workbench-icon";
 import LoadingPlaceholder from "@/features/workbench/components/loading-placeholder";
 import TaskRunPanel from '@/features/workbench/components/task-run-panel';
+import ConversationExecutionPanel from '@/features/workbench/components/conversation-execution-panel';
 import RunSummaryCard from "./run-summary-card";
 import MarkdownMessage from "./markdown-message";
 
@@ -660,15 +661,22 @@ function TaskChat() {
                     {workbench.localMode &&
                         workbench.rightOpen &&
                         workbench.selection?.task && (
-                            <TaskRunPanel
-                                key={`${workbench.selection.workspace.external_id}:${workbench.selection.task.external_id}`}
-                                workspaceId={
-                                    workbench.selection.workspace.external_id
-                                }
-                                taskId={
-                                    workbench.selection.task.external_id
-                                }
-                            />
+                            <>
+                                <ConversationExecutionPanel
+                                    sessionId={
+                                        workbench.selection.task.conversation_id
+                                    }
+                                />
+                                <TaskRunPanel
+                                    key={`${workbench.selection.workspace.external_id}:${workbench.selection.task.external_id}`}
+                                    workspaceId={
+                                        workbench.selection.workspace.external_id
+                                    }
+                                    taskId={
+                                        workbench.selection.task.external_id
+                                    }
+                                />
+                            </>
                         )}
                 </div>
             </WorkbenchDetails>

@@ -11,6 +11,8 @@ from sqlalchemy.orm import Session
 from app import dependencies
 from app.config import settings, Settings
 from app.main import app
+from app import main
+from app.routers.chat import chat_execution
 from app.models import User, Workspace
 from app.routers.workspace import workspace
 from app.services.auth.local_identity import LOCAL_USER_ID, resolve_local_identity
@@ -28,9 +30,12 @@ def local_client(engine, monkeypatch, account_mode_baseline):
     from app.services.tasks import task_workspace
     from sqlalchemy.orm import sessionmaker
     monkeypatch.setattr(task_workspace, "SessionLocal", sessionmaker(bind=engine))
-    client = TestClient(app, base_url="http://127.0.0.1:8000")
-    yield client
-    client.close()
+    monkeypatch.setattr(chat_execution, "SessionLocal", lambda: Session(engine))
+    # 本夹具使用隔离 schema 的 ORM 表；迁移启动检查由 migrations 专项验证。
+    # 进入 lifespan，确保预算及请求始终运行在同一个事件循环。
+    monkeypatch.setattr(main, "check_database_ready", lambda: None)
+    with TestClient(app, base_url="http://127.0.0.1:8000") as client:
+        yield client
 
 
 def test_local_identity_stable_and_does_not_adopt_registered_user(local_client, engine):

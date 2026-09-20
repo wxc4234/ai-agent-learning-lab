@@ -222,12 +222,20 @@ export function toUserFacingError(error: unknown): string {
             return "聊天请求不符合要求，请检查输入后再试。";
         }
 
+        if (error.status === 409) {
+            return "该会话仍在执行或收尾，请稍后再试";
+        }
+
         if (error.status === 429) {
             return "请求太频繁了，请稍后再试。";
         }
 
-        if (error.status === 502) {
+		if (error.status === 502) {
             return "模型服务暂时不可用，请稍后重试。";
+        }
+
+        if (error.status === 503) {
+            return "执行服务暂时繁忙或不可用，请稍后再试。";
         }
 
         if (error.status >= 500) {

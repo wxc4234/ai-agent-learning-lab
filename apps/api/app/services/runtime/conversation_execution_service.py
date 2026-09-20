@@ -2,6 +2,7 @@
 
 from dataclasses import dataclass
 from datetime import datetime
+import os
 import re
 from uuid import uuid4
 
@@ -10,6 +11,7 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
 from app.models import ConversationExecutionSlot
+from app.services.runtime.execution_process import host_identity
 from app.repositories.chat.conversation_repository import (
     require_owned_conversation,
 )
@@ -81,6 +83,8 @@ def acquire_conversation_execution(
             .values(
                 conversation_id=conversation.id,
                 owner_token=owner_token,
+                owner_host_id=host_identity(),
+                owner_pid=os.getpid(),
             )
             .on_conflict_do_nothing(
                 index_elements=[

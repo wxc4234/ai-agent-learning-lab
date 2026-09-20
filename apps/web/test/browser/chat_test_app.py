@@ -24,6 +24,9 @@ class BrowserDecisionMaker:
                 tool_name="calculate_rectangle_area",
                 arguments='{"width": 2, "height": 3}',
             )
+        if "[cancel-held]" in self.prompt:
+            # 占用/恢复测试由显式取消释放，避免固定20秒在慢机器上提前结束。
+            await asyncio.Future()
         if "[cancel-short]" in self.prompt:
             await asyncio.sleep(2)
         elif "[cancel-test]" in self.prompt:

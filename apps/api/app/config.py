@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Literal
 import re
 
-from pydantic import Field, SecretStr, model_validator
+from pydantic import Field, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -56,6 +56,27 @@ class Settings(BaseSettings):
         ge=1,
         validation_alias="AGENT_MAX_TOTAL_TOKENS",
     )
+
+    # 每个 API 进程共享的聊天执行容量，必须覆盖响应和后台收尾。
+    # 多进程各自计算，不是跨进程总限额。
+    agent_max_concurrent_executions: int = Field(
+        default=2,
+        strict=True,
+        ge=1,
+        validation_alias="AGENT_MAX_CONCURRENT_EXECUTIONS",
+    )
+
+    @field_validator("agent_max_concurrent_executions", mode="before")
+    @classmethod
+    def parse_execution_capacity(cls, value: object) -> object:
+        # 环境变量是字符串，仅接受正整数文本。
+        # 其他输入交给 strict=True 检查，拒绝 bool 和浮点数。
+        if isinstance(value, str):
+            if re.fullmatch(r"[1-9][0-9]*", value) is None:
+                raise ValueError("执行并发容量必须为正整数")
+            return int(value)
+
+        return value
 
     # DeepSeek 高峰时段人民币价格
 

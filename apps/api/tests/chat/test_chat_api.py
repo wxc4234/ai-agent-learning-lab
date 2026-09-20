@@ -1,3 +1,4 @@
+from app.services.runtime.execution_budget import ExecutionBudget
 from unittest.mock import AsyncMock
 
 from fastapi import FastAPI
@@ -11,6 +12,7 @@ from app.services.auth.authentication_service import AuthenticatedUser
 
 def test_chat_rejects_request_missing_required_fields():
     app = FastAPI()
+    app.state.execution_budget = ExecutionBudget(capacity=2)
     app.include_router(chat_router_module.router)
     app.dependency_overrides[require_current_user] = lambda: AuthenticatedUser(1, "test-user", "tester")
     client = TestClient(app)
@@ -20,7 +22,7 @@ def test_chat_rejects_request_missing_required_fields():
     assert response.status_code == 422
 
 
-def test_chat_returns_friendly_error_when_model_is_unavailable(monkeypatch):
+def test_chat_returns_friendly_error_when_model_is_unavailable(monkeypatch, execution_stub):
     monkeypatch.setattr(
         chat_router_module,
         "create_chat_reply",
@@ -28,6 +30,7 @@ def test_chat_returns_friendly_error_when_model_is_unavailable(monkeypatch):
     )
 
     app = FastAPI()
+    app.state.execution_budget = ExecutionBudget(capacity=2)
     app.include_router(chat_router_module.router)
     app.dependency_overrides[require_current_user] = lambda: AuthenticatedUser(1, "test-user", "tester")
     client = TestClient(app)

@@ -269,6 +269,10 @@ class ConversationExecutionSlot(Base):
         primary_key=True,
     )
 
+    # 仅服务端诊断使用；旧记录保持 NULL，不能猜测其执行者已死亡。
+    owner_host_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    owner_pid: Mapped[int | None] = mapped_column(nullable=True)
+
     # 标记当前持有者，不是用户身份，也不是访问凭证。
     # 后续释放必须同时匹配 conversation_id 和 owner_token，
     # 防止旧执行的迟到清理误删新执行的占用。
@@ -431,6 +435,10 @@ class AgentRun(Base):
         String(20),
         default="running",
     )
+
+    # Run 单独保存执行者，覆盖创建已提交但返回 ID 丢失、占用已释放的情况。
+    owner_host_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    owner_pid: Mapped[int | None] = mapped_column(nullable=True)
 
     started_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),

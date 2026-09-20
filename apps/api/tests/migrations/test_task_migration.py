@@ -19,6 +19,10 @@ def metadata_at_task_revision():
     for table in Base.metadata.sorted_tables:
         if table.name not in {"task_creation_requests", "conversation_execution_slots"}:
             table.to_metadata(snapshot)
+    # 历史修订不包含后续添加的执行进程字段；仅裁剪副本，不改当前 ORM。
+    runs = snapshot.tables['agent_runs']
+    for name in ('owner_host_id', 'owner_pid'):
+        runs._columns.remove(runs.c[name])
     return snapshot
 
 

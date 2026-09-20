@@ -1456,3 +1456,296 @@ CHROME_EXECUTABLE='/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
 首批专项 40 passed（2.89s）；补齐返回值构造失败回滚、陈旧占用与取消终态不自动放行后，最终 42 条专项随相关回归共 508 passed（36.91s，-W error）。Ruff 与仓库根目录 git diff --check 通过。覆盖本地归属与先授权、精确释放/重复释放/迟到释放、拒绝已有事务且不影响调用方工作、真实 SQL 与提交前后故障、Session 可复用。并发测试使用 pg_blocking_pids 确认真正等待行锁，分别验证获取/释放提交或回滚后的竞争结果，以及不同会话可独立获取。
 
 隔离数据库/schema 随夹具清理；本课未修改数据库结构或开发业务表，未运行前端、浏览器或真实模型调用。服务尚未接入聊天运行，不能宣称已拦截页面端并发；取消终态、占用时间和等待协程取消均不能自动触发释放，进程崩溃遗留占用恢复仍待后续设计。
+
+
+### 2026-09-18：执行后台线程跟踪器验收
+
+学习者完成 app/services/runtime/execution_threads.py，核心与参考一致，仅补末尾换行。教练新增 tests/runtime/test_execution_threads.py 共 12 条，使用真实线程和 Event 主动控制开始/结束，不通过固定毫秒延时猜测线程是否完成；线程等待设置故障保险，finally 放行线程，避免失败时遗留阻塞。
+
+从 apps/api 执行：
+
+```bash
+../../.venv/bin/python -W error -m pytest -xq --tb=short tests/runtime/test_execution_threads.py
+../../.venv/bin/python -W error -m pytest -xq --tb=short tests/runtime/test_execution_threads.py tests/runtime/test_agent_runtime.py
+../../.venv/bin/python -m ruff check app tests
+```
+
+结果：新增专项 12 passed（0.04s），相关回归 28 passed（0.82s），Ruff 与根目录 git diff --check 通过。覆盖参数/返回值与 ContextVar 在线程中传递、原异常传播、空集合/重复关闭、关闭后拒绝工作、调用方取消/超时后线程继续并被等待、放弃等待后的线程成功/失败、重复取消关闭者、多个关闭者隔离、失败任务不跳过其他任务、不同实例独立。
+
+本课没有数据库、模型或浏览器调用，未改聊天入口和现有工具执行路径。尚不能宣称实际会话占用已安全释放；ASGI/AnyIO 取消域、流未开始/关闭和应用停机等集成边界留待后续验证。该组件不提供强制终止线程的能力；同步函数不返回时，正常收尾会继续等待。
+
+
+### 2026-09-18：会话执行作用域验收
+
+学习者完成 conversation_execution_scope.py，按对话纠正为 AsyncGenerator[ExecutionThreads, None] 标注；不是 asynccontextmanager 本身弃用。核心行为无需修正，教练仅补换行及预期异常捕获的 BLE001 豁免说明。新增 tests/runtime/test_conversation_execution_scope.py，复用已有本地任务夹具及根 conftest 的隔离 PostgreSQL 数据库/schema。
+
+从 apps/api 执行：
+
+```bash
+../../.venv/bin/python -W error -m pytest -xq --tb=short tests/runtime/test_conversation_execution_scope.py
+../../.venv/bin/python -W error -m pytest -xq --tb=short tests/runtime
+../../.venv/bin/python -m ruff check app tests
+```
+
+结果：新增专项 17 passed（1.56s），Runtime 165 passed（12.45s），Ruff 与 git diff --check 通过。覆盖正常/业务异常/取消后的释放、忙与越权不执行业务、获取前后暂停时取消后清理成功占用、后台线程成功/失败及重复取消、AnyIO 取消域、释放期间取消后等待真实提交、获取/释放提交确认丢失的数据库事实、替换持有者后旧释放拒绝。
+
+初次运行因 Docker Desktop 未启动而 PostgreSQL 拒绝连接；启动 Docker 并执行 docker compose -f infra/compose.yaml up -d --wait postgres redis 后容器健康，重跑通过。保留已有数据卷，未迁移或修改开发业务表；独立测试资源自动清理，无真实模型、前端或浏览器调用。仅验收独立执行作用域，实际 ASGI 响应、工具与聊天入口仍待接入和验证。
+
+
+### 2026-09-18：Agent Loop 工具线程接入验收
+
+学习者完成 agent_runtime.py 的可选 execution_threads 参数、工具执行转交以及 run_agent_loop 透传，核心无需修改。教练新增 tests/runtime/test_agent_execution_threads.py 共 12 条；两种 Runtime 调用路径覆盖成功、失败、超时与取消，注册/参数校验拒绝时不进入跟踪器；成功后跟踪器仍可登记工作，由外层负责关闭。
+
+从 apps/api 执行：
+
+```bash
+../../.venv/bin/python -W error -m pytest -xq --tb=short tests/runtime
+../../.venv/bin/python -m ruff check app tests
+```
+
+结果：Runtime 177 passed（13.70s，包含新增 12 条），Ruff 与仓库根 git diff --check 通过。既有未传跟踪器的兼容测试同步通过。两个独立 PostgreSQL 集成场景串联真实工具、Runtime、执行作用域和占用事务：工具超时或运行取消后，线程仍在执行时占用保留，线程结束后才释放。线程由事件控制和 finally 放行，测试数据库/schema 自动清理；没有修改开发业务表或调用真实模型。
+
+真实聊天入口仍未传入跟踪器，也未持有执行作用域；本课未做前端或浏览器验收，不能宣称页面端并发已经受保护。工具超时是停止等待而非强制终止线程；同一轮超时后的后续工具调度仍沿用原协议，本课没有实现工具进程隔离或停止旧工具。
+
+
+### 2026-09-18：普通/流式聊天入口执行占用接入
+
+用户明确要求教练直接实现。本课新增 routers/chat/chat_execution.py，两个入口通过 Depends(scope="request") 共用执行作用域；取得占用后才创建 Run 或执行业务。生成器、取消监听器、Run 创建任务均由请求持有；响应中断或流未开始也受保护地收尾，后台数据库与工具线程全部结束后才释放。缓存每轮重新读取并在退出时失效，兜底 finish_agent_run 不覆盖已有终态。API/BFF 和聊天状态层接通安全 409。
+
+从 apps/api 执行：
+
+```bash
+../../.venv/bin/python -W error -m pytest -xq --tb=short tests/chat/test_chat_execution_lifecycle.py
+../../.venv/bin/python -W error -m pytest -xq --tb=short
+../../.venv/bin/python -m ruff check app tests
+```
+
+新增 ASGI/PostgreSQL 专项 12 passed（1.62s），后端全量 1300 passed（99.38s，-W error），Ruff/diff check 通过。覆盖普通/流式交叉竞争、不同会话独立、忙请求无 Run/消息/模型副作用、ASGI 2.0/2.4 发送失败、响应头失败时生成器未开始、Run 创建与消息提交阶段反复取消、真实工具工作期间断线与占用延迟释放。
+
+从 apps/web 执行：
+
+```bash
+node --experimental-strip-types --test test/features/auth/chat-stream-route.test.ts
+pnpm test:state
+pnpm typecheck
+pnpm lint
+```
+
+结果：BFF 37 条（新增2条）、聊天状态85条（新增409场景）、TypeScript/ESLint 通过。原 run-terminal 测试夹具未提供此前加入的 setCreationError，已补无副作用 setter 后重跑通过。服务级流测试夹具补齐线程/监听器生命周期；认证边界测试继续用显式替身，真实资源边界由隔离 PostgreSQL 集成覆盖。
+
+浏览器使用本地主线、真实 BFF/API/隔离 PostgreSQL 与模拟模型，脚本 apps/web/test/browser/chat-execution.mjs。运行命令：
+
+```bash
+BROWSER_APP_MODE=local BROWSER_TEST_SCRIPT=chat-execution.mjs \
+PLAYWRIGHT_MODULE=/Users/wanxiancheng/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright \
+CHROME_EXECUTABLE='/Applications/Google Chrome.app/Contents/MacOS/Google Chrome' \
+.venv/bin/python apps/web/test/browser/run-isolated.py
+```
+
+最终 PC 浏览器两组场景全部通过：并发标签页收到真实409并显示忙提示；取消后占用释放、再次发送成功并在刷新后恢复持久消息。1366×900 忙提示与1920×900恢复截图已视查；隔离服务和数据库/schema均已清理。截图位于 /private/tmp/agent-ui-preview/output/playwright/execution-busy-1366.png 和 execution-recovered-1920.png。
+
+测试中的 API 重试仅用于观察占用最终释放，不是产品新增自动重试。初次浏览器运行因后台标签页初始化及折叠详情状态文案的可见性等待失败，脚本已补前台激活、等待历史恢复和状态节点存在检查。
+
+边界：不修改数据库结构或开发业务表，无真实模型调用。进程崩溃、占用获取提交确认丢失后的恢复、Run 创建已提交但未返回 ID 的诊断仍待后续实现；不保证强制停止线程，也不把终态当作线程已停止。
+
+
+### 2026-09-18：会话执行占用只读查询服务
+
+学习者完成 services/runtime/conversation_execution_query.py，核心无需修改，教练仅补末尾换行；新增 tests/runtime/test_conversation_execution_query.py 共 12 条。复用公共 PostgreSQL 隔离数据库/私有 schema 和本地任务夹具，允许真实提交，结束自动清理；未使用开发业务表。
+
+```bash
+cd apps/api
+../../.venv/bin/python -W error -m pytest -xq --tb=short tests/runtime
+../../.venv/bin/python -m ruff check app tests
+```
+
+结果：Runtime 189 passed（13.96s，-W error）；Ruff 与 git diff --check 通过。覆盖获取/释放前后快照、关闭 Session 后结果可用、不可变公开字段、五类授权拒绝且不查询占用表、四类 Run 状态与旧占用独立、不同会话隔离，以及授权/占用查询阶段的数据库异常传播与事务结束。监听真实 SQL 验证仅 SELECT、无 owner_token/Run 读取/行锁及无提交，并独立查询确认记录未变。数据库错误由 SQL 执行钩子注入，没有模拟 PostgreSQL 查询结果。
+
+本课没有 HTTP/UI 变更，未重复浏览器或前端回归。只读是本服务不写入的行为约束，并未设置 PostgreSQL READ ONLY 事务；状态只是查询快照，不证明进程存活，也不是下一次发送的授权或占用许可。未验证自动恢复、强制停机或占用过期。
+
+
+### 2026-09-20：会话执行占用状态查询 HTTP
+
+学习者完成 schemas.py 公开响应与 conversation.py GET /sessions/{session_id}/execution，核心无需修正；教练只补定义间空行。新增 tests/chat/test_conversation_execution_api.py 共 13 条，使用真实主应用、本地身份依赖、公共随机 PostgreSQL 数据库/私有 schema，结束自动清理。
+
+```bash
+cd apps/api
+../../.venv/bin/python -W error -m pytest -xq --tb=short tests/chat/test_conversation_execution_api.py tests/runtime/test_conversation_execution_query.py tests/local/test_local_mode.py tests/local/test_task_conversation_boundary.py tests/chat/test_chat_execution_lifecycle.py
+../../.venv/bin/python -m ruff check app tests
+```
+
+结果：90 passed（7.70s，-W error），Ruff 与 git diff --check 通过。专项覆盖三字段/时区/null/OpenAPI 契约、占用查询 200、释放后空闲、四类会话授权拒绝且不读占用表、四类本地访问拦截、伪造 user_id 无效、线程执行同步查询、真实 SQL 故障安全 500、旧占用与 aborted Run 及无占用与 running Run 的独立语义。独立连接核对会话/消息/Run/事件数量与占用记录不变；成功与错误响应均 no-store。
+
+本地身份依赖仍可能初始化本机用户，不能声称整个 HTTP 请求没有数据库写入。占用查询不创建 Run、不读取 token、不释放占用，数据库异常不能变成空闲。首次测试在建库前因 127.0.0.1:5432 拒绝连接而中止；确认 Docker 已运行，执行 docker compose -f infra/compose.yaml up -d --wait postgres redis，服务健康后重跑成功。保留数据卷，未修改开发业务表或执行迁移。此课没有前端改动，未跑浏览器/前端或真实模型。
+
+
+### 2026-09-20：会话执行占用状态查询 BFF
+
+学习者完成 conversation-execution-data.ts、conversation-execution-proxy.ts 和 sessions/[sessionId]/execution/route.ts，核心无需修正，教练仅补末尾换行。新增 test/features/workspaces/conversation-execution-route.test.ts 共 60 条，通过导出的 GET 路由测试真实解析器/代理，上游 fetch 模拟。
+
+```bash
+cd apps/web
+node --experimental-strip-types --test test/features/workspaces/conversation-execution-route.test.ts
+pnpm test:workspaces
+pnpm typecheck
+pnpm lint
+```
+
+专项 60/60 通过（0.76s），Workspace 全量 672/672 通过（1.79s）；Next 类型生成/TypeScript、ESLint、git diff --check 通过。覆盖本地凭证与浏览器 Cookie/Authorization 隔离、内部字段/响应头剥离、路径及查询参数拒绝、状态/时间配对与会话 ID 校验、微秒与时区时间、陈旧占用保留、错误状态白名单、不读错误正文、正文取消失败兜底、网络失败不重试、客户端取消/20 秒超时在请求及正文阶段生效。超时使用受控信号驱动，断言生产预算，不等待真实 20 秒。
+
+本课仅模拟上游验证 BFF，没有启动真实后端、访问数据库或运行浏览器，不宣称查询 UI 已完成。类型检查提示当前 Node 在 Apple Silicon 上使用 Rosetta 转译，但命令成功；未因此更换运行环境。查询 BFF 仅支持本地主线，不新增账号模式查询支持。
+
+
+### 2026-09-20：会话执行占用只读 UI
+
+学习者完成 conversation-execution-panel.tsx 与 chat-panel.tsx 右侧接入；核心无需修改，仅补新文件末尾换行。教练新增 conversation-execution-panel.test.ts 8 条，通过 AST 定位并执行组件真实 refresh 函数，验证重复点击、网络/JSON/契约/HTTP 失败重试、请求/正文超时及旧请求不影响新引用。Workspace 共 680 条通过（2.56s），聊天状态85条通过（2.12s）；pnpm typecheck、pnpm lint 与 git diff --check 通过。无新核心行为修改。
+
+浏览器启动器补入新 sessions/[sessionId]/execution BFF 路由复制，使用既有随机独立 PostgreSQL 库/schema 与迁移链，真实 API/BFF，模拟模型。运行：
+
+```bash
+BROWSER_APP_MODE=local BROWSER_TEST_SCRIPT=conversation-execution.mjs \
+PLAYWRIGHT_MODULE=/Users/wanxiancheng/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright \
+CHROME_EXECUTABLE='/Applications/Google Chrome.app/Contents/MacOS/Google Chrome' \
+.venv/bin/python apps/web/test/browser/run-isolated.py
+```
+
+5 组全部通过：键盘手动查询与真实空闲/占用展示；另一标签页取消后真实释放、手动刷新恢复空闲；HTTP/契约错误显示未知且重试恢复；任务切换取消旧请求并拒绝故意忽略 abort 的迟到结果；关闭/重开详情重置状态并拒绝迟到回写。观察页没有聊天 POST，占用时连续查询不会释放占用，输入仍可用；查询不会以快照替代发送时原子获取。错误与延迟阶段由浏览器 fetch 注入，其余使用真实服务。
+
+截图 execution-query-busy-1366.png（1366×900）与 execution-query-idle-1920.png（1920×900）位于 /private/tmp/agent-ui-preview/output/playwright，均已视查，无裁切或横向溢出。启动器报告临时服务关闭、隔离 schema/database 清理完成。未修改开发业务表、未调用真实模型，也未验证强制停机或遗留占用恢复。没有新增自动刷新、自动发送或释放功能。
+
+
+### 2026-09-20：进程内执行并发预算组件
+
+学习者完成 services/runtime/execution_budget.py，核心无需修改；教练新增 tests/runtime/test_execution_budget.py 共23条。使用真实 asyncio 事件循环与事件同步、AnyIO 取消域，不依赖数据库或模型。执行：
+
+```bash
+cd apps/api
+../../.venv/bin/python -W error -m pytest -xq --tb=short tests/runtime/test_execution_budget.py tests/runtime/test_execution_threads.py
+../../.venv/bin/python -m ruff check app tests
+```
+
+结果35 passed（0.07s），Ruff 与 git diff --check 通过。覆盖非法容量（含bool）、满额立即拒绝且不误归还、名额复用、只读属性/独立实例、20协程竞争3名额、业务异常保持原对象、重复Task取消/AnyIO取消、内层收尾等待期间仍占名额、已结束context重复退出不减掉其他名额、无运行循环拒绝、旧循环关闭后仍拒绝新循环、绑定后其他线程循环不得修改计数。
+
+组件只承诺同一实例/事件循环作用域，不提供跨线程首次使用竞争安全，也不是跨进程总限额。内层收尾测试验证嵌套位置的含义，不代表实际聊天/线程收尾已接入预算。没有修改 HTTP、前端或数据库，本课不重复浏览器与数据库回归。下一课才装配到请求级生命周期。
+
+
+### 2026-09-20：聊天入口共享进程内并发预算
+
+学习者完成配置、请求依赖、API/BFF/UI安全错误映射；实际检查发现 main.py 尚未装配预算，教练补 lifespan 创建/清理实例。补 .env.example 的 AGENT_MAX_CONCURRENT_EXECUTIONS=2（未改本机 .env），测试应用显式装配预算；本地TestClient进入同一lifespan/事件循环，只替换迁移检查以使用隔离ORM schema，真实迁移启动检查仍由 migrations 专项验证。装配缺失继续安全500，不做生产fallback。
+
+新增 test_execution_budget_config.py 17条、test_chat_execution_budget.py 6条；加强既有提交期间取消、ASGI两种断线/真实工具线程收尾的容量保持断言。20秒等待之类的时间不是准入依据，使用事件控制。最初加强测试保留了默认容量2却断言第二会话503，已将该受控场景明确设为容量1后通过；未修改生产容量语义。
+
+```bash
+cd apps/api
+../../.venv/bin/python -W error -m pytest -xq --tb=short
+../../.venv/bin/python -m ruff check app tests
+```
+
+后端全量1371 passed（111.88s，-W error），Ruff/diff check通过。验证双入口不同会话共享容量、满额无Run/模型/新占用副作用、满额时本地不可访问会话仍404、缺失装配500、异常/会话忙/发送失败归还、重复取消后收尾保持容量、配置严格正整数及每次生命周期新建实例。真实PostgreSQL使用公共随机数据库/私有schema，自动清理。
+
+前端 pnpm test:auth 207条（1.21s）、pnpm test:state 86条（1.70s）、pnpm typecheck、pnpm lint通过，新增BFF与聊天状态各1条503安全提示测试。启动配置默认2；仅限制单进程两个聊天入口，多进程不共享计数，独立工具演示入口不在此预算内。
+
+```bash
+AGENT_MAX_CONCURRENT_EXECUTIONS=1 BROWSER_APP_MODE=local BROWSER_TEST_SCRIPT=chat-budget.mjs \
+PLAYWRIGHT_MODULE=/Users/wanxiancheng/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright \
+CHROME_EXECUTABLE='/Applications/Google Chrome.app/Contents/MacOS/Google Chrome' \
+.venv/bin/python apps/web/test/browser/run-isolated.py
+```
+
+真实API/BFF/隔离PostgreSQL、模拟模型的PC浏览器2组通过：两个不同会话竞争容量1，第二会话得到真实503并显示安全提示；取消第一会话后测试主动重试第二会话成功，刷新恢复持久历史。1366×900 budget-busy-1366.png 与1920×900 budget-recovered-1920.png 位于 /private/tmp/agent-ui-preview/output/playwright，已视查。测试重试只用于观察恢复，不是产品自动重试。启动器确认服务和隔离库/schema全部清理；未修改开发数据、未调用真实模型。遗留占用、强制停机与跨进程资源限额仍未解决。
+
+
+### 2026-09-20：历史运行详情恢复摘要
+
+学习者完成 historical-run-summary.ts 与 task-run-panel.tsx 的历史卡片接入，核心无需修正，仅补新文件末尾换行。新增 historical-run-summary.test.ts 23条：成功/指标型失败通过真实详情解析器恢复，null与零值区分，费用字符串精度保持，取消/未知状态/未结束/缺终态/重复冲突/状态不匹配拒绝；部分摘要或非法指标不拼接，事件信封type不被payload覆盖。Workspace全量703条通过（2.21s），聊天状态86条通过（1.93s），pnpm typecheck、pnpm lint、git diff --check通过。
+
+```bash
+cd apps/web
+pnpm test:workspaces
+pnpm test:state
+pnpm typecheck
+pnpm lint
+```
+
+浏览器命令（仓库根目录）：
+
+```bash
+BROWSER_APP_MODE=local BROWSER_TEST_SCRIPT=historical-run-summary.mjs \
+PLAYWRIGHT_MODULE=/Users/wanxiancheng/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright \
+CHROME_EXECUTABLE='/Applications/Google Chrome.app/Contents/MacOS/Google Chrome' \
+.venv/bin/python apps/web/test/browser/run-isolated.py
+```
+
+4组通过：真实BFF/API/隔离PostgreSQL写入一次模拟模型运行，刷新并重新选择历史运行后摘要一致，观察阶段没有新聊天POST；受控历史失败响应显示2步、未知Token/模型耗时、真实0工具耗时及精确费用¥0.00128420；缺少摘要不生成卡片但保留事件；冲突终态不猜选摘要且保留时间线。后三组使用浏览器拦截详情响应，不宣称它们来自真实失败运行持久化。浏览器无pageerror，服务及随机库/schema已清理。
+
+截图 /private/tmp/agent-ui-preview/output/playwright/historical-summary-1366.png 与 historical-summary-error-1920.png 已视查，右侧内容可滚动，数值无横向溢出。没有修改后端或开发业务表，未调用真实模型。本课不重复后端全量；上一课1371条证据保持其原范围。既有详情解析器会拒绝非法事件契约，因此损坏历史并非总能降级为无摘要的时间线。
+
+### 2026-09-20：删除事务执行占用保护
+
+按用户明确授权直接实现服务层：授权并取得会话行锁后查询占用存在性，存在则抛 ConversationBusyError 并回滚；不读取 token、不清理占用，仍只允许删除无消息/Run 的空任务。HTTP/BFF/UI占用错误映射尚未接入。
+
+在 apps/api 执行：
+
+```bash
+../../.venv/bin/python -m pytest tests/tasks/test_task_deletion_service.py -q -W error -x --tb=short
+../../.venv/bin/python -m pytest tests/tasks tests/runtime/test_conversation_execution_service.py tests/local/test_task_conversation_boundary.py -q -W error -x --tb=short
+../../.venv/bin/python -m ruff check app tests
+```
+
+删除专项38条通过（3.08s），其中新增11个场景；相关回归411条通过（30.90s，包含专项，不重复计数）。覆盖占用早于Run、终态后仍占用、外键插入与删除真实锁等待、删除提交/回滚、真实释放后可删、授权先行及查询失败回滚。Ruff与git diff --check通过。首次沙箱内测试无法连接本机PostgreSQL，授权网络访问后重跑通过；独立随机测试库/私有schema由公共夹具创建并自动清理，未修改开发业务表。未运行浏览器或调用模型，本次不重跑无改动的前端。
+
+### 2026-09-20：删除执行占用冲突提示 API/BFF/UI
+
+按用户授权完成：API将ConversationBusyError映射为409 conversation_busy及固定文案；BFF按状态/错误码白名单重建响应，UI作为明确拒绝保留任务、选中状态与草稿，允许手动重试，不自动删除或清理占用。所有响应继续no-store，未知错误仍为删除结果未确认。
+
+在 apps/api 执行 `../../.venv/bin/python -m pytest tests/tasks/test_task_delete_api.py tests/tasks/test_task_deletion_service.py -q -W error -x --tb=short`：85条通过（10.68s），HTTP新增5条，覆盖无Run及running/done/error/aborted占用冲突、数据库记录保留、释放后空任务204及有历史仍409。公共夹具自动清理独立PostgreSQL库/schema。
+
+在 apps/web 执行 `pnpm test:workspaces`、`pnpm test:state`、`pnpm typecheck`、`pnpm lint`：706/86条通过，类型检查及ESLint通过。BFF新增3条：允许409 conversation_busy，拒绝404/500搭配此码，剥离上游私有文案/字段/响应头。后端Ruff及git diff --check通过。
+
+PC 浏览器定向2组通过（真实占用删除链路、既有明确拒绝/未知错误兜底）：
+
+```bash
+BROWSER_APP_MODE=local BROWSER_SCENARIO='delete UI execution,delete UI known' \
+BROWSER_TEST_SCRIPT=task-delete.mjs \
+PLAYWRIGHT_MODULE=/Users/wanxiancheng/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright \
+CHROME_EXECUTABLE='/Applications/Google Chrome.app/Contents/MacOS/Google Chrome' \
+.venv/bin/python apps/web/test/browser/run-isolated.py
+```
+
+一页保持模拟模型运行，另一页真实DELETE经BFF/API返回409并显示固定提示；任务、URL、输入保留，未自动重试。取消并轮询确认占用释放后，手动再删返回历史保护提示。未知错误仍阻止重复删除。1366×768及1920×1080截图delete-busy-1366.png/delete-busy-1920.png（/private/tmp/agent-ui-preview/output/playwright）已视查，无横向溢出。初次双标签页脚本等待停滞后中止并完成资源清理；补runner激活及显式超时后重跑通过。临时服务及随机测试库已清理，模型模拟，无真实付费调用。
+
+### 2026-09-20：第4周历史删除与异常运行恢复收尾
+
+有历史任务删除：授权并依次锁项目/任务/会话/Run，拒绝占用、未知状态或缺结束时间的运行；按事件→Run→消息→会话→Task清理，同事务提交。保留Workspace目录与TaskCreationRequest删除回执，原创建键不重建已删除任务。确认框明确删除历史、不会删除项目文件；未知响应仍保持结果未确认。
+
+异常恢复：新占用和Run均保存仅服务端可见的机器标识摘要与PID。右侧“会话执行占用”先查询，再点“检查并恢复异常运行”；POST /sessions/{id}/execution/recover 经同源BFF，仅接受空对象，重新授权并持有会话/Run锁。只有当前机器能确认每个原进程已不存在时，才将running置aborted、保存EXECUTION_RECOVERED审计并清理占用，同事务提交；不覆盖既有终态，不重放消息、模型或工具。Run单独记录身份，覆盖创建提交成功但返回ID丢失、占用已经释放的情况。
+
+恢复拒绝属于409，失败/超时是结果未确认，不自动重试。若原API仍活着，先停止原进程并重新启动服务，再明确发起恢复；不能仅凭停止按钮或时间长认定可以清理。PID复用为活进程也保守拒绝。历史无身份、非本机/PID namespace、读取权限或系统识别失败均拒绝；迁移不为旧记录捏造身份，旧版产生且无法验证来源的遗留记录不提供强制清理。此范围针对当前原生本机API及进程内工具线程；第5周引入Shell子进程前必须扩展进程树停止证明，不能将父进程退出等同于所有外部副作用已停止。Windows/Linux实现分支未在本轮实机验收，当前实机为macOS。
+
+开发库顺序迁移1b8c75f140de→2c9d86a251ef→3da097b362fa，仅新增四个可空身份列，无业务记录删除；alembic check无结构差异。重新启动API使新代码生效。迁移/事务测试全部使用公共独立随机PostgreSQL库/schema并自动清理，未使用SQLite。
+
+验证命令：
+
+```bash
+# apps/api
+../../.venv/bin/python -m pytest -q -W error -x --tb=short
+../../.venv/bin/python -m ruff check app tests
+# apps/web
+pnpm test:workspaces
+pnpm test:state
+pnpm typecheck
+pnpm lint
+# 仓库根目录：恢复后的显式继续执行、刷新及历史删除闭环
+BROWSER_APP_MODE=local BROWSER_TEST_SCRIPT=week4-recovery.mjs \
+PLAYWRIGHT_MODULE=/Users/wanxiancheng/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright \
+CHROME_EXECUTABLE='/Applications/Google Chrome.app/Contents/MacOS/Google Chrome' \
+.venv/bin/python apps/web/test/browser/run-isolated.py
+```
+
+新增测试覆盖真实子进程获取占用后被kill、存活进程拒绝、身份未知/外机/权限拒绝、slotless Run独立停止证据、旧占用不能替另一个Run证明停止、重复及迟到恢复、事务回滚、历史删除每个DELETE/commit失败全回滚、幂等删除回执保留与旧数据迁移。浏览器恢复夹具用已退出进程的真实PID准备持久化遗留状态，运行API/BFF/PostgreSQL真实，模型出口模拟；不宣称验证真实付费模型质量。
+
+最终验证结果：后端全量1411 passed（105.58s，-W error），Workspace718条、聊天86条通过，TypeScript/ESLint/Ruff及git diff --check通过。历史迁移快照最初错误地包含新Run列，已将历史快照裁剪到对应修订，再经迁移/恢复82条及全量验证；不修改当前ORM来迁就旧测试。浏览器夹具先修正嵌套路由目录创建、完成文本精确定位；活跃冲突场景改为显式取消的`[cancel-held]`模拟，避免20秒固定等待在慢机器上提前结束。这些失败均已定位到验收配套，修正后重跑。
+
+真实PC验收包括异常恢复→用户明确开始新一轮→刷新消息→删除历史任务；另有活跃执行时恢复409和删除409、取消并释放后历史删除成功、正常完成任务删除与未知错误兜底。模拟模型不产生真实API费用。1366×768及1920×1080截图保存在 /private/tmp/agent-ui-preview/output/playwright/week4-recovered-1366.png、week4-resumed-1920.png；原生系统进程退出证据在macOS实测。临时浏览器服务与测试数据库由启动器自动清理。
+
+2026-09-20 Git收尾：按用户要求将第4周累计已验收源码、测试、两次执行身份迁移及对应课程/交接/题库文档统一归档至main并推送origin/main；以推送后的HEAD与远程main一致、工作区干净作为交接条件。本轮仅更新收尾说明，不重复执行已通过的功能测试。下一课在主仓库main的新任务中继续，核心实现恢复学习者亲手编写。

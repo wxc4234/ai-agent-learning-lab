@@ -1,7 +1,6 @@
 import asyncio
 import json
-from collections.abc import AsyncIterator
-from contextlib import suppress
+from collections.abc import AsyncGenerator
 from datetime import datetime, timezone
 
 from openai import OpenAIError
@@ -37,6 +36,7 @@ from app.services.model.model_pricing import (
     ModelPricing,
     estimate_model_cost_cny,
 )
+from app.services.runtime.execution_threads import ExecutionThreads
 from app.services.runtime.run_cancellation import wait_for_run_cancellation
 from app.services.runtime.tool_event_payloads import (
     build_tool_call_error_payload,
@@ -203,8 +203,9 @@ async def _prepare_chat_messages(
     user_id: int,
     session_id: str,
     prompt: str,
+    execution_threads: ExecutionThreads,
 ) -> tuple[list[ChatCompletionMessageParam], list[ChatCompletionMessageParam]]:
-    await asyncio.to_thread(
+    await execution_threads.run(
         ensure_owned_conversation,
         user_id=user_id,
         session_id=session_id,
@@ -213,7 +214,7 @@ async def _prepare_chat_messages(
     cache_key = (user_id, session_id)
 
     if cache_key not in conversations:
-        saved_history = await asyncio.to_thread(
+        saved_history = await execution_threads.run(
             load_conversation,
             user_id=user_id,
             session_id=session_id,
@@ -261,12 +262,14 @@ async def create_chat_reply(
     user_id: int,
     session_id: str,
     prompt: str,
+    execution_threads: ExecutionThreads,
 ) -> str:
     """在当前用户拥有的会话中完成一轮普通聊天。"""
     history, messages_to_send = await _prepare_chat_messages(
         user_id=user_id,
         session_id=session_id,
         prompt=prompt,
+        execution_threads=execution_threads,
     )
 
     try:
@@ -277,7 +280,7 @@ async def create_chat_reply(
         )
         reply = response.choices[0].message.content or ""
 
-        await asyncio.to_thread(
+        await execution_threads.run(
             save_conversation_turn,
             user_id=user_id,
             session_id=session_id,
@@ -310,7 +313,9 @@ async def stream_chat_reply(
     session_id: str,
     prompt: str,
     run_id: int,
-) -> AsyncIterator[str]:
+    execution_threads: ExecutionThreads,
+    monitors: list[asyncio.Task[None]],
+) -> AsyncGenerator[str, None]:
     """运行 Agent Loop，并逐行返回结构化 NDJSON 事件。"""
 
     history: list[ChatCompletionMessageParam] | None = None
@@ -324,12 +329,15 @@ async def stream_chat_reply(
     cancellation_monitor = asyncio.create_task(
         _cancel_stream_when_requested(run_id, stream_task)
     )
+    # 请求级依赖统一等待监听器，覆盖生成器异常关闭。
+    monitors.append(cancellation_monitor)
 
     try:
         history, messages_to_send = await _prepare_chat_messages(
             user_id=user_id,
             session_id=session_id,
             prompt=prompt,
+            execution_threads=execution_threads,
         )
 
         # _prepare_chat_messages 已把当前 user 追加到 history。
@@ -346,6 +354,7 @@ async def stream_chat_reply(
             decision_maker,
             max_steps=5,
             max_total_tokens=settings.agent_max_total_tokens,
+            execution_threads=execution_threads,
         ):
             if isinstance(event, ToolCallStarted):
                 payload: dict[str, object] = {
@@ -354,7 +363,7 @@ async def stream_chat_reply(
                     "arguments": event.action.arguments,
                 }
 
-                await asyncio.to_thread(
+                await execution_threads.run(
                     record_run_event,
                     run_id,
                     "TOOL_CALL_START",
@@ -370,7 +379,7 @@ async def stream_chat_reply(
             if isinstance(event, ToolCallSucceeded):
                 payload = build_tool_call_result_payload(event.observation)
 
-                await asyncio.to_thread(
+                await execution_threads.run(
                     record_run_event,
                     run_id,
                     "TOOL_CALL_RESULT",
@@ -386,7 +395,7 @@ async def stream_chat_reply(
             if isinstance(event, ToolCallFailed):
                 payload = build_tool_call_error_payload(event.observation)
 
-                await asyncio.to_thread(
+                await execution_threads.run(
                     record_run_event,
                     run_id,
                     "TOOL_CALL_ERROR",
@@ -416,7 +425,7 @@ async def stream_chat_reply(
                         "metrics": build_run_metrics_payload(result),
                     }
 
-                    await asyncio.to_thread(
+                    await execution_threads.run(
                         finish_agent_run,
                         run_id,
                         "error",
@@ -434,7 +443,7 @@ async def stream_chat_reply(
 
                 reply = result.answer
 
-                await asyncio.to_thread(
+                await execution_threads.run(
                     record_run_event,
                     run_id,
                     "TEXT_MESSAGE_START",
@@ -442,7 +451,7 @@ async def stream_chat_reply(
                 )
                 yield encode_stream_event("TEXT_MESSAGE_START")
 
-                await asyncio.to_thread(
+                await execution_threads.run(
                     record_run_event,
                     run_id,
                     "TEXT_MESSAGE_CONTENT",
@@ -457,7 +466,7 @@ async def stream_chat_reply(
                     },
                 )
 
-                await asyncio.to_thread(
+                await execution_threads.run(
                     record_run_event,
                     run_id,
                     "TEXT_MESSAGE_END",
@@ -465,7 +474,7 @@ async def stream_chat_reply(
                 )
                 yield encode_stream_event("TEXT_MESSAGE_END")
 
-                await asyncio.to_thread(
+                await execution_threads.run(
                     save_conversation_turn,
                     user_id=user_id,
                     session_id=session_id,
@@ -491,7 +500,7 @@ async def stream_chat_reply(
                 # 数据库和浏览器共用同一份指标 Payload
                 finished_payload: dict[str, object] = build_run_finished_payload(result)
 
-                await asyncio.to_thread(
+                await execution_threads.run(
                     finish_agent_run,
                     run_id,
                     "done",
@@ -513,13 +522,13 @@ async def stream_chat_reply(
                 history_checkpoint,
             )
 
-        cancel_reason = await asyncio.to_thread(
+        cancel_reason = await execution_threads.run(
             get_run_cancellation_reason,
             run_id,
         )
         final_status = "error" if cancel_reason == "timeout" else "aborted"
 
-        await asyncio.to_thread(
+        await execution_threads.run(
             finish_agent_run,
             run_id,
             final_status,
@@ -541,7 +550,7 @@ async def stream_chat_reply(
             "message": "模型服务暂时不可用",
         }
 
-        await asyncio.to_thread(
+        await execution_threads.run(
             finish_agent_run,
             run_id,
             "error",
@@ -566,7 +575,7 @@ async def stream_chat_reply(
             "message": "模型返回了无法处理的决策",
         }
 
-        await asyncio.to_thread(
+        await execution_threads.run(
             finish_agent_run,
             run_id,
             "error",
@@ -591,7 +600,7 @@ async def stream_chat_reply(
             "message": "Agent 运行失败",
         }
 
-        await asyncio.to_thread(
+        await execution_threads.run(
             finish_agent_run,
             run_id,
             "error",
@@ -606,8 +615,7 @@ async def stream_chat_reply(
     finally:
         cancellation_monitor.cancel()
 
-        with suppress(asyncio.CancelledError):
-            await cancellation_monitor
+        # 请求级依赖会在释放占用前受保护地等待监听器退出。
 
 
 """一轮聊天的业务编排：记忆恢复、模型调用和消息持久化。"""

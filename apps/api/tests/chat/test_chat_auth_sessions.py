@@ -1,3 +1,4 @@
+from app.services.runtime.execution_budget import ExecutionBudget
 """Real PostgreSQL sessions at both chat boundaries; no external model calls."""
 
 from datetime import UTC, datetime, timedelta
@@ -12,14 +13,14 @@ from sqlalchemy.orm import Session
 
 from app import dependencies
 from app.models import LoginSession
-from app.routers.chat import chat
+from app.routers.chat import chat, chat_execution
 from app.schemas import LoginRequest, RegisterRequest
 from app.services.auth.login_session_service import issue_login_session
 from app.services.auth.registration_service import register_user
 
 
 @pytest.fixture
-def authenticated_chat(engine, monkeypatch):
+def authenticated_chat(engine, monkeypatch, execution_stub):
     with Session(engine) as session:
         register_user(session, RegisterRequest(username="聊天测试", password="Chat-Test-2026!"))
     with Session(engine) as session:
@@ -53,10 +54,11 @@ def authenticated_chat(engine, monkeypatch):
     create_run = Mock(side_effect=check_closed)
     model = AsyncMock(side_effect=reply)
     monkeypatch.setattr(dependencies, "SessionLocal", factory)
-    monkeypatch.setattr(chat, "create_agent_run", create_run)
+    monkeypatch.setattr(chat_execution, "create_agent_run", create_run)
     monkeypatch.setattr(chat, "create_chat_reply", model)
     monkeypatch.setattr(chat, "stream_chat_reply", stream)
     app = FastAPI()
+    app.state.execution_budget = ExecutionBudget(capacity=2)
     app.include_router(chat.router)
     with TestClient(app) as client:
         yield client, issued.token.get_secret_value(), create_run, model

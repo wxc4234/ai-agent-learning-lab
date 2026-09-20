@@ -77,6 +77,7 @@ function createHarness(fetchResponse: typeof fetch) {
         fetch: fetchResponse,
         workbench: { setBusy: () => {} },
         setPrompt: () => {},
+        setCreationError: () => {},
         chatState: initialChatState,
         setHistory: () => {},
         mountedRef: { current: true },
@@ -198,6 +199,8 @@ test("tool failure and text end are not run terminals", async () => {
 });
 
 for (const [label, fetchResponse, message] of [
+    ["HTTP 503", async () => new Response(null, { status: 503 }), "执行服务暂时繁忙或不可用，请稍后再试。"],
+    ["HTTP 409", async () => new Response(null, { status: 409 }), "该会话仍在执行或收尾，请稍后再试"],
     ["HTTP 429", async () => new Response(null, { status: 429 }), "请求太频繁了，请稍后再试。"],
     ["HTTP 502", async () => new Response(null, { status: 502 }), "模型服务暂时不可用，请稍后重试。"],
     ["network", async () => { throw new TypeError("offline"); }, "网络连接中断，请检查网络后重试。"],

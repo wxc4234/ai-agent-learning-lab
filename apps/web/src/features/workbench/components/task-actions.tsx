@@ -34,7 +34,7 @@ export default function TaskActions({ workspace, task }: {
                     size="icon-sm"
                     disabled={blocked}
                     aria-label={`删除任务：${task.title}`}
-                    title="删除空任务"
+                    title="删除任务"
                     className="mr-1 size-7 shrink-0 text-muted-foreground opacity-0 group-hover/task:opacity-100 group-focus-within/task:opacity-100 hover:bg-black/5 hover:text-destructive dark:hover:bg-muted disabled:opacity-0 group-hover/task:disabled:opacity-40 group-focus-within/task:disabled:opacity-40 [@media(hover:none)]:opacity-100"
                 >
                     <TrashIcon />
@@ -54,7 +54,7 @@ export default function TaskActions({ workspace, task }: {
                     </AlertDialog.Title>
                     <AlertDialog.Description className="mt-3 text-[18px] leading-relaxed text-muted-foreground">
                         <span className="mb-2 block break-words font-medium text-foreground">{task.title}</span>
-                        仅支持删除没有消息和运行记录的空任务。删除后无法恢复。
+                        将永久删除任务、消息和运行记录，不会删除项目目录中的文件。仍有执行占用或未结束运行时无法删除。
                     </AlertDialog.Description>
                     <div className="mt-6 flex justify-end gap-2">
                         <AlertDialog.Cancel asChild>

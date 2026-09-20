@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session
 from app.database import Base
 from app.models import ConversationExecutionSlot
 from app.services.tasks.task_deletion_service import delete_workspace_task
+from app.services.runtime.conversation_execution_service import ConversationBusyError
 from tests.migrations.test_database_readiness import migrate
 from tests.migrations.test_task_creation_request_migration import snapshot
 from sqlalchemy import MetaData
@@ -121,9 +122,8 @@ def test_real_empty_task_delete_rolls_back_while_occupied(migrated):
     with engine.begin() as conn:
         insert_slot(conn)
     with Session(engine) as session:
-        with pytest.raises(DBAPIError) as caught:
+        with pytest.raises(ConversationBusyError):
             delete_workspace_task(session, user_id=1, workspace_id='project', task_id='task')
-        assert caught.value.orig.sqlstate == '23503'
         assert not session.in_transaction()
     with engine.connect() as conn:
         assert conn.scalar(text('SELECT count(*) FROM tasks')) == 1

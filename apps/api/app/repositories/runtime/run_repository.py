@@ -1,6 +1,8 @@
 """Agent Run 与运行事件的持久化实现。"""
 
+import os
 from datetime import datetime, timezone
+from app.services.runtime.execution_process import host_identity
 from typing import Literal, TypedDict
 
 from sqlalchemy import select
@@ -53,6 +55,8 @@ def create_agent_run(
         run = AgentRun(
             conversation_id=conversation.id,
             status="running",
+            owner_host_id=host_identity(),
+            owner_pid=os.getpid(),
         )
         session.add(run)
         session.flush()

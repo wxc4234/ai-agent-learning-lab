@@ -153,7 +153,7 @@ def create_workspace_task(
                 raise TaskCreationResultDeletedError()
 
             # 请求记录只提供定位线索，仍须重新核对任务所属项目。
-            # 锁顺序保持项目 → 任务 → 会话，与空任务删除服务一致。
+            # 锁顺序保持项目 → 任务 → 会话，与任务删除服务一致。
             task = session.scalar(
                 select(Task)
                 .where(

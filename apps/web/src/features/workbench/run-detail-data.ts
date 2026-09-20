@@ -17,6 +17,9 @@ const STREAM_TYPES = new Set([
 ]);
 
 function readPayload(type: string, payload: Record<string, unknown>): Record<string, unknown> | null {
+    if (type === 'EXECUTION_RECOVERED') {
+        return payload.reason === 'owner_process_exited' ? { reason: 'owner_process_exited' } : null;
+    }
     if (type === 'RUN_STARTED') {
         if (typeof payload.session_id !== 'string' || !payload.session_id ||
             typeof payload.prompt_length !== 'number' ||

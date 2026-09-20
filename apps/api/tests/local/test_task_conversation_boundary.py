@@ -1,3 +1,4 @@
+from app.services.runtime import conversation_execution_scope
 """本地任务会话不能隐式创建：真实 HTTP、缓存边界及删除竞争。"""
 
 import asyncio
@@ -17,7 +18,7 @@ from app.repositories.chat import conversation_repository as conversations
 from app.repositories.runtime import run_repository as runs
 from app.services.chat import chat_service
 from app.services.runtime.agent_runtime import FinalAnswer
-from app.services.tasks.task_deletion_service import TaskHasHistoryError, delete_workspace_task
+from app.services.tasks.task_deletion_service import TaskRunUnsettledError, delete_workspace_task
 from tests.local.test_local_mode import HEADERS
 from tests.local import test_local_mode as local_mode_tests
 from tests.tasks.test_task_deletion_service import wait_for_database_block
@@ -28,7 +29,7 @@ local_client = local_mode_tests.local_client
 @pytest.fixture
 def lab(local_client, engine, monkeypatch):
     factory = sessionmaker(engine)
-    for module in (conversations, runs):
+    for module in (conversations, runs, conversation_execution_scope):
         monkeypatch.setattr(module, 'SessionLocal', factory)
     prompts = []
 
@@ -188,7 +189,7 @@ def test_delete_and_run_creation_serialize_without_recreation(lab, engine, monke
         return row
 
     def observe(connection, cursor, statement, parameters, context, executemany):
-        if winner == 'delete' and statement.startswith('SELECT messages.id'):
+        if winner == 'delete' and statement.startswith('SELECT agent_runs.id'):
             locked.set()
             assert release.wait(8)
         elif winner == 'run' and statement.startswith('SELECT conversations.') and 'FOR UPDATE' in statement:
@@ -212,7 +213,7 @@ def test_delete_and_run_creation_serialize_without_recreation(lab, engine, monke
             finally:
                 release.set()
             first.result(timeout=10)
-            error = conversations.ConversationNotAccessibleError if winner == 'delete' else TaskHasHistoryError
+            error = conversations.ConversationNotAccessibleError if winner == 'delete' else TaskRunUnsettledError
             with pytest.raises(error):
                 second.result(timeout=10)
     finally:

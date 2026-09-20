@@ -76,13 +76,13 @@ for (const [workspace, task] of [['../x', taskId], [workspaceId, 'B'.repeat(32)]
         assert.equal(mock.mock.callCount(), 0);
     });
 }
-for (const [status, code] of [[403, 'local_mode_required'], [403, 'local_access_rejected'], [403, 'workspace_origin_rejected'], [404, 'workspace_not_accessible'], [409, 'task_has_history'], [422, 'invalid_task_input'], [500, 'task_deletion_uncertain']] as const) {
+for (const [status, code] of [[403, 'local_mode_required'], [403, 'local_access_rejected'], [403, 'workspace_origin_rejected'], [404, 'workspace_not_accessible'], [409, 'task_run_unsettled'], [409, 'conversation_busy'], [422, 'invalid_task_input'], [500, 'task_deletion_uncertain']] as const) {
     test(`safe mapping ${status}/${code}`, async (t) => {
         t.mock.method(globalThis, 'fetch', async () => Response.json({ code, message: 'PRIVATE', internal: 'PRIVATE' }, { status, headers: { 'Set-Cookie': 'PRIVATE' } }));
         await failure(await route(), status, code);
     });
 }
-for (const [status, payload] of [[200, {}], [202, {}], [404, { code: 'task_has_history' }], [409, { code: 'toString' }], [500, null], [502, { code: 'task_deletion_uncertain' }], [409, []]] as const) {
+for (const [status, payload] of [[200, {}], [202, {}], [500, { code: 'conversation_busy' }], [404, { code: 'conversation_busy' }], [404, { code: 'task_run_unsettled' }], [409, { code: 'toString' }], [500, null], [502, { code: 'task_deletion_uncertain' }], [409, []]] as const) {
     test(`unknown ${status}/${JSON.stringify(payload)}`, async (t) => {
         t.mock.method(globalThis, 'fetch', async () => Response.json(payload, { status }));
         await failure(await route(), 502, 'task_deletion_uncertain');
@@ -113,13 +113,13 @@ for (const phase of ['fetch', 'body', 'after-json', 'success'] as const) {
             const abort = () => (kind === 'cancel' ? browser : timeout).abort();
             t.mock.method(globalThis, 'fetch', async (_url: Parameters<typeof fetch>[0], init?: RequestInit) => {
                 if (phase === 'fetch') { abort(); init?.signal?.throwIfAborted(); }
-                const response = phase === 'success' ? new Response(null, { status: 204 }) : Response.json({ code: 'task_has_history' }, { status: 409 });
+                const response = phase === 'success' ? new Response(null, { status: 204 }) : Response.json({ code: 'task_run_unsettled' }, { status: 409 });
                 if (phase === 'success') abort();
                 if (phase === 'body' || phase === 'after-json') {
                     t.mock.method(response, 'json', async () => {
                         abort();
                         if (phase === 'body') init?.signal?.throwIfAborted();
-                        return { code: 'task_has_history' };
+                        return { code: 'task_run_unsettled' };
                     });
                 }
                 return response;

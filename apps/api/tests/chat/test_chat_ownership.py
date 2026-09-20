@@ -1,3 +1,5 @@
+from app.services.runtime.execution_budget import ExecutionBudget
+from app.services.runtime import conversation_execution_scope
 """Real HTTP identities, ownership, cache and persistence with model calls mocked."""
 
 import asyncio
@@ -27,7 +29,7 @@ from app.services.auth.registration_service import register_user
 @pytest.fixture
 def lab(engine, monkeypatch):
     factory = sessionmaker(engine)
-    for module in (dependencies, conversations, runs):
+    for module in (dependencies, conversations, runs, conversation_execution_scope):
         monkeypatch.setattr(module, "SessionLocal", factory)
     identities = []
     for name in ("用户甲", "用户乙"):
@@ -56,6 +58,7 @@ def lab(engine, monkeypatch):
     monkeypatch.setattr(chat_service, "wait_for_run_cancellation", wait)
     chat_service.conversations.clear()
     app = FastAPI()
+    app.state.execution_budget = ExecutionBudget(capacity=2)
     app.include_router(chat.router)
     app.include_router(conversation.router)
     with TestClient(app) as client:
@@ -103,7 +106,8 @@ def test_owner_reuses_history_and_other_user_is_denied_before_side_effects(lab, 
     assert any(m.get("content") == "私密问题甲" for m in prompts[-1])
     assert send(client, b, path, "own-b", "乙的问题").status_code == 200
     assert not any(m.get("content") == "私密问题甲" for m in prompts[-1])
-    assert set(chat_service.conversations) == {(a.user.id, "shared-id"), (b.user.id, "own-b")}
+    # 请求收尾丢弃缓存；上面的提示词与下面的数据库历史验证恢复及隔离。
+    assert chat_service.conversations == {}
     history = client.get("/sessions/shared-id/messages", headers=headers(a))
     assert history.status_code == 200 and history.json()["total"] == 4
     assert client.get("/sessions/shared-id/messages", headers=headers(b)).status_code == 404

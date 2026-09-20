@@ -75,9 +75,9 @@ try:
             ROOT / "apps/web/src/app/api/auth/login/route.ts",
             web / "app/api/auth/login/route.ts",
         )
-        for route in ("runs/[runId]", "auth/register", "workspaces", "workspaces/[workspaceId]/directory", "workspaces/[workspaceId]/directory/select", "workspaces/[workspaceId]/tasks", "workspaces/[workspaceId]/tasks/[taskId]", "workspaces/[workspaceId]/tasks/[taskId]/messages", "workspaces/[workspaceId]/tasks/[taskId]/runs", "workspaces/[workspaceId]/tasks/[taskId]/title"):
+        for route in ("sessions/[sessionId]/execution/recover", "sessions/[sessionId]/execution", "runs/[runId]", "auth/register", "workspaces", "workspaces/[workspaceId]/directory", "workspaces/[workspaceId]/directory/select", "workspaces/[workspaceId]/tasks", "workspaces/[workspaceId]/tasks/[taskId]", "workspaces/[workspaceId]/tasks/[taskId]/messages", "workspaces/[workspaceId]/tasks/[taskId]/runs", "workspaces/[workspaceId]/tasks/[taskId]/title"):
             destination = web / "app/api" / route
-            destination.mkdir(parents=True)
+            destination.mkdir(parents=True, exist_ok=True)
             shutil.copyfile(ROOT / "apps/web/src/app/api" / route / "route.ts", destination / "route.ts")
         (web / "app/api/auth/me").mkdir(parents=True)
         shutil.copyfile(
@@ -209,13 +209,38 @@ try:
                     time.sleep(0.5)
             else:
                 raise RuntimeError("Temporary service readiness timeout")
+        browser_fixture = {}
+        if os.environ.get("BROWSER_TEST_SCRIPT") == "week4-recovery.mjs":
+            # 仅隔离夹具：模拟已退出执行者留下的持久化状态，不向生产增加测试接口。
+            import json
+            from app.models import Conversation, ConversationExecutionSlot, AgentRun, Message
+            from app.services.runtime.execution_process import host_identity
+            from sqlalchemy import select
+            def create(path, body):
+                request = urllib.request.Request(
+                    "http://localhost:13000/api" + path,
+                    data=json.dumps(body).encode(),
+                    headers={"Origin": "http://localhost:13000", "Content-Type": "application/json"},
+                )
+                with urllib.request.urlopen(request, timeout=30) as response:
+                    return json.load(response)
+            workspace = create("/workspaces", {"name": "异常恢复验收"})
+            task = create(f"/workspaces/{workspace['external_id']}/tasks", {"title": "异常退出的任务"})
+            dead = subprocess.Popen([sys.executable, "-c", "pass"])
+            dead.wait(timeout=10)
+            with Session(engine) as session, session.begin():
+                conversation = session.scalar(select(Conversation).where(Conversation.external_id == task['conversation_id']))
+                session.add(ConversationExecutionSlot(conversation_id=conversation.id, owner_token='c' * 32, owner_host_id=host_identity(), owner_pid=dead.pid))
+                session.add(AgentRun(conversation_id=conversation.id, status='running', owner_host_id=host_identity(), owner_pid=dead.pid))
+                session.add(Message(conversation_id=conversation.id, role='user', content='异常退出前已持久化的消息'))
+            browser_fixture = {"RECOVERY_TASK": json.dumps(task)}
         print("Isolated services ready; starting browser verification.", flush=True)
         try:
             subprocess.run(
                 [NODE, str(ROOT / "apps/web/test/browser" / (os.environ.get("BROWSER_TEST_SCRIPT") or ("local-mode.mjs" if test_mode == "local" else "login-page.mjs")))],
                 check=True,
                 timeout=720,
-                env=os.environ | {"AUTH_TEST_BASE_URL": "http://localhost:13000", "BROWSER_APP_MODE": test_mode, "BROWSER_TEST_DIRECTORY": env.get("BROWSER_TEST_DIRECTORY", "")},
+                env=os.environ | browser_fixture | {"AUTH_TEST_BASE_URL": "http://localhost:13000", "BROWSER_APP_MODE": test_mode, "BROWSER_TEST_DIRECTORY": env.get("BROWSER_TEST_DIRECTORY", "")},
             )
         finally:
             for process in reversed(processes):

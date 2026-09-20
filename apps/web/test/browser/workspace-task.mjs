@@ -280,12 +280,13 @@ try {
         await openDraft(page, workspace.name);
         await send(page, '保留已有历史');
         const used = (await (await page.request.get(`${base}${collection}`)).json()).items[0];
-        const rejected = await remove(used.external_id);
-        assert.equal(rejected.status, 409);
-        assert.equal(JSON.parse(rejected.body).code, 'task_has_history');
-        assert.equal((await page.request.get(`${base}${collection}/${used.external_id}`)).status(), 200);
-        await page.reload();
-        await page.getByText('保留已有历史', { exact: true }).waitFor();
+        for (let attempt = 0; attempt < 40; attempt++) {
+            const response = await page.request.get(`${base}/api/sessions/${used.conversation_id}/execution`);
+            if (!(await response.json()).occupied) break;
+            await new Promise(resolve => setTimeout(resolve, 150));
+        }
+        assert.equal((await remove(used.external_id)).status, 204);
+        assert.equal((await page.request.get(`${base}${collection}/${used.external_id}`)).status(), 404);
     });
     console.log(`Task conversation: ${passed} passed, ${failures.length} failed`);
     if (failures.length) process.exitCode = 1;

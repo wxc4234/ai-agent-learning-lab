@@ -14,6 +14,12 @@ from app.services.auth.login_session_resolver import InvalidLoginSessionError
 from app.repositories.chat.conversation_repository import (
     ConversationNotAccessibleError,
 )
+from app.services.runtime.execution_budget import (
+    ExecutionCapacityExceededError,
+)
+
+from app.services.runtime.conversation_execution_service import ConversationBusyError
+from app.services.runtime.execution_recovery import ExecutionRecoveryRefusedError
 
 
 logger = logging.getLogger(__name__)
@@ -81,6 +87,27 @@ class ChatRoute(APIRoute):
                     404,
                     "conversation_not_accessible",
                     "会话不存在或不可访问",
+                )
+
+            except ExecutionRecoveryRefusedError:
+                return _error_response(
+                    409,
+                    "execution_recovery_refused",
+                    "无法确认原执行进程已退出，未解除占用",
+                )
+
+            except ConversationBusyError:
+                return _error_response(
+                    409,
+                    "conversation_busy",
+                    "该会话仍在执行或收尾，请稍后再试",
+                )
+
+            except ExecutionCapacityExceededError:
+                return _error_response(
+                    503,
+                    "execution_capacity_exceeded",
+                    "当前执行数量已达上限，请稍后再试",
                 )
 
             except RequestValidationError:

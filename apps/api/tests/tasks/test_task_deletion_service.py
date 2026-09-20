@@ -1,4 +1,4 @@
-"""空任务删除：真实提交、回滚和 PostgreSQL 外键锁竞争。"""
+"""任务删除：真实提交、回滚和 PostgreSQL 外键锁竞争。"""
 
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import FrozenInstanceError, asdict
@@ -10,7 +10,7 @@ from sqlalchemy import event, select, text
 from sqlalchemy.exc import DBAPIError
 from sqlalchemy.orm import Session
 
-from app.models import AgentRun, AgentRunEvent, Conversation, Message, Task, User, Workspace
+from app.models import AgentRun, AgentRunEvent, Conversation, ConversationExecutionSlot, Message, Task, User, Workspace
 from app.repositories.workspace.workspace_repository import WorkspaceNotAccessibleError
 from app.services.tasks import task_deletion_service as service
 
@@ -52,6 +52,8 @@ def assert_pair(engine, target, exists=True):
 
 
 def child(kind, target):
+    if kind == 'slot':
+        return ConversationExecutionSlot(conversation_id=target['conversation_pk'], owner_token='a' * 32)
     if kind == 'message':
         return Message(conversation_id=target['conversation_pk'], role='user', content='保留')
     return AgentRun(conversation_id=target['conversation_pk'], status='running')
@@ -98,7 +100,7 @@ def test_inaccessible_or_inconsistent_resources_do_not_delete(engine, target, ki
         assert (reader.get(Conversation, target['conversation_pk']) is None) is (kind == 'missing-conversation')
 
 
-@pytest.mark.parametrize('kind', ['message', 'running', 'done', 'aborted', 'error', 'unknown'])
+@pytest.mark.parametrize('kind', ['running', 'done', 'aborted', 'error', 'unknown'])
 def test_any_message_or_run_blocks_deletion_and_preserves_events(engine, target, kind):
     with Session(engine) as session, session.begin():
         row = child('message' if kind == 'message' else 'run', target)
@@ -110,7 +112,7 @@ def test_any_message_or_run_blocks_deletion_and_preserves_events(engine, target,
         else:
             session.add(row)
     with Session(engine) as session:
-        with pytest.raises(service.TaskHasHistoryError):
+        with pytest.raises(service.TaskRunUnsettledError):
             remove(session, target)
         assert session.is_active and not session.in_transaction()
     assert_pair(engine, target)
@@ -183,13 +185,13 @@ def wait_for_database_block(engine, pid):
     pytest.fail('expected PostgreSQL lock wait was not observed')
 
 
-@pytest.mark.parametrize('kind', ['message', 'run'])
+@pytest.mark.parametrize('kind', ['message', 'run', 'slot'])
 @pytest.mark.parametrize('rollback', [False, True])
 def test_locked_deletion_blocks_child_insert_until_commit_or_rollback(engine, target, kind, rollback):
     locked, release, inserting = Event(), Event(), Event()
     writer_pid = []
     def pause_after_lock(connection, cursor, statement, parameters, context, executemany):
-        if statement.startswith('SELECT messages.id'):
+        if statement.startswith('SELECT agent_runs.id'):
             locked.set()
             assert release.wait(8)
             if rollback:
@@ -233,7 +235,7 @@ def test_locked_deletion_blocks_child_insert_until_commit_or_rollback(engine, ta
     assert_pair(engine, target, rollback)
 
 
-@pytest.mark.parametrize('kind', ['message', 'run'])
+@pytest.mark.parametrize('kind', ['message', 'run', 'slot'])
 def test_child_insert_wins_then_deletion_rechecks_history(engine, target, kind):
     waiting = Event()
     deletion_pid = []
@@ -244,8 +246,11 @@ def test_child_insert_wins_then_deletion_rechecks_history(engine, target, kind):
     def deletion():
         with Session(engine) as session:
             event.listen(session, 'after_begin', lambda s, tx, conn: conn.execute(text("SET LOCAL statement_timeout = '8s'")))
-            with pytest.raises(service.TaskHasHistoryError):
+            if kind == 'message':
                 remove(session, target)
+            else:
+                with pytest.raises(service.ConversationBusyError if kind == 'slot' else service.TaskRunUnsettledError):
+                    remove(session, target)
             assert not session.in_transaction()
     with Session(engine) as writer, ThreadPoolExecutor(max_workers=1) as pool:
         writer.add(child(kind, target))
@@ -260,4 +265,84 @@ def test_child_insert_wins_then_deletion_rechecks_history(engine, target, kind):
             writer.commit()
             event.remove(engine, 'before_cursor_execute', capture)
         deleting.result(timeout=10)
+    assert_pair(engine, target, kind != 'message')
+
+
+@pytest.mark.parametrize('status', [None, 'running', 'done', 'error', 'aborted'])
+def test_slot_blocks_empty_or_terminal_task_without_reading_token(engine, target, status):
+    # 占用早于 Run 创建，或终态已写入但执行仍在收尾，都必须拒绝。
+    with Session(engine) as writer, writer.begin():
+        writer.add(child('slot', target))
+        if status is not None:
+            writer.add(AgentRun(conversation_id=target['conversation_pk'], status=status))
+    statements = []
+    def capture(connection, cursor, statement, parameters, context, executemany):
+        statements.append(statement)
+    event.listen(engine, 'before_cursor_execute', capture)
+    try:
+        with Session(engine) as session:
+            with pytest.raises(service.ConversationBusyError) as caught:
+                remove(session, target)
+            assert caught.value.code == 'conversation_busy'
+            assert session.is_active and not session.in_transaction()
+    finally:
+        event.remove(engine, 'before_cursor_execute', capture)
+    assert not any('owner_token' in sql or sql.startswith('DELETE') for sql in statements)
+    assert_pair(engine, target)
+    with Session(engine) as reader:
+        assert reader.get(ConversationExecutionSlot, target['conversation_pk']).owner_token == 'a' * 32
+        assert reader.scalar(select(AgentRun.status)) == status
+
+
+def test_real_release_allows_empty_task_deletion_in_local_mode(engine, target, monkeypatch):
+    from app.config import settings
+    from app.services.runtime.conversation_execution_service import (
+        acquire_conversation_execution,
+        release_conversation_execution,
+    )
+    monkeypatch.setattr(settings, 'app_mode', 'local')
+    with Session(engine) as session:
+        ownership = acquire_conversation_execution(
+            session, user_id=target['user_id'], session_id=target['conversation_id'],
+        )
+        with pytest.raises(service.ConversationBusyError):
+            remove(session, target)
+        assert release_conversation_execution(
+            session, user_id=target['user_id'], session_id=target['conversation_id'],
+            owner_token=ownership.owner_token,
+        )
+        remove(session, target)
+    assert_pair(engine, target, False)
+
+
+def test_unauthorized_deletion_does_not_query_slot(engine, target):
+    with Session(engine) as writer, writer.begin():
+        writer.add(child('slot', target))
+    statements = []
+    def capture(connection, cursor, statement, parameters, context, executemany):
+        statements.append(statement)
+    event.listen(engine, 'before_cursor_execute', capture)
+    try:
+        with Session(engine) as session:
+            with pytest.raises(WorkspaceNotAccessibleError):
+                remove(session, target, user_id=target['other_id'])
+            assert not session.in_transaction()
+    finally:
+        event.remove(engine, 'before_cursor_execute', capture)
+    assert not any('conversation_execution_slots' in sql for sql in statements)
+    assert_pair(engine, target)
+
+
+def test_slot_query_database_failure_rolls_back_and_does_not_mean_idle(engine, target):
+    def fail(connection, cursor, statement, parameters, context, executemany):
+        if statement.startswith('SELECT conversation_execution_slots.conversation_id'):
+            connection.execute(text('SELECT * FROM missing_slot_query_table'))
+    event.listen(engine, 'before_cursor_execute', fail)
+    try:
+        with Session(engine) as session:
+            with pytest.raises(DBAPIError):
+                remove(session, target)
+            assert session.is_active and not session.in_transaction()
+    finally:
+        event.remove(engine, 'before_cursor_execute', fail)
     assert_pair(engine, target)

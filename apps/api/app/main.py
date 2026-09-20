@@ -1,9 +1,12 @@
 import asyncio
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from app.local_boundary import local_access_boundary
 
+from app.config import settings
+from app.services.runtime.execution_budget import ExecutionBudget
 from app.database import check_database_ready
 from app.routers.chat.chat import router as chat_router
 from app.routers.chat.conversation import router as conversation_router
@@ -19,14 +22,19 @@ from app.services.runtime.run_cancellation import close_cancellation_broker
 
 
 @asynccontextmanager
-async def lifespan(_: FastAPI):
-    # 启动只读检查迁移版本；失败时不接受请求，不隐式修改数据库结构。
+async def lifespan(application: FastAPI) -> AsyncGenerator[None, None]:
+    # 迁移检查成功后才装配共享预算；每次启动使用新实例。
     await asyncio.to_thread(check_database_ready)
-
+    application.state.execution_budget = ExecutionBudget(
+        capacity=settings.agent_max_concurrent_executions,
+    )
     try:
         yield
     finally:
-        await close_cancellation_broker()
+        try:
+            await close_cancellation_broker()
+        finally:
+            del application.state.execution_budget
 
 
 # 将生命周期交给 FastAPI，确保启动和关闭资源的时机集中管理。

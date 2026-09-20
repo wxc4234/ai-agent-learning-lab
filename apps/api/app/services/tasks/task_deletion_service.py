@@ -1,24 +1,25 @@
-"""Task 删除事务：当前只支持没有消息和运行记录的空任务。"""
+"""Task 删除事务：拒绝执行占用及未结束运行，原子清理任务历史。"""
 
 from dataclasses import dataclass
 
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
-from app.models import AgentRun, Conversation, Message, Task
+from app.models import AgentRun, AgentRunEvent, Conversation, ConversationExecutionSlot, Message, Task
 from app.repositories.workspace.workspace_repository import (
     WorkspaceNotAccessibleError,
     require_owned_workspace_for_update,
 )
+from app.services.runtime.conversation_execution_service import ConversationBusyError
 
 
-class TaskHasHistoryError(Exception):
-    """任务已有消息或运行记录，不满足当前删除范围。"""
+class TaskRunUnsettledError(Exception):
+    """运行状态未确认结束，拒绝删除。"""
 
-    code = "task_has_history"
+    code = "task_run_unsettled"
 
     def __init__(self) -> None:
-        super().__init__("当前仅支持删除没有消息和运行记录的空任务")
+        super().__init__("存在未确认结束的运行，暂不能删除")
 
 
 @dataclass(frozen=True)
@@ -37,7 +38,7 @@ def delete_workspace_task(
     workspace_id: str,
     task_id: str,
 ) -> TaskDeletionResult:
-    """拥有一次删除事务；当前拒绝所有已有消息或 Run 的任务。"""
+    """拥有一次删除事务；在会话锁内验证执行停止，再原子删除历史。"""
 
     # 与创建服务保持一致：不能接管或回滚调用方已有事务。
     if session.in_transaction():
@@ -81,24 +82,30 @@ def delete_workspace_task(
             # 缺失会话或归属错配时拒绝，不借删除服务修复异常数据。
             raise WorkspaceNotAccessibleError()
 
-        # 必须在会话行锁取得后查询，不能使用加锁前的检查结果。
-        # 查到任意一条即可拒绝，不需要加载完整历史。
-        message_id = session.scalar(
-            select(Message.id)
-            .where(Message.conversation_id == conversation.id)
-            .limit(1)
+        # 获取/释放占用也先锁会话；在同一行锁内检查才能与它们串行。
+        # 占用可能早于 Run 创建，也可能在 Run 终态后继续收尾。
+        # 只读取是否存在，不读取 token，不按时间推断执行已停止。
+        occupied_conversation_id = session.scalar(
+            select(ConversationExecutionSlot.conversation_id)
+            .where(ConversationExecutionSlot.conversation_id == conversation.id)
         )
+        if occupied_conversation_id is not None:
+            # 交给统一异常分支回滚本次事务，保留任务和原占用。
+            raise ConversationBusyError()
 
-        run_id = session.scalar(
-            select(AgentRun.id)
-            .where(AgentRun.conversation_id == conversation.id)
-            .limit(1)
-        )
+        # 锁定 Run，与取消/终态写入串行；未知状态与缺结束时间均保守拒绝。
+        runs = session.scalars(
+            select(AgentRun).where(AgentRun.conversation_id == conversation.id)
+            .order_by(AgentRun.id).with_for_update()
+        ).all()
+        if any(run.status not in {'done', 'error', 'aborted'} or run.finished_at is None for run in runs):
+            raise TaskRunUnsettledError()
 
-        # 不只检查 running：取消接口写入终态后，协程可能仍在收尾。
-        # 本课拒绝所有状态的 Run，也不清理其关联事件。
-        if message_id is not None or run_id is not None:
-            raise TaskHasHistoryError()
+        # 按外键依赖清理，所有历史与 Task 共用同一个提交边界。
+        run_ids = select(AgentRun.id).where(AgentRun.conversation_id == conversation.id)
+        session.execute(delete(AgentRunEvent).where(AgentRunEvent.run_id.in_(run_ids)))
+        session.execute(delete(AgentRun).where(AgentRun.conversation_id == conversation.id))
+        session.execute(delete(Message).where(Message.conversation_id == conversation.id))
 
         # 提交前复制公开字段，避免删除后或提交后读取 ORM 状态。
         result = TaskDeletionResult(
@@ -121,7 +128,7 @@ def delete_workspace_task(
             .execution_options(synchronize_session=False)
         )
 
-        # 两次 DELETE 属于同一事务，中间不能提交。
+        # 历史与任务的全部 DELETE 属于同一事务，中间不能提交。
         # 第二次删除或提交前发生异常时，第一次删除也会回滚。
         session.commit()
 

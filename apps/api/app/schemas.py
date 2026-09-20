@@ -56,6 +56,24 @@ class ConversationHistoryResponse(BaseModel):
     messages: list[ConversationMessage]
 
 
+class ConversationExecutionStatusResponse(BaseModel):
+    """会话执行占用的公开快照，不包含释放凭证。"""
+
+    session_id: str = Field(
+        description="当前查询的会话标识",
+    )
+
+    occupied: bool = Field(
+        description="查询时是否存在执行占用，不代表执行进程一定存活",
+    )
+
+    # 必须显式返回该字段；没有占用时返回 JSON null。
+    # 时间仅供观察，不能据此自动过期或强制释放。
+    acquired_at: datetime | None = Field(
+        description="占用获取时间；没有占用时为 null",
+    )
+
+
 class CancelRunRequest(BaseModel):
     """请求停止一次运行时携带的原因。"""
 

@@ -1,13 +1,10 @@
-import asyncio
-
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 from openai import OpenAIError
 
-from app.repositories.runtime.run_repository import create_agent_run
-from app.schemas import ChatRequest, ChatResponse
+from app.schemas import ChatResponse
 from app.services.chat.chat_service import create_chat_reply, stream_chat_reply
-from app.dependencies import CurrentUser
+from app.routers.chat.chat_execution import CurrentChatExecution
 from app.routers.chat.chat_boundary import ChatRoute
 
 # tag 只影响 Swagger 分组，让前端联调时按业务而非文件查找接口。
@@ -30,14 +27,14 @@ def chat_help():
     response_model=ChatResponse,
 )
 async def chat(
-    request: ChatRequest,
-    current_user: CurrentUser,
+    execution: CurrentChatExecution,
 ) -> ChatResponse:
     try:
         reply = await create_chat_reply(
-            user_id=current_user.id,
-            session_id=request.session_id,
-            prompt=request.prompt,
+            user_id=execution.user_id,
+            session_id=execution.body.session_id,
+            prompt=execution.body.prompt,
+            execution_threads=execution.threads,
         )
     except OpenAIError as error:
         raise HTTPException(
@@ -53,23 +50,20 @@ async def chat(
 
 @router.post("/chat/stream")
 async def chat_stream(
-    request: ChatRequest,
-    current_user: CurrentUser,
+    execution: CurrentChatExecution,
 ) -> StreamingResponse:
-    run_id = await asyncio.to_thread(
-        create_agent_run,
-        user_id=current_user.id,
-        session_id=request.session_id,
-        prompt=request.prompt,
+    # request 级依赖已取得占用，忙请求不会创建运行。
+    run_id = await execution.start_run()
+    execution.stream = stream_chat_reply(
+        user_id=execution.user_id,
+        session_id=execution.body.session_id,
+        prompt=execution.body.prompt,
+        run_id=run_id,
+        execution_threads=execution.threads,
+        monitors=execution.monitors,
     )
-
     return StreamingResponse(
-        stream_chat_reply(
-            user_id=current_user.id,
-            session_id=request.session_id,
-            prompt=request.prompt,
-            run_id=run_id,
-        ),
+        execution.stream,
         media_type="application/x-ndjson",
         headers={
             "Cache-Control": "no-store",

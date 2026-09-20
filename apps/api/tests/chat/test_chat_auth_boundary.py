@@ -1,3 +1,4 @@
+from app.services.runtime.execution_budget import ExecutionBudget
 """Chat authentication must finish before creating a run or invoking a model."""
 
 from unittest.mock import AsyncMock, Mock
@@ -8,13 +9,14 @@ from fastapi.testclient import TestClient
 
 from app.dependencies import require_current_user
 from app.services.auth.authentication_service import AuthenticatedUser
-from app.routers.chat import chat
+from app.routers.chat import chat, chat_execution
 from app.services.auth.login_session_resolver import InvalidLoginSessionError
 
 
 @pytest.fixture
-def boundary(monkeypatch):
+def boundary(monkeypatch, execution_stub):
     application = FastAPI()
+    application.state.execution_budget = ExecutionBudget(capacity=2)
     application.include_router(chat.router)
     create_run = Mock(return_value=123)
     reply = AsyncMock(return_value="测试回复")
@@ -24,7 +26,7 @@ def boundary(monkeypatch):
         stream_calls.append(kwargs)
         yield '{"type":"RUN_FINISHED"}\n'
 
-    monkeypatch.setattr(chat, "create_agent_run", create_run)
+    monkeypatch.setattr(chat_execution, "create_agent_run", create_run)
     monkeypatch.setattr(chat, "create_chat_reply", reply)
     monkeypatch.setattr(chat, "stream_chat_reply", stream)
     with TestClient(application) as client:

@@ -68,6 +68,70 @@ async function absent(page, task) {
     assert.equal((await page.request.get(`${base}${taskPath(task)}`)).status(), 404);
 }
 try {
+    await scenario('delete UI execution conflict preserves task and allows manual retry', async page => {
+        const workspace = await project(page, '执行占用删除验收');
+        const task = await emptyTask(page, workspace, '保留执行中的任务');
+        await openTask(page, task);
+        const runner = await page.context().newPage();
+        runner.setDefaultTimeout(30000);
+        await runner.bringToFront();
+        await openTask(runner, task);
+        await runner.waitForFunction(() => {
+            const input = document.querySelector('textarea');
+            return input && !input.disabled;
+        });
+        const started = runner.waitForResponse(r => r.url().endsWith('/api/chat/stream'));
+        await runner.getByLabel('你的问题').fill('[cancel-held] 保持执行占用');
+        await runner.getByLabel('你的问题').press('Enter');
+        assert.equal((await started).status(), 200);
+        console.log('READY execution started');
+        await page.bringToFront();
+        await page.getByRole('button', { name: '展开详情', exact: true }).click();
+        const execution = page.getByRole('region', { name: '会话执行占用' });
+        await execution.getByRole('button', { name: '查询状态', exact: true }).click();
+        await execution.getByText('查询时存在执行占用', { exact: true }).waitFor();
+        const recoveryRefused = page.waitForResponse(r => r.url().endsWith('/execution/recover'));
+        await execution.getByRole('button', { name: '检查并恢复异常运行', exact: true }).click();
+        assert.equal((await recoveryRefused).status(), 409);
+        await execution.getByText('无法确认原执行进程已退出，未解除占用。进程存活、身份未知或非本机执行时均会拒绝。', { exact: true }).waitFor();
+        await page.getByRole('button', { name: '收起详情', exact: true }).click();
+        await page.getByLabel('你的问题').fill('删除拒绝后保留草稿');
+        let requests = 0;
+        page.on('request', request => { if (request.method() === 'DELETE') requests++; });
+        const rejected = page.waitForResponse(r => r.request().method() === 'DELETE');
+        await remove(page, task);
+        console.log('READY delete clicked');
+        const response = await rejected;
+        assert.equal(response.status(), 409);
+        assert.equal((await response.json()).code, 'conversation_busy');
+        assert.equal(response.headers()['cache-control'], 'no-store');
+        await deletion(page).getByText('该任务仍有执行占用，暂不能删除。请等待执行及收尾完成后重试。', { exact: true }).waitFor();
+        assert.equal(await deletionDisabled(page, task), false);
+        assert.equal(new URL(page.url()).searchParams.get('task'), task.external_id);
+        assert.equal(await page.getByLabel('你的问题').inputValue(), '删除拒绝后保留草稿');
+        assert.equal((await page.request.get(`${base}${taskPath(task)}`)).status(), 200);
+        await page.screenshot({ path: `${artifacts}/delete-busy-1366.png`, animations: 'disabled' });
+        await page.setViewportSize({ width: 1920, height: 1080 });
+        await page.screenshot({ path: `${artifacts}/delete-busy-1920.png`, animations: 'disabled' });
+        assert.equal(requests, 1);
+
+        const cancelled = runner.waitForResponse(r => /\/api\/runs\/\d+\/cancel$/.test(r.url()));
+        await runner.getByRole('button', { name: '停止生成', exact: true }).click();
+        assert.equal((await cancelled).status(), 204);
+        // 轮询只读占用，不把取消响应直接当成执行已停止。
+        let released = false;
+        for (let attempt = 0; attempt < 40; attempt++) {
+            const current = await page.request.get(`${base}/api/sessions/${task.conversation_id}/execution`);
+            assert.equal(current.status(), 200);
+            if (!(await current.json()).occupied) { released = true; break; }
+            await new Promise(resolve => setTimeout(resolve, 150));
+        }
+        assert.ok(released);
+        await remove(page, task);
+        await deletion(page).getByText('任务已删除。', { exact: true }).waitFor();
+        assert.equal(requests, 2);
+        await absent(page, task);
+    });
     await scenario('delete UI confirm, cancel, current task and keyboard', async page => {
         const workspace = await project(page, '删除界面基本流程');
         const task = await emptyTask(page, workspace, '待删除空任务');
@@ -110,19 +174,25 @@ try {
         }
     });
 
-    await scenario('delete UI history rejected and task remains usable', async page => {
+    await scenario('delete UI history deleted after execution ends', async page => {
         const workspace = await project(page, '删除历史保护');
         const task = await emptyTask(page, workspace, '历史保护任务');
         await openTask(page, task);
         await send(page, '保留这条历史消息');
         // 已有 Task 的首次发送不走草稿创建，不要求触发标题总结。
         const current = (await (await page.request.get(`${base}/api/workspaces/${workspace.external_id}/tasks`)).json()).items[0];
+        // 完成 UI 终态不等于服务已释放占用；测试显式等待只读快照。
+        for (let attempt = 0; attempt < 40; attempt++) {
+            const response = await page.request.get(`${base}/api/sessions/${task.conversation_id}/execution`);
+            if (!(await response.json()).occupied) break;
+            await new Promise(resolve => setTimeout(resolve, 150));
+        }
         await remove(page, current);
-        await deletion(page).getByText('该任务已有消息或运行记录，目前只支持删除空任务。', { exact: true }).waitFor();
-        assert.equal(new URL(page.url()).searchParams.get('task'), task.external_id);
-        assert.equal((await page.request.get(`${base}${taskPath(task)}`)).status(), 200);
+        await deletion(page).getByText('任务已删除。', { exact: true }).waitFor();
+        assert.equal(new URL(page.url()).searchParams.has('task'), false);
+        await absent(page, task);
         await page.reload();
-        await page.getByText('保留这条历史消息', { exact: true }).waitFor();
+        assert.equal(await page.getByText('保留这条历史消息', { exact: true }).count(), 0);
     });
 
     for (const destination of ['task', 'draft']) {

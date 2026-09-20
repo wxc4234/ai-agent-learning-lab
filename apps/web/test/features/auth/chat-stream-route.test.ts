@@ -82,7 +82,7 @@ test("forwards only session cookie and preserves unconsumed stream and signal", 
     assert.equal(cancelled, true);
 });
 
-for (const status of [400, 401, 403, 404, 415, 422, 429, 500, 502, 503, 504, 201, 302, 418]) {
+for (const status of [400, 401, 403, 404, 409, 415, 422, 429, 500, 502, 503, 504, 201, 302, 418]) {
     test(`sanitizes upstream ${status} and cancels its body`, async (t) => {
         let cancelled = false;
         const body = new ReadableStream({ cancel() { cancelled = true; } });
@@ -120,3 +120,24 @@ for (const aborted of [false, true]) {
         await safeError(await POST(request({}, "{}", controller.signal)), aborted ? 499 : 502);
     });
 }
+
+
+test("busy response is safe, retains 409 and never retries", async (t) => {
+    const fetch = t.mock.method(globalThis, "fetch", async () => new Response(
+        JSON.stringify({ code: "SECRET", owner_token: "SECRET" }), { status: 409 },
+    ));
+    const response = await POST(request());
+    assert.equal(response.status, 409);
+    assert.equal(response.headers.get("cache-control"), "no-store");
+    assert.equal(await response.text(), "该会话仍在执行或收尾，请稍后再试");
+    assert.equal(fetch.mock.callCount(), 1);
+});
+
+
+test('capacity failure uses safe busy message without upstream details', async (t) => {
+    const mock = t.mock.method(globalThis, 'fetch', async () => new Response('PRIVATE budget diagnostics', { status: 503 }));
+    const response = await POST(request());
+    assert.equal(response.status, 503);
+    assert.equal(await response.text(), '执行服务暂时繁忙或不可用，请稍后再试');
+    assert.equal(mock.mock.callCount(), 1);
+});

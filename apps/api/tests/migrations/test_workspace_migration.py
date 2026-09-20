@@ -38,6 +38,10 @@ def metadata_before_tasks():
         if key.parent.name == "task_id":
             conversation.foreign_keys.remove(key)
     conversation._columns.remove(conversation.c.task_id)
+    # 历史修订不包含后续添加的执行进程字段；仅裁剪副本，不改当前 ORM。
+    runs = snapshot.tables['agent_runs']
+    for name in ('owner_host_id', 'owner_pid'):
+        runs._columns.remove(runs.c[name])
     return snapshot
 
 

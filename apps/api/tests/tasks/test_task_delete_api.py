@@ -1,4 +1,4 @@
-"""空任务删除 HTTP：真实数据库事实、拒绝边界与提交后响应失败。"""
+"""任务删除 HTTP：真实数据库事实、拒绝边界与提交后响应失败。"""
 
 import pytest
 from sqlalchemy import select, text
@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from app import dependencies
 from app.config import settings
-from app.models import AgentRun, AgentRunEvent, Conversation, Message, Task, User, Workspace
+from app.models import AgentRun, AgentRunEvent, Conversation, ConversationExecutionSlot, Message, Task, User, Workspace
 from app.routers.workspace import workspace
 from tests.local.test_local_mode import HEADERS
 from tests.tasks.test_task_workspace import task
@@ -113,7 +113,7 @@ def test_inaccessible_resources_share_404(local_client, target, engine, kind):
     assert_stored(engine, created)
 
 
-@pytest.mark.parametrize('kind', ['message', 'running', 'done', 'error', 'aborted', 'unknown'])
+@pytest.mark.parametrize('kind', ['running', 'done', 'error', 'aborted', 'unknown'])
 def test_history_conflict_preserves_all_records(local_client, target, engine, kind):
     created, path = task(local_client, target)
     with Session(engine) as session, session.begin():
@@ -125,7 +125,7 @@ def test_history_conflict_preserves_all_records(local_client, target, engine, ki
             session.add(run)
             session.flush()
             session.add(AgentRunEvent(run_id=run.id, event_type='PRESERVE', payload={'content': 'PRIVATE'}))
-    binding.safe(local_client.delete(path, headers=HEADERS), 409, 'task_has_history')
+    binding.safe(local_client.delete(path, headers=HEADERS), 409, 'task_run_unsettled')
     assert_stored(engine, created)
     with Session(engine) as reader:
         if kind == 'message':
@@ -185,3 +185,33 @@ def test_openapi_declares_no_body_and_empty_success(local_client):
     assert 'requestBody' not in operation
     assert 'content' not in operation['responses']['204']
     assert {'403', '404', '409', '422', '500'} <= operation['responses'].keys()
+
+
+@pytest.mark.parametrize('status', [None, 'running', 'done', 'error', 'aborted'])
+def test_execution_slot_returns_safe_conflict_and_preserves_task(local_client, target, engine, status):
+    created, path = task(local_client, target)
+    with Session(engine) as session, session.begin():
+        conversation = session.scalar(select(Conversation).where(Conversation.external_id == created['conversation_id']))
+        conversation_pk = conversation.id
+        session.add(ConversationExecutionSlot(conversation_id=conversation_pk, owner_token='a' * 32))
+        if status is not None:
+            session.add(AgentRun(conversation_id=conversation_pk, status=status))
+    response = local_client.delete(path, headers=HEADERS)
+    binding.safe(response, 409, 'conversation_busy')
+    assert response.json() == {
+        'code': 'conversation_busy',
+        'message': '该任务仍有执行占用，请等待执行及收尾完成后重试',
+    }
+    assert_stored(engine, created)
+    with Session(engine) as session, session.begin():
+        slot = session.get(ConversationExecutionSlot, conversation_pk)
+        assert slot.owner_token == 'a' * 32
+        session.delete(slot)
+    # 占用消失后仍需结束证据：空任务可删，这些缺 finished_at 的运行继续拒绝。
+    response = local_client.delete(path, headers=HEADERS)
+    if status is None:
+        binding.safe(response, 204)
+        assert_stored(engine, created, False)
+    else:
+        binding.safe(response, 409, 'task_run_unsettled')
+        assert_stored(engine, created)
