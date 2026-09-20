@@ -17,6 +17,10 @@ class BrowserDecisionMaker:
         self.prompt = str(kwargs.get("messages", ""))
 
     async def __call__(self, observations):
+        if "[readonly-" in self.prompt:
+            from readonly_model import readonly_decision
+
+            return readonly_decision(self.prompt, observations)
         if "[cancel-" in self.prompt and not observations:
             return ToolAction(
                 model_usage=ModelUsage(input_tokens=1, output_tokens=1, total_tokens=2),

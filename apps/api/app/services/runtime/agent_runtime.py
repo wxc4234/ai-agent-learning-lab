@@ -9,8 +9,10 @@ from typing import Literal, TypeAlias
 from pydantic import ValidationError
 
 from app.services.runtime.token_budget import evaluate_token_budget
-from app.tools.registry import TOOL_REGISTRY
+from app.tools.context import ToolExecutionContext
+from app.tools.registry import TOOL_REGISTRY, ToolContextRequiredError
 from app.services.runtime.execution_threads import ExecutionThreads
+from app.tools.errors import SafeToolExecutionError
 
 
 @dataclass(frozen=True, slots=True)
@@ -243,10 +245,12 @@ async def stream_agent_loop(
     decide: DecisionMaker,
     *,
     max_steps: int = 5,
-    # None 表示保持原有行为，不启用预算
+    # None 表示保持原有行为，不启用预算。
     max_total_tokens: int | None = None,
-    # 由外层执行作用域提供；Runtime 使用它，但不负责关闭
+    # 由外层执行作用域提供；Runtime 使用它，但不负责关闭。
     execution_threads: ExecutionThreads | None = None,
+    # 由服务端授权链路构造，不从模型 arguments 中读取。
+    tool_context: ToolExecutionContext | None = None,
 ) -> AsyncIterator[AgentLoopEvent]:
     """逐步执行 Agent Loop，并在关键节点产生领域事件。"""
 
@@ -385,6 +389,22 @@ async def stream_agent_loop(
             yield ToolCallFailed(observation=error_observation)
             continue
 
+        # 参数校验与执行上下文检查是两个独立边界。
+        # 缺失上下文时，不启动线程、不调用执行器。
+        try:
+            tool_definition.require_execution_context(tool_context)
+        except ToolContextRequiredError:
+            error_observation = ToolErrorObservation(
+                tool_call_id=decision.tool_call_id,
+                tool_name=decision.tool_name,
+                code="tool_execution_failed",
+                message="当前调用缺少工具所需的任务执行上下文",
+                details="tool_context_required",
+            )
+            observations.append(error_observation)
+            yield ToolCallFailed(observation=error_observation)
+            continue
+
         # 只从真正调用执行器之前开始计时
         tool_started_at_ns = perf_counter_ns()
 
@@ -396,6 +416,7 @@ async def stream_agent_loop(
                 run_tool_in_thread(
                     tool_definition.execute,
                     validated_arguments,
+                    context=tool_context,
                 ),
                 timeout=tool_definition.timeout_seconds,
             )
@@ -409,6 +430,23 @@ async def stream_agent_loop(
                 code="tool_timeout",
                 message="工具执行超时",
                 details=(f"timeout_seconds={tool_definition.timeout_seconds:g}"),
+                duration_ms=tool_duration_ms,
+            )
+            observations.append(error_observation)
+            yield ToolCallFailed(observation=error_observation)
+            continue
+
+        except SafeToolExecutionError as error:
+            # 只有经过白名单转换的业务错误可以携带公开文案。
+            # 已进入执行器，因此记录 Runtime 实际等待耗时。
+            tool_duration_ms = _elapsed_milliseconds(tool_started_at_ns)
+
+            error_observation = ToolErrorObservation(
+                tool_call_id=decision.tool_call_id,
+                tool_name=decision.tool_name,
+                code="tool_execution_failed",
+                message=error.message,
+                details=error.code,
                 duration_ms=tool_duration_ms,
             )
             observations.append(error_observation)
@@ -469,19 +507,22 @@ async def run_agent_loop(
     max_steps: int = 5,
     max_total_tokens: int | None = None,
     execution_threads: ExecutionThreads | None = None,
+    tool_context: ToolExecutionContext | None = None,
 ) -> AgentLoopResult:
     """消费 Agent 事件流，并返回原有的最终结果。"""
 
-    # 两种调用方式共享同一个跟踪器，不能在这里另建实例。
+    # 两种入口共享同一个线程跟踪器与上下文。
+    # 不在这里重新构造身份，也不另建工具执行作用域。
     async for event in stream_agent_loop(
         decide,
         max_steps=max_steps,
         max_total_tokens=max_total_tokens,
         execution_threads=execution_threads,
+        tool_context=tool_context,
     ):
         if isinstance(event, AgentLoopCompleted):
             return event.result
 
     # 按照事件协议，生成器必须产生 AgentLoopCompleted。
-    # 这里防止未来修改生成器时遗漏终态。
+    # 防止未来修改生成器时遗漏终态。
     raise RuntimeError("Agent Loop 未产生终态事件")

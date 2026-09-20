@@ -42,6 +42,10 @@ from app.services.runtime.tool_event_payloads import (
     build_tool_call_error_payload,
     build_tool_call_result_payload,
 )
+from app.services.runtime.tool_execution_context import (
+    load_tool_execution_context,
+)
+from app.tools.context import ToolExecutionContext
 
 # 用户身份参与缓存定位；访问缓存前仍检查数据库中的会话归属。
 conversations: dict[
@@ -333,6 +337,21 @@ async def stream_chat_reply(
     monitors.append(cancellation_monitor)
 
     try:
+        # 每次运行单独构造，不放入全局变量或会话历史缓存。
+        # 账号模式暂不开放项目文件工具，保持现有聊天能力。
+        tool_context: ToolExecutionContext | None = None
+
+        if settings.app_mode == "local":
+            # user_id 来自服务端身份，session_id 是当前聊天会话。
+            # 同步查询交给本次执行的线程跟踪器，取消等待不等于查询结束。
+            # 查询失败直接进入现有异常处理，不降级继续调用模型。
+            tool_context = await execution_threads.run(
+                load_tool_execution_context,
+                user_id=user_id,
+                conversation_id=session_id,
+            )
+
+        # 先完成上下文授权，再准备历史，避免授权失败留下待处理消息。
         history, messages_to_send = await _prepare_chat_messages(
             user_id=user_id,
             session_id=session_id,
@@ -341,13 +360,15 @@ async def stream_chat_reply(
         )
 
         # _prepare_chat_messages 已把当前 user 追加到 history。
-        # 因此最后一个元素的位置就是本轮开始点
+        # 后续执行失败时，现有回滚逻辑撤销本轮未持久化内容。
         history_checkpoint = len(history) - 1
 
         decision_maker = DeepSeekDecisionMaker(
             client=client,
             model=settings.deepseek_model,
             messages=messages_to_send,
+            # 控制本次模型请求中可见的工具，不把身份写入消息。
+            tool_context=tool_context,
         )
 
         async for event in stream_agent_loop(
@@ -355,6 +376,8 @@ async def stream_chat_reply(
             max_steps=5,
             max_total_tokens=settings.agent_max_total_tokens,
             execution_threads=execution_threads,
+            # 与模型适配器使用同一个对象，保持展示与执行范围一致。
+            tool_context=tool_context,
         ):
             if isinstance(event, ToolCallStarted):
                 payload: dict[str, object] = {

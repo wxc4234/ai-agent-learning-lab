@@ -1,0 +1,69 @@
+# 独立教学执行单元，不与数据库、Redis 共用 Compose 项目。
+name: ai-agent-sandbox-lab
+
+services:
+    probe:
+        # 启动时必须提供镜像摘要，避免同名标签悄悄改变运行内容。
+        image: "${SANDBOX_IMAGE:?请先设置带摘要的 SANDBOX_IMAGE}"
+        platform: linux/arm64
+        pull_policy: never
+
+        # init 负责信号转发及孤儿进程回收。
+        # 它本身不能替代后续对整个容器停止状态的确认。
+        init: true
+        user: "10001:10001"
+
+        # 不提供宿主目录、Docker Socket 或数据库网络访问。
+        network_mode: none
+        read_only: true
+
+        cap_drop:
+            - ALL
+        security_opt:
+            - no-new-privileges:true
+
+        # 有界资源；memory-swap 与 memory 相同，用于禁止额外交换额度。
+        cpus: 0.5
+        mem_limit: 128m
+        memswap_limit: 128m
+        pids_limit: 32
+        shm_size: 8m
+
+        # 只为本课需要的目录提供临时写入空间。
+        # noexec 不是防止解释器读取脚本的安全边界。
+        tmpfs:
+            - "/home/agent:rw,noexec,nosuid,nodev,size=16m,mode=0700,uid=10001,gid=10001"
+            - "/tmp:rw,noexec,nosuid,nodev,size=16m,mode=0700,uid=10001,gid=10001"
+
+        working_dir: /tmp
+
+        # 清空镜像及运行时继承的进程环境，再提供明确白名单。
+        # Python 使用绝对路径，不需要扩大固定 PATH。
+        entrypoint:
+            - /usr/bin/env
+            - -i
+
+        command:
+            - PATH=/usr/bin:/bin
+            - HOME=/home/agent
+            - TMPDIR=/tmp
+            - TMP=/tmp
+            - TEMP=/tmp
+            - LANG=C
+            - LC_ALL=C
+            - XDG_CONFIG_HOME=/home/agent/.config
+            - XDG_CACHE_HOME=/home/agent/.cache
+            - XDG_DATA_HOME=/home/agent/.local/share
+            - XDG_STATE_HOME=/home/agent/.local/state
+            - /usr/local/bin/python
+            - -c
+            - "import time; time.sleep(600)"
+
+        # 当前只运行固定等待程序，十分钟后自动退出。
+        # 后续真实执行器还需要自己的超时、取消和容器回收逻辑。
+        restart: "no"
+        stop_grace_period: 2s
+
+        # 本课不依赖 Docker 日志存储输出，避免引入无界日志文件。
+        logging:
+            driver: none

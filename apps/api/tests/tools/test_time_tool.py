@@ -94,7 +94,9 @@ def test_tool_definition_validates_and_executes_arguments():
 
 
 def test_tool_registry_and_model_tools_are_derived_from_registered_tools():
-    assert TOOLS == [tool.as_model_tool() for tool in REGISTERED_TOOLS]
+    assert TOOLS == [
+        tool.as_model_tool() for tool in REGISTERED_TOOLS if not tool.requires_context
+    ]
     assert TOOL_REGISTRY == {tool.name: tool for tool in REGISTERED_TOOLS}
 
 

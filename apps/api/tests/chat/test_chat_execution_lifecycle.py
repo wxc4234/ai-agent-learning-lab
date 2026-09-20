@@ -19,7 +19,7 @@ from app.repositories.runtime import run_repository
 from app.routers.chat import chat, chat_execution
 from app.services.auth.authentication_service import AuthenticatedUser
 from app.services.chat import chat_service
-from app.services.runtime import conversation_execution_scope
+from app.services.runtime import conversation_execution_scope, tool_execution_context
 from app.services.runtime.agent_runtime import FinalAnswer
 from tests.runtime import test_conversation_execution_service as service_tests
 from tests.runtime.test_conversation_execution_service import tokens
@@ -32,7 +32,7 @@ scope_target = service_tests.target
 @pytest.fixture
 def lab(engine, scope_target, monkeypatch):
     factory = sessionmaker(bind=engine)
-    for module in (conversation_repository, run_repository, conversation_execution_scope, chat_execution):
+    for module in (conversation_repository, run_repository, conversation_execution_scope, chat_execution, tool_execution_context):
         monkeypatch.setattr(module, "SessionLocal", factory)
     app = FastAPI()
     app.state.execution_budget = ExecutionBudget(capacity=2)

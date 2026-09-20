@@ -1749,3 +1749,470 @@ CHROME_EXECUTABLE='/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
 真实PC验收包括异常恢复→用户明确开始新一轮→刷新消息→删除历史任务；另有活跃执行时恢复409和删除409、取消并释放后历史删除成功、正常完成任务删除与未知错误兜底。模拟模型不产生真实API费用。1366×768及1920×1080截图保存在 /private/tmp/agent-ui-preview/output/playwright/week4-recovered-1366.png、week4-resumed-1920.png；原生系统进程退出证据在macOS实测。临时浏览器服务与测试数据库由启动器自动清理。
 
 2026-09-20 Git收尾：按用户要求将第4周累计已验收源码、测试、两次执行身份迁移及对应课程/交接/题库文档统一归档至main并推送origin/main；以推送后的HEAD与远程main一致、工作区干净作为交接条件。本轮仅更新收尾说明，不重复执行已通过的功能测试。下一课在主仓库main的新任务中继续，核心实现恢复学习者亲手编写。
+
+
+## 2026-09-20 第5周 Workspace 路径边界验收
+
+学习者实现 `apps/api/app/services/workspace/workspace_path.py`，核心与参考一致，教练仅补末尾换行；新增 `apps/api/tests/workspace/test_workspace_path.py`。使用项目 Python 3.12 虚拟环境，在 `apps/api` 执行：
+
+```bash
+../../.venv/bin/python -W error -m pytest -xq --tb=short tests/workspace/test_workspace_path.py
+../../.venv/bin/python -W error -m pytest -xq --tb=short tests/workspace tests/tasks tests/local
+../../.venv/bin/python -m ruff check app tests
+```
+
+专项63条通过（1.54s）；受影响领域回归659条通过（46.18s）；全量后端Ruff及仓库 `git diff --check` 通过。首次沙箱内运行53条通过后因127.0.0.1:5432连接被拒绝而停在数据库夹具初始化；放行本机测试连接后完整通过，不是业务断言失败。新增测试的夹具导入先触发Ruff F811，改用项目既有模块引用方式后检查通过。
+
+真实macOS临时文件系统覆盖普通文件/目录、Unicode与空格、内部文件及目录链接、外部链接、同名前缀兄弟目录、断链、循环链接、根目录被改为链接、缺失和非目录路径段。跨平台纯路径测试覆盖POSIX/Windows绝对路径、盘符相对路径、UNC/设备前缀、反斜杠、上级引用、设备名、替代数据流及控制字符；权限和通用系统异常采用故障注入，不宣称Windows实机验证。
+
+数据库复用根conftest独立PostgreSQL库/私有schema，真实提交夹具数据后验证六类任务/项目/会话归属拒绝、未绑定目录拒绝、仅SELECT且无commit、文件系统处理前Session关闭、真实SQL错误传播与Session清理。测试资源随夹具自动清理，未操作开发业务表或迁移。
+
+服务只返回检查时刻路径，允许目录，未读取内容、接入工具/HTTP/UI、调用模型或运行浏览器。不防止检查后并发替换，不证明同路径目录对象未改变，不提供Sandbox；下一课处理受限文本读取与打开阶段边界。
+
+
+## 2026-09-20 受限文本文件读取验收
+
+学习者完成 `apps/api/app/services/workspace/workspace_file.py`，核心与参考一致，教练仅补末尾换行。新增 `apps/api/tests/workspace/test_workspace_file.py` 35条，与上一课63条合计98条通过（1.69s）。按用户要求仅运行新增和直接相关测试，无领域或后端全量。在 `apps/api` 执行：
+
+```bash
+../../.venv/bin/python -W error -m pytest -xq --tb=short tests/workspace/test_workspace_file.py tests/workspace/test_workspace_path.py
+../../.venv/bin/python -m ruff check app/services/workspace/workspace_file.py tests/workspace/test_workspace_file.py
+```
+
+定向Ruff及 `git diff --check` 通过。真实macOS文件系统/描述符验证空文件、Unicode、恰好256KiB、超限、NUL/非法UTF-8、目录/FIFO/链接拒绝；确定性替换中间目录为链接、末端文件为链接/普通文件/FIFO时不读取替换对象。读取期间增长、缩小、同长度修改与增长超限会拒绝，实际读取量不超过上限+1；短读正确累积。跟踪真实os.open/os.close验证成功和异常后句柄清零，故障注入覆盖open/fstat/read异常脱敏及平台能力不足拒绝。
+
+新增两条隔离PostgreSQL集成通过真实任务归属到文本读取（含项目内链接），确认文件读取前Session已关闭、仅SELECT，以及跨用户授权拒绝后不读取。数据库仍复用独立测试库/私有schema并自动清理，无开发表操作或迁移。未调用模型、未运行浏览器、未做Windows实机验收。该实现不是原子内容快照、硬链接来源/挂载隔离或完整Sandbox，普通文件I/O没有硬超时承诺。
+
+
+## 2026-09-20 工具可信上下文构造验收
+
+学习者完成tools/context.py及services/runtime/tool_execution_context.py，核心与参考一致，仅补末尾换行；新增tests/runtime/test_tool_execution_context.py。在apps/api执行：
+
+```bash
+../../.venv/bin/python -W error -m pytest -xq --tb=short tests/runtime/test_tool_execution_context.py
+../../.venv/bin/python -m ruff check app/tools/context.py app/services/runtime/tool_execution_context.py tests/runtime/test_tool_execution_context.py
+```
+
+24条通过（1.20s，-W error），定向Ruff和git diff --check通过；仅运行本课单文件，不扩展Runtime、账号、路径或读取回归。测试复用根夹具的独立PostgreSQL库/schema并自动清理。验证local/account下相同归属条件、缺失/他人会话/他人项目/无Task拒绝、同用户不同会话和项目的正确定位、未绑定或不存在目录仍可构造上下文、只SELECT且无commit、真实SQL错误传播并关闭Session、不可变字段及拒绝独立Task/Workspace/root_path输入。未访问开发业务表/执行迁移，无浏览器或模型调用。
+
+本课没有接入Runtime和工具注册，Context不可变不代表具备不可伪造的权限；安全来自可信身份来源与工厂查询，执行时仍须重新授权。首次Ruff命令误从仓库根使用API相对路径，未启动检查；改为apps/api工作目录后通过。
+
+
+## 2026-09-20 工具执行器上下文透传验收
+
+核心与参考一致，仅补registry.py类间空行。新增tests/runtime/test_tool_context_dispatch.py 20条；按用户要求只选直接受影响的既有工具/线程/超时/取消/事件测试23条，共43条通过（1.17s，-W error）。在apps/api运行：
+
+```bash
+../../.venv/bin/python -W error -m pytest -xq --tb=short tests/runtime/test_tool_context_dispatch.py tests/tools/test_time_tool.py tests/runtime/test_agent_execution_threads.py::test_success_and_error_preserve_protocol_and_tracker_ownership tests/runtime/test_agent_execution_threads.py::test_abandoned_tool_is_still_tracked tests/runtime/test_agent_execution_threads.py::test_rejected_tool_never_reaches_tracker tests/runtime/test_agent_runtime.py::test_agent_loop_returns_timeout_as_observation tests/runtime/test_agent_runtime.py::test_agent_loop_propagates_cancellation_during_tool_execution tests/runtime/test_agent_runtime_events.py::test_stream_agent_loop_emits_successful_tool_sequence tests/runtime/test_agent_runtime_events.py::test_stream_agent_loop_emits_failure_before_model_recovers
+../../.venv/bin/python -m ruff check app/tools/registry.py app/services/runtime/agent_runtime.py tests/runtime/test_tool_context_dispatch.py
+```
+
+定向Ruff、git diff --check通过。新增验证缺失/错误类型上下文在启动线程前拒绝、直接execute防绕过、同一对象经两个入口和真实跟踪线程透传、并发两次执行不串上下文、无上下文工具签名兼容、保留字段及别名注册拒绝、额外参数不能覆盖context、错误参数模型拒绝、模型Schema不暴露上下文及注入参数校验拒绝。缺失上下文使用既有tool_execution_failed与固定details，不新增事件协议码。
+
+无数据库/浏览器/模型调用，未跑整个Runtime或账号回归。文件工具仍未注册，聊天入口尚未装配上下文。
+
+
+## 2026-09-20 只读文件工具适配与能力过滤验收
+
+核心与参考一致，教练仅补errors.py/read_file.py末尾换行；更新test_time_tool.py旧断言，使默认TOOLS只包含无需上下文的注册工具。新增test_read_file_tool.py 37条；在apps/api运行：
+
+```bash
+../../.venv/bin/python -W error -m pytest -xq --tb=short tests/tools/test_read_file_tool.py tests/tools/test_time_tool.py tests/tools/test_tools_api.py tests/model/test_model_decision.py tests/runtime/test_tool_context_dispatch.py
+../../.venv/bin/python -m ruff check app/tools/errors.py app/tools/read_file.py app/tools/registry.py app/services/model/model_decision.py app/services/runtime/agent_runtime.py tests/tools/test_read_file_tool.py tests/tools/test_time_tool.py
+```
+
+合计83条通过（0.93s，-W error），定向Ruff与git diff --check通过。仅回归直接受影响的注册、演示API、模型适配和派发，不重复文件系统/数据库/浏览器或全量Runtime。模型及读取服务模拟，无真实模型调用。
+
+覆盖参数严格类型/长度/额外身份字段拒绝，注册执行器仅使用context身份，成功JSON不含绝对路径或身份，12种业务失败安全转换，未知安全码拒绝，可见工具过滤与列表/嵌套Schema隔离，实际模拟模型请求无身份泄露，模型→Runtime→真实注册适配器→模拟读取→Observation→模型消息的成功/安全失败/未知失败/缺上下文链路。默认TOOLS不含文件工具，强行调用也被Runtime前置拒绝；聊天入口仍未装配上下文。
+
+
+## 2026-09-20 流式聊天可信上下文装配验收
+
+学习者chat_service.py核心与参考一致，无需改动。新增tests/chat/test_chat_tool_context.py 7条通过（0.42s）；定向流式回归9条通过（0.08s），生命周期4条通过（1.05s），共20条分组验收。在apps/api运行：
+
+```bash
+../../.venv/bin/python -W error -m pytest -xq --tb=short tests/chat/test_chat_tool_context.py
+../../.venv/bin/python -W error -m pytest -xq --tb=short tests/chat/test_chat_stream.py -k 'redis_cancellation_signal or cancelled_stream or completed_stream or model_error or timed_out_stream or tool_error or non_completed_loop'
+../../.venv/bin/python -W error -m pytest -xq --tb=short tests/chat/test_chat_execution_lifecycle.py::test_cancel_during_database_commit_waits_then_finishes tests/chat/test_chat_execution_lifecycle.py::test_disconnect_during_real_tool_keeps_slot_until_thread_stops
+../../.venv/bin/python -m ruff check app/services/chat/chat_service.py tests/chat/test_chat_tool_context.py tests/chat/test_chat_stream.py tests/chat/test_chat_execution_lifecycle.py
+```
+
+定向Ruff及git diff --check通过。新增用例验证local/account装配分支、查询在后台线程且先于历史/模型、同一上下文对象透传、授权或数据库类故障安全终态、取消查询后等待实际线程退出。两条真实隔离PostgreSQL+临时文件集成验证绑定读取成功/未绑定工具错误、模型实际可见工具、Observation、消息及Run/Event持久化；模型模拟且该专项关闭无关Token预算门槛。没有浏览器或真实模型验收，普通/chat未改为工具循环。
+
+配套修正：旧流式Runtime替身不接受tool_context导致RUN_ERROR，已同步7个替身签名；旧生命周期夹具漏掉tool_execution_context.SessionLocal，新增查询曾落到默认连接而未进入预期保存阶段，已将其接入同一隔离库后重跑通过。该查询只读，未进行开发库写入或迁移；后续复用此夹具会正确隔离。首次Ruff命令从仓库根误用API相对路径未执行，切换apps/api后通过。未扩大到领域或后端全量回归。
+
+
+## 2026-09-20 受限目录枚举服务验收
+
+workspace_listing.py与参考一致，核心无需修改；新增tests/workspace/test_workspace_listing.py。只在apps/api运行本课专项：
+
+```bash
+../../.venv/bin/python -W error -m pytest -xq --tb=short tests/workspace/test_workspace_listing.py
+../../.venv/bin/python -m ruff check app/services/workspace/workspace_listing.py tests/workspace/test_workspace_listing.py
+```
+
+26条通过（1.11s，-W error），定向Ruff及git diff --check通过。真实macOS临时目录覆盖0/1/200/201/250项，跟踪迭代次数最多201次、截断和排序；Unicode/空格/隐藏项、文件/目录/内部外部断链/FIFO分类且不递归/不读取正文或链接目标；末端与祖先目录打开前替换为链接拒绝；子项stat前消失和目录元信息变化拒绝。open/scandir/stat权限与I/O错误故障注入验证脱敏，跟踪目录描述符和scandir迭代器在正常、截断与失败时关闭。能力不足明确拒绝。
+
+3条隔离PostgreSQL验证成功授权后Session先关闭、仅SELECT、他人任务与未绑定目录不枚举；使用根夹具独立测试库/schema自动清理，未操作开发业务表或迁移。未跑读取/Runtime/聊天或全量回归，无真实模型和浏览器；Windows未实机验证。结果仅为单层有限子集，不提供稳定分页、全目录排序前缀、原子快照或完整Sandbox。目录工具尚未注册。
+
+
+## 2026-09-20 目录工具适配与注册验收
+
+核心与参考一致，仅补errors.py类间空行；更新test_read_file_tool.py有上下文工具集合，包含list_directory。新增test_list_directory_tool.py 31条，在apps/api运行：
+
+```bash
+../../.venv/bin/python -W error -m pytest -xq --tb=short tests/tools/test_list_directory_tool.py tests/tools/test_read_file_tool.py tests/tools/test_time_tool.py
+../../.venv/bin/python -m ruff check app/tools/list_directory.py app/tools/errors.py app/tools/registry.py tests/tools/test_list_directory_tool.py tests/tools/test_read_file_tool.py
+```
+
+77条通过（0.71s，-W error），定向Ruff及git diff --check通过。只测新增与直接相关适配/注册，不重复数据库、文件系统、聊天、Runtime全量或浏览器。模型与底层目录/读取服务模拟。
+
+覆盖参数严格类型/长度/默认根目录、身份与recursive/limit拒绝、上下文准确透传、JSON保留条目类型和truncated、11类安全映射（含未来未知目录分类回退）、目录名来自实际Observation后再发起读取并三步完成、已知/未知故障转换为失败Observation、无上下文强行调用不触及服务。现有能力过滤无需业务改动，local流式入口可见目录和文件工具，普通/chat仍无工具循环。
+
+
+## 2026-09-20 受限单文件文本搜索验收
+
+workspace_search.py核心与参考一致，无需修改。新增tests/workspace/test_workspace_search.py，仅在apps/api执行本课专项：
+
+```bash
+../../.venv/bin/python -W error -m pytest -xq --tb=short tests/workspace/test_workspace_search.py
+../../.venv/bin/python -m ruff check app/services/workspace/workspace_search.py tests/workspace/test_workspace_search.py
+```
+
+43条通过（1.07s，-W error），定向Ruff及git diff --check通过。覆盖10种非法查询且不触发I/O、空格/128字符/Unicode保留、身份参数透传、不可变结果、字面量与大小写/首次命中、CRLF/CR/LF及Unicode分隔符规则、Python字符列号（含emoji和组合字符）、0/49/50/51/100匹配行、完整最长查询片段及坐标、10000字符正文上限与双截断、5类读取异常原样传播。
+
+3条真实临时文件+隔离PostgreSQL集成覆盖成功、跨用户拒绝、非法UTF-8，确认搜索前数据库Session关闭、只SELECT。使用根夹具独立库/schema自动清理，无开发业务写入或迁移；未重复读取全套、聊天/Runtime/浏览器或模型验证。搜索服务尚未注册工具；字符输出上限不是精确JSON字节或Token上限，无原子文件快照保证。
+
+
+## 2026-09-20 单文件搜索工具适配与注册验收
+
+新增search_text_file适配器、invalid_search_query固定安全文案与requires_context注册。检查发现搜索注册覆盖原get_current_time条目，教练恢复原有时间注册；同步工具可见集合断言。新增test_search_file_tool.py 45条，在apps/api执行：
+
+```bash
+../../.venv/bin/python -W error -m pytest tests/tools/test_search_file_tool.py tests/tools/test_list_directory_tool.py tests/tools/test_read_file_tool.py tests/tools/test_time_tool.py -q
+../../.venv/bin/ruff check app/tools/search_file.py app/tools/errors.py app/tools/registry.py tests/tools/test_search_file_tool.py tests/tools/test_read_file_tool.py
+```
+
+122条通过（0.91s，-W error），定向Ruff通过。仅新增和直接相关工具适配/注册测试，没有领域或后端全量回归。覆盖严格查询与路径参数、额外身份/能力字段拒绝、空格保留、上下文身份透传、空结果及两种截断JSON、11类安全错误；受控模型根据目录Observation选择文件后搜索并回答行号，已知/未知故障、无上下文强行调用及非法查询均安全失败。
+
+模型与底层服务模拟，本轮未运行数据库、文件系统或浏览器验证，也未调用真实模型。三工具PC闭环仍待下一课；未提交推送。
+
+
+## 2026-09-20 只读工具链 PC 闭环验收
+
+新增apps/web/test/browser/readonly-tools.mjs与readonly_model.py；chat_test_app.py仅按专用标记分派受控模型。模型从真实目录Observation选择文件、根据真实搜索行号读取正文后生成答案；工具执行、权限、预算、BFF、持久化均使用实际实现，无业务代码修改。
+
+仓库根目录运行：
+
+```bash
+BROWSER_APP_MODE=local BROWSER_TEST_SCRIPT=readonly-tools.mjs \
+PLAYWRIGHT_MODULE=/Users/wanxiancheng/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright \
+CHROME_EXECUTABLE='/Applications/Google Chrome.app/Contents/MacOS/Google Chrome' \
+.venv/bin/python apps/web/test/browser/run-isolated.py
+.venv/bin/python -m ruff check apps/web/test/browser/readonly_model.py apps/web/test/browser/chat_test_app.py
+node --check apps/web/test/browser/readonly-tools.mjs
+```
+
+最终4组通过：浏览器键盘发消息后列目录→单文件搜索→读取→回答，三张工具卡片成功且行号真实；刷新恢复答案、3个工具结果事件持久化且没有重新POST聊天；上级路径读取拒绝且外部文件标记不泄露；未绑定目录以工具错误展示、模型解释后整轮正常结束。样例文件和外部文件内容未变，浏览器无pageerror。1366×900、1920×900页面无横向溢出，成功/失败截图已人工视查，位于/private/tmp/agent-ui-preview/output/playwright/readonly-tools-1366.png、readonly-tools-1920.png、readonly-escape.png和readonly-unbound.png。
+
+首次因Chrome不能重读已消费的流式正文而失败，改为DOM展示加GET运行详情核对持久化事件；第二次发现右侧默认收起，补展开详情交互后通过。两次均为测试驱动修正，业务代码未变。Ruff、Node语法与git diff --check通过。只运行此浏览器专项，无账号或后端全量回归；独立数据库/schema走真实迁移并自动清理，临时服务及样例目录清理完成，无开发业务库写入。模型决策与用量模拟，不代表真实模型质量或费用验证。未提交推送。
+
+
+## 2026-09-20 受限命令请求与结果契约验收
+
+command_contracts.py核心与参考一致，仅清理末尾空白。新增tests/runtime/test_command_contracts.py，在apps/api执行：
+
+```bash
+../../.venv/bin/python -W error -m pytest tests/runtime/test_command_contracts.py -q
+../../.venv/bin/python -m ruff check app/services/runtime/command_contracts.py tests/runtime/test_command_contracts.py
+```
+
+120条通过（0.10s，-W error），两文件Ruff与git diff --check通过。覆盖argv类型、数量、单项/总量上限、NUL及空程序拒绝、空参数和含空格/Shell字符参数保留；跨平台相对路径规则；额外身份/环境/超时/资源字段拒绝；公开Schema与JSON入口；零/非零/负退出码，超时/取消保留实际退出码，5类启动失败与矛盾字段拒绝；结果严格类型、两路65536字符上限、独立截断、JSON往返及不可变字段。
+
+只运行上述单个纯校验专项，无数据库、文件系统操作、浏览器、模型或命令子进程验收，无领域/后端全量回归。契约接受合法语法的Shell请求不代表允许执行；固定超时和捕获字节常量未接执行器。Sandbox、实际输出限制及进程树收尾尚未实现。未提交推送。
+
+
+## 2026-09-20 命令输出有界捕获缓冲验收
+
+command_output.py核心与参考一致，Ruff发现参考实现的__slots__未排序，教练仅机械排序。新增tests/runtime/test_command_output.py，在apps/api运行：
+
+```bash
+../../.venv/bin/python -W error -m pytest tests/runtime/test_command_output.py -q
+../../.venv/bin/python -m ruff check app/services/runtime/command_output.py tests/runtime/test_command_output.py
+```
+
+41条通过（0.05s，-W error），格式修正后两文件Ruff通过，git diff --check通过。覆盖两种额度严格类型及服务端硬上限、零额度/空输出、65535/65536/65537边界、大块及持续超限保存量保持、每个分块位置与逐字节UTF-8解码、非法及末尾不完整序列、控制字符保留、字节/字符独立及双重截断、非法输入不污染缓冲、finish幂等及拒绝后续空/非空块、不可变快照、两路独立与CommandResult JSON往返。
+
+只运行新增单文件纯内存专项，未跑旧契约全套或领域全量，无数据库、真实管道、命令进程、模型或浏览器操作。本课只限制缓冲保存量；后续读取仍须固定块大小并在额度耗尽后排空管道。未提交推送。
+
+
+## 2026-09-20 单路异步输出排空验收
+
+command_stream.py核心与参考一致，无需修改。新增tests/runtime/test_command_stream.py，在apps/api运行：
+
+```bash
+../../.venv/bin/python -W error -m pytest tests/runtime/test_command_stream.py -q
+../../.venv/bin/python -m ruff check app/services/runtime/command_stream.py tests/runtime/test_command_stream.py
+```
+
+31条通过（0.06s，-W error），两文件Ruff及git diff --check通过。真实内存StreamReader覆盖空流、4096/4097/70000字节、Unicode及延迟供给/EOF；受控读取器验证每次请求4096字节、短块不是EOF、零/已满额度继续排空、展示字符截断不提前结束、无效额度在读取前拒绝、错误返回类型/过大块拒绝、部分读取后异常原样传播。取消覆盖空流/部分输出后的阻塞读取，以及持续立即返回且保存额度为零时仍能调度取消；取消后流仍可使用，并发调用保持隔离。
+
+仅本课新增专项，无旧缓冲/契约全套、领域或后端全量回归；没有真实管道、外部命令、数据库、模型或浏览器操作。单次块大小不等于整个进程内存上限，EOF或读取取消也不证明进程树停止。未提交推送。
+
+
+## 2026-09-20 双路输出并发排空与失败收尾验收
+
+command_capture.py核心与参考一致，无需修改。新增tests/runtime/test_command_capture.py，在apps/api执行：
+
+```bash
+../../.venv/bin/python -W error -m pytest tests/runtime/test_command_capture.py -q
+../../.venv/bin/python -m ruff check app/services/runtime/command_capture.py tests/runtime/test_command_capture.py
+```
+
+12条通过（0.05s，-W error）。Ruff初次因目标版本未识别内置ExceptionGroup报告F821，测试显式从builtins导入后两文件检查通过；未调整仓库全局配置。git diff --check通过。
+
+覆盖真实内存StreamReader空流/中文/任一路超限、独立缓冲及CommandResult往返/不可变成对快照；同一流拒绝且不消费；双方启动屏障证明并发；任一路先EOF仍等待另一侧；任一路OSError取消兄弟任务，收尾由Event阻塞时父任务不能提前返回；整体取消等待两路异步收尾；两路立即失败保留两个原始异常。终态检查没有遗留读取任务，测试有界超时防止错误实现挂住。
+
+仅新增单文件专项，不重复旧单路/缓冲/契约全套，无领域全量、命令进程、真实管道、数据库或浏览器测试。TaskGroup读取任务结束不证明进程树停止；内部子任务CancelledError不按普通错误触发兄弟取消，不暴露任务句柄。未提交推送。
+
+
+## 2026-09-20 命令环境显式白名单验收
+
+command_environment.py核心与参考一致，无需修改。新增tests/runtime/test_command_environment.py，在apps/api运行：
+
+```bash
+../../.venv/bin/python -W error -m pytest tests/runtime/test_command_environment.py -q
+../../.venv/bin/python -m ruff check app/services/runtime/command_environment.py tests/runtime/test_command_environment.py
+```
+
+62条通过（0.05s，-W error），两文件Ruff及git diff --check通过。覆盖精确11字段映射与目标路径派生；测试哨兵环境中的模型密钥、数据库/代理、解释器/动态加载注入变量不继承，替换os.environ为禁止读取对象仍可构造；两个路径字段的严格类型、绝对路径/非根/控制字符/上级引用/规范语法/长度边界；合法Unicode/空格原样保留、额外env/PATH/身份字段拒绝、独立返回字典及Path文件系统方法禁止调用。
+
+仅本课单文件纯函数专项，没有启动命令、连接数据库、操作浏览器或运行领域/后端全量测试。只校验目标POSIX路径语法，不创建或验证隔离目录；LANG=C不承诺任意程序输出UTF-8。未接真实执行器，环境白名单不提供文件/网络隔离，固定PATH不限制可执行程序。未提交推送。
+
+
+## 2026-09-20 Docker Sandbox 最小隔离验收
+
+本机Darwin arm64，desktop-linux上下文，Docker客户端/服务端29.7.2，服务端linux/arm64。infra/sandbox/compose.yaml与参考一致。初检不存在指定Python镜像或练习容器；教练拉取官方镜像，随后固定到本次摘要：
+
+```bash
+SANDBOX_IMAGE=python@sha256:392307d22300de8b5986851a12d9176dfc0fc073e65bf6523ebd7dcbeb23564e \
+.venv/bin/python scripts/verify_sandbox.py
+.venv/bin/python -m ruff check scripts/verify_sandbox.py
+```
+
+新增脚本强制摘要引用、使用随机sandbox-check项目名，finally停止并清理本轮容器，断言无遗留。3组真实专项通过：
+
+1. 实际UID/GID10001、CapEff=0、NoNewPrivs=1、Seccomp=2；根挂载只读，/etc写入拒绝；HOME和/tmp可写且各16MiB，nosuid/nodev/noexec生效；无宿主bind或Docker Socket，容器不可见宿主临时哨兵。实际cgroup为128MiB内存、0额外swap、32进程、0.5CPU；这是配置生效检查，没有运行OOM或进程耗尽压力测试。读取等待主进程/proc环境验证精确11字段，而非仅检查镜像环境。
+2. 网络none下非回环接口均未启用，连接1.1.1.1:443以不可达拒绝；额外存在gre等内核隧道接口，初始“接口名称只有lo”的测试断言失败，改为网络命名空间接口标志及实际外连检查后通过。没有改变产品网络限制。
+3. 生成忽略SIGTERM并独立会话的两代进程，Compose停止后daemon报告Running=false/Pid=0，top/exec拒绝；重启后tmpfs哨兵消失，宿主哨兵不变。此处信任Docker daemon停止语义，不宣称已证明抵御容器逃逸。
+
+脚本输出分为隔离配置、子孙进程停止、tmpfs重启三组PASS。Ruff及git diff --check通过，临时容器与宿主哨兵目录已清理，Python镜像保留本地便于后续课程。没有挂载真实项目，没有改动数据库/Redis配置或业务表；只跑本课真实专项，无全量回归。尚未接入通用命令执行器、模型工具、项目挂载与异常恢复。未提交推送。
+
+
+## 2026-09-20 Docker Sandbox 创建参数构造验收
+
+sandbox_spec.py核心与参考一致。Ruff要求集合内隐式字符串拼接有括号，教练仅为两处tmpfs参数补括号，不改变内容。新增tests/runtime/test_sandbox_spec.py，在apps/api运行：
+
+```bash
+../../.venv/bin/python -W error -m pytest tests/runtime/test_sandbox_spec.py -q
+../../.venv/bin/python -m ruff check app/services/runtime/sandbox_spec.py tests/runtime/test_sandbox_spec.py
+```
+
+44条通过（0.05s，-W error），两文件Ruff及git diff --check通过。首次测试收集因教练使用pytest保留参数名request失败，改名invalid_request后通过。
+
+覆盖固定Docker选项精确集合/数量、镜像前后分层、env -i/--及11字段映射、参数空格/换行/引号/选项/赋值/Shell字符原样保留；程序首项相对路径/选项/等号拒绝；执行token类型/格式/末尾换行拒绝；非批准镜像摘要拒绝；非默认工作目录和错误请求类型拒绝；请求列表清空/NUL/超长/上级路径等构造后修改被重新校验；快照不可变且与原列表解耦，不同token名称隔离。
+
+仅本课新增纯参数单文件专项，没有调用Docker或执行命令，无数据库/浏览器或全量回归。此处只接受working_directory为点号并使用临时/tmp，尚未支持项目挂载；停止宽限不等于运行超时，名称标签不代替后续容器ID和归属核对。未提交推送。
+
+
+## 2026-09-20 Sandbox 创建响应解析与身份确认验收
+
+sandbox_identity.py核心与参考一致，无需修改。新增tests/runtime/test_sandbox_identity.py，在apps/api执行：
+
+```bash
+../../.venv/bin/python -W error -m pytest tests/runtime/test_sandbox_identity.py -q
+../../.venv/bin/python -m ruff check app/services/runtime/sandbox_identity.py tests/runtime/test_sandbox_identity.py
+```
+
+95条通过（0.07s，-W error），两文件Ruff及git diff --check通过。覆盖64位小写ID、可选单个LF/CRLF与日志/多行拒绝；确认阶段拒绝未规范化ID；异常类型/JSON/深嵌套及65536字符边界；单元素数组与嵌套对象类型；ID/名称/镜像/标签缺失或不匹配；created/Running严格布尔/Pid严格整数零；重复字段（含嵌套）、NaN/Infinity拒绝；额外字段兼容、跨执行spec拒绝、不可变身份快照及固定安全错误。
+
+仅本课单文件纯解析专项，无Docker或外部命令、数据库、浏览器及全量回归。尚未接实际创建/inspect调用；文本长度校验不代替传输层字节限制，身份确认不完整复核HostConfig或授权启动。失败代表无法确认，不证明容器不存在。未提交推送。
+
+
+## 2026-09-20 有界 Docker 客户端验收
+
+从 apps/api 执行：
+
+```bash
+../../.venv/bin/python -m pytest tests/runtime/test_docker_client.py tests/runtime/test_command_capture.py -q -W error
+../../.venv/bin/python -m ruff check app/services/runtime/docker_client.py tests/runtime/test_docker_client.py
+```
+
+新增33条，连同直接相关双路捕获12条共45条通过（0.87s）；定向Ruff及git diff --check通过。核心与参考一致，仅补两处说明理由的BLE001豁免，统一异常脱敏与启动失败接收行为不变。
+
+覆盖固定程序/socket/argv/最小环境、非法token不启动、非零退出/截断/非法UTF-8拒绝、启动异常脱敏、启动和运行阶段超时/取消、重复取消等待reap、捕获失败排空、kill竞态及收尾异常不冒充成功。5条真实Python子进程测试覆盖双路65536字节边界、双路200000字节超限排空、超时、提前关闭管道但仍运行、取消后SIGKILL退出；其余为事件屏障控制的进程替身，不宣称真实Docker取消场景已验证。
+
+初次受限环境访问Docker失败；授权访问本机socket后，使用本课调用底座只读查询Server.Version得到29.7.2，并用随机token验证不存在容器inspect返回docker_client_failed。不创建、启动或删除容器，无数据库/浏览器及全量回归。当前只适配macOS Docker Desktop；10秒不包含完成清理所需的额外等待，客户端退出不证明daemon回滚操作。未提交推送。
+
+
+## 2026-09-20 Sandbox 创建与身份确认装配验收
+
+从 apps/api 执行：
+
+```bash
+../../.venv/bin/python -m pytest tests/runtime/test_sandbox_creation.py tests/runtime/test_docker_client.py -q -W error
+RUN_SANDBOX_CREATION_DOCKER=1 ../../.venv/bin/python -m pytest tests/runtime/test_sandbox_creation.py -k real_docker -q -W error
+../../.venv/bin/python -m ruff check app/services/runtime/docker_client.py app/services/runtime/sandbox_creation.py tests/runtime/test_sandbox_creation.py
+```
+
+常规66条通过、2条Docker默认跳过（0.89s）；显式授权访问本机Docker socket后，2条真实Docker专项通过（0.27s）。新增合计35条，既有直接相关客户端33条；无全量回归。核心与参考一致，仅补客户端函数间空行/末尾换行，定向Ruff及diff check通过。
+
+常规覆盖真实规格构造/严格解析组合、执行顺序及不可变快照、非法token/请求/工作目录/变异请求在调用前拒绝；create/inspect超时、输出不可用和未知异常统一未确认且保留token/名称；创建输出损坏不继续inspect；ID/名称/标签/镜像/状态不匹配拒绝；两阶段取消传播并等待依赖收尾；create适配只传固定规格参数，拒绝错误类型/前缀。
+
+真实Docker使用两组随机token，固定批准镜像、无挂载、只创建不启动。成功路径返回created身份；第二组先真实创建，再在测试适配器中人工抛出超时模拟响应丢失，验证服务未重试、容器仍存在。finally重新核对完整ID/名称/标签/镜像及created状态后按ID执行非强制rm，再查询确认该ID无残留。未修改其他容器、未启动命令。该故障是受控注入，不是真实daemon网络故障；持久记录、恢复核对与启动授权尚未实现。无数据库/浏览器/模型调用，未提交推送。
+
+
+## 2026-09-20 创建结果只读核对验收
+
+从 apps/api 执行：
+
+```bash
+../../.venv/bin/python -m pytest tests/runtime/test_sandbox_reconciliation.py tests/runtime/test_sandbox_identity.py -q -W error
+RUN_SANDBOX_RECONCILIATION_DOCKER=1 ../../.venv/bin/python -m pytest tests/runtime/test_sandbox_reconciliation.py -k real_docker -q -W error
+../../.venv/bin/python -m ruff check app/services/runtime/sandbox_identity.py app/services/runtime/sandbox_reconciliation.py tests/runtime/test_sandbox_reconciliation.py
+```
+
+新增50条常规专项，与直接相关身份解析95条共145条通过、1条Docker默认跳过（0.13s）；显式授权访问本机Docker socket后1条真实Docker通过（0.27s）。定向Ruff及diff check通过。核心与参考一致，仅补身份模块函数间空行/末尾换行。
+
+覆盖单次固定inspect调用且无其他Docker操作、未知/已知ID成功、已知ID不匹配不降级发现、非法原上下文/ID调用前拒绝、查询失败/未知异常安全未确认、两路径解析失败、严格JSON/重复字段/非标准数值/长度边界、候选ID及名称标签镜像状态核对、不可变快照、取消传播与依赖收尾。
+
+真实Docker仅创建一个随机token临时容器，不启动：未知/已知ID核对返回相同身份；错ID拒绝后重新核对仍为原created目标；finally严格复核后按完整ID非强制删除并查询确认无残留；删除后核对仍返回SandboxCreationUnconfirmed，不把通用客户端错误解释成可靠不存在。无数据库、浏览器、模型或全量回归；未验证真实daemon失联或进程崩溃恢复。未提交推送。
+
+
+## 2026-09-20 已确认未启动容器显式清理验收
+
+用户本课明确授权教练直接实现。新增sandbox_cleanup.py，扩展docker_client.py固定非强制删除及全部状态的完整ID缺失查询；未注册模型工具或接自动补偿。
+
+从 apps/api 执行：
+
+```bash
+../../.venv/bin/python -m pytest tests/runtime/test_sandbox_cleanup.py tests/runtime/test_docker_client.py -q -W error
+RUN_SANDBOX_CLEANUP_DOCKER=1 ../../.venv/bin/python -m pytest tests/runtime/test_sandbox_cleanup.py -k real_cleanup -q -W error
+../../.venv/bin/python -m ruff check app/services/runtime/docker_client.py app/services/runtime/sandbox_cleanup.py tests/runtime/test_sandbox_cleanup.py
+```
+
+新增41条常规专项，直接相关客户端33条，共74条通过、2条真实Docker默认跳过（0.90s）。显式授权Docker socket后，2条真实专项通过（0.48s）。定向Ruff及diff check通过；测试字典写法按Ruff机械调整，无业务问题。
+
+覆盖固定inspect→rm完整ID→ls全部状态/no-trunc/完整ID过滤顺序、不可变完成快照、非法上下文/ID调用前拒绝、ID/名称/标签/镜像/运行及exited状态不符不删、各阶段异常安全未确认/无重试、删除后仍存在拒绝、删除回执与查询输出严格校验、三阶段取消传播与依赖收尾。底层缺失查询只有成功空输出才返回True，失败不当作缺失；不支持按名称或短ID删除，无force/stop。
+
+真实Docker两组随机token，仅创建不启动：错ID请求未删除；正常路径完成，另一组真实删除后在测试适配器人工注入超时，服务仍报告清理结果未确认且只删一次。两组均确认完整ID无残留；重复显式请求因inspect失败仍未确认且未再次rm。finally只在目标仍存在且严格身份复核通过后按ID兜底清理。响应丢失为人工注入，不是真实网络故障；未验证宿主高权限并发状态变更。无数据库/浏览器/模型或全量回归，未提交推送。
+
+
+## 2026-09-20 启动前执行配置复核验收
+
+从 apps/api 执行：
+
+```bash
+../../.venv/bin/python -m pytest tests/runtime/test_sandbox_execution_policy.py -q -W error
+RUN_SANDBOX_EXECUTION_POLICY_DOCKER=1 ../../.venv/bin/python -m pytest tests/runtime/test_sandbox_execution_policy.py -k real_unstarted -q -W error
+../../.venv/bin/python -m ruff check app/services/runtime/sandbox_execution_policy.py tests/runtime/test_sandbox_execution_policy.py
+```
+
+71条纯校验通过、1条Docker默认跳过（0.08s）；显式授权访问Docker socket后1条真实专项通过（0.22s）。核心与参考一致；两处隐式字符串拼接按Ruff加括号，定向Ruff/diff check通过。未改策略值。
+
+覆盖必需字段缺失、用户/工作目录/入口类型及内容、Cmd顺序/分隔符/env赋值/程序/参数改变、环境类型/缺失/额外/重复/改值及顺序兼容、交互字段严格False、健康检查拒绝、严格JSON/身份错误转换、原请求重校验、不可变身份和无输入修改。Cmd测试独立列出11字段及原命令，避免仅镜像规格构造器实现。
+
+真实容器由现有创建服务生成，不启动；实际inspect执行配置通过，与批准镜像Config.Env基线一致（PYTHON_VERSION=3.12.14）。只在响应副本添加LD_PRELOAD验证拒绝，未向真实容器注入；finally经已验收清理服务删除并成功查询确认无残留。本课没有HostConfig/挂载/资源检查，不是完整启动授权。仅新增测试，无数据库/浏览器/模型或全量回归。此前candidate_id的isinstance收窄修复已有145条相关测试通过，本课未重复；未提交推送。
+
+
+## 2026-09-20 Sandbox 隔离与资源配置复核验收
+
+从 apps/api 执行：
+
+```bash
+../../.venv/bin/python -m pytest tests/runtime/test_sandbox_isolation_policy.py -q -W error
+RUN_SANDBOX_ISOLATION_POLICY_DOCKER=1 ../../.venv/bin/python -m pytest tests/runtime/test_sandbox_isolation_policy.py -k real_created -q -W error
+../../.venv/bin/python -m ruff check app/services/runtime/sandbox_isolation_policy.py tests/runtime/test_sandbox_isolation_policy.py
+```
+
+最终218条纯校验通过、1条Docker默认跳过（0.16s）；真实Docker专项1条通过（0.22s）。初版参数化包含5个值相同而提前返回的组合，已移除并重跑纯校验，最终计数不含这些空断言组合；真实测试内容未变化。核心与参考一致，无需修改；定向Ruff/diff check通过。
+
+覆盖字段缺失、布尔/数值严格类型、权限/网络/命名空间变化、资源浮点/字符串/无限额及偏差、可选列表null/空与异常类型、端口映射/镜像卷、tmpfs缺失/额外/选项变化、顶层挂载类型/目标/重复/读写标记、重启/日志嵌套结构；复用真实执行配置/身份解析，确保前置失败转换为固定安全错误，输入不被修改。fixture独立列出策略值。
+
+真实Docker仅创建一个随机token容器，不启动；实际inspect通过全部本课策略。仅在响应副本中将Privileged改为True并验证拒绝，不创建真实特权或宿主挂载容器。finally经已验收清理服务删除并查询确认无残留。此处只验证声明配置，不证明运行时cgroup/挂载生效，不穷举所有Docker安全字段。仅新增专项，无数据库/浏览器/模型及全量回归；未提交推送。
+
+
+## 2026-09-20 容器停止与停止状态确认验收
+
+本课用户授权教练实现。新增sandbox_stop.py，抽出sandbox_identity.read_sandbox_identity共享严格归属解析，原confirm_created_sandbox_identity仍仅接受created；扩展Docker完整ID inspect和stop适配，固定SIGTERM与2秒宽限。
+
+从 apps/api 执行：
+
+```bash
+../../.venv/bin/python -m pytest tests/runtime/test_sandbox_stop.py tests/runtime/test_sandbox_identity.py tests/runtime/test_docker_client.py -q -W error
+RUN_SANDBOX_STOP_DOCKER=1 ../../.venv/bin/python -m pytest tests/runtime/test_sandbox_stop.py -k real_stop -q -W error
+../../.venv/bin/python -m ruff check app/services/runtime/sandbox_stop.py app/services/runtime/sandbox_identity.py app/services/runtime/docker_client.py tests/runtime/test_sandbox_stop.py
+```
+
+新增53条常规，与身份95条/客户端33条共181条通过，1条Docker默认跳过（0.97s）；授权Docker专项1条通过（2.98s）。定向Ruff/diff check通过。
+
+覆盖created/running/exited一致状态、字段缺失/错误类型、Paused/Restarting/Dead及中间态拒绝、已停不发送stop、身份不符不停止、固定完整ID及信号/宽限、stop回执拒绝、停止后仍running未确认、三阶段超时/取消不自动后续操作、不重试与错误脱敏。共享归属解析重构通过原身份全部专项。
+
+真实测试在随机受限容器创建后先通过隔离策略复核，再仅在测试准备阶段直接start；未新增产品启动入口。父进程和独立会话子进程均忽略SIGTERM，测试读取两个就绪文件确认处理器安装后调用停止服务。停止后daemon报告exited/Running=false/Pid=0且exec拒绝，再次停止只读返回。finally核对原完整身份及已停止状态后非强制rm，并成功查询无残留。证据依赖可信daemon，不宣称证明防容器逃逸；不改变created清理服务。无数据库/浏览器/模型及全量回归，未提交推送。
+
+停止参数语义参考：https://docs.docker.com/reference/cli/docker/container/stop/ 。停止请求超时或取消不代表容器已停止，调用方仍需保留token/ID；自动取消收尾、异常中间态恢复和启动编排尚未接入。
+
+
+## 2026-09-20 容器启动与启动结果确认验收
+
+本课用户授权教练实现sandbox_start.py和Docker完整ID start适配。开始时复制并重新验证请求，await期间外部修改不影响检查或停止收尾；启动前复用隔离/执行与严格状态解析，启动后重新查询running/exited。开始尝试start后的失败调用stop_and_confirm_sandbox；独立shield任务等待收尾，重复取消不打断，取消最终以CancelledError子类传播。异常/取消携带token/ID及stop_confirmed。未尝试start时不猜测性停止，不自动删除或重试start。
+
+从 apps/api 执行：
+
+```bash
+../../.venv/bin/python -m pytest tests/runtime/test_sandbox_start.py tests/runtime/test_docker_client.py -q -W error
+RUN_SANDBOX_START_DOCKER=1 ../../.venv/bin/python -m pytest tests/runtime/test_sandbox_start.py -k real_start -q -W error
+../../.venv/bin/python -m ruff check app/services/runtime/sandbox_start.py app/services/runtime/docker_client.py tests/runtime/test_sandbox_start.py
+```
+
+新增30条常规，客户端33条，共63条通过、4条Docker默认跳过（0.91s）；真实Docker4条通过（1.23s）。定向Ruff/diff check通过。统一异常处理增加有理由BLE001注释，取消不被吞掉。
+
+覆盖running/快速exited、非法ID/上下文、策略失败不start/stop、前后归属变化、三阶段调用失败、错误状态、停止失败未确认、三阶段取消及重复取消等待收尾、调用方请求变异不影响收尾、普通失败收尾中取消改为取消语义、start回执严格校验。无遗留收尾任务。
+
+真实测试4组随机受限容器：持续running、通过测试查询屏障覆盖快速exited、真实start返回后人工注入响应丢失、真实start后取消。后两组stop_confirmed=True且start仅一次；最后逐一停止核对后按完整ID非强制删除并成功查询无残留。失联为受控注入，不是真实daemon网络故障。未测试完整命令执行输出、全局超时或启动成功后的取消；日志driver=none，后续需要启动前attach协调。无数据库/浏览器/模型及全量回归，未提交推送。
+
+
+## 2026-09-20 命令退出结果与退出码确认验收
+
+本课用户授权教练实现sandbox_exit.py。先复用严格身份/状态解析，只接受一致exited停止证据；再从同一响应解析严格整数0～255 ExitCode、严格布尔OOMKilled与字符串Error。结果不可变，Error只公开是否非空；succeeded为退出码0且无OOM/daemon错误。不从137推断OOM，不从143推断取消，不返回未采集的输出或耗时。
+
+从 apps/api 执行：
+
+```bash
+../../.venv/bin/python -m pytest tests/runtime/test_sandbox_exit.py -q -W error
+RUN_SANDBOX_EXIT_DOCKER=1 ../../.venv/bin/python -m pytest tests/runtime/test_sandbox_exit.py -k real_exit -q -W error
+../../.venv/bin/python -m ruff check app/services/runtime/sandbox_exit.py tests/runtime/test_sandbox_exit.py
+```
+
+75条纯解析通过、3条Docker默认跳过（0.09s）；3条真实Docker专项通过。定向Ruff/diff check通过。覆盖退出码与OOM/daemon错误组合、不可变/无输入修改及错误脱敏、类型/范围/字段缺失、非exited和停止矛盾、严格JSON/身份失败、非法原请求仍属前置错误。
+
+真实Docker三个随机受限容器经创建与启动服务运行SystemExit(0/7/137)，测试限定5秒轮询等待exited后调用纯解析；结果与指定退出码一致、OOMKilled=false、daemon_error=false。137由程序主动退出产生，实证不能只靠137认定OOM。未做真实内存耗尽压力测试；OOM分支仅纯解析覆盖。finally逐一核对停止后按ID非强制删除，成功查询确认无残留。无数据库/浏览器/模型或全量回归，未提交推送。尚无命令输出/全局超时编排，下一步需attach协议与启动协调。
+
+
+## 2026-09-20 Docker attach 输出帧解析验收
+
+从 apps/api 执行：
+
+```bash
+../../.venv/bin/python -m pytest tests/runtime/test_docker_attach_parser.py -q -W error
+../../.venv/bin/python -m ruff check app/services/runtime/docker_attach_parser.py tests/runtime/test_docker_attach_parser.py
+```
+
+91条纯字节专项通过（0.09s），核心与参考一致，无需修改。定向Ruff/diff check通过。
+
+覆盖所有单切分位置、跨帧UTF-8的所有双切分位置、8种固定块大小、8组固定种子随机帧与分块、空帧与通道交错、65536/65537/1MiB正文及独立捕获预算、超限后另一通道后续帧继续解析、头缓冲及捕获保存量受限、无效通道/保留字节/超长声明、半头/半正文EOF、协议失败后feed/finish持续拒绝、错误类型/超大输入不推进位置、正文伪头不重解释、空流/完成幂等/完成后拒绝写入、实例隔离与截断UTF-8。
+
+本课固定单输入4096字节、单帧正文1MiB为应用策略，Docker长度字段本身是uint32；仅接收通道1/2，stdin关闭场景拒绝通道0。原始字节两路各捕获65536字节，无整帧正文缓冲。解析完成不代表网络正常EOF或命令退出，读取/HTTP握手/关闭连接/停止容器仍待接。无Docker、网络、外部进程、数据库、浏览器或全量回归；未提交推送。
+
+
+2026-09-20收尾：累计学习源码、配套测试和既有文档统一提交至main；此前各课“未提交推送”为当时状态。本次仅做累计变更静态检查与git差异检查，不重复各课已经通过的运行验收或全量回归。远端同步结果以Git记录为准。

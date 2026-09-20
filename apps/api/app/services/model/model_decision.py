@@ -20,7 +20,8 @@ from app.services.runtime.agent_runtime import (
     ToolObservation,
     ModelUsage,
 )
-from app.tools.registry import TOOLS
+from app.tools.context import ToolExecutionContext
+from app.tools.registry import model_tools_for_context
 
 DEFAULT_SYSTEM_PROMPT = """你是一个可以使用工具解决问题的 AI 助手。
 需要外部计算或实时信息时，请调用提供的工具；收到工具结果后再给出最终回答。
@@ -43,9 +44,14 @@ class DeepSeekDecisionMaker:
         system_prompt: str | None = None,
         user_prompt: str | None = None,
         messages: Sequence[ChatCompletionMessageParam] | None = None,
+        tool_context: ToolExecutionContext | None = None,
     ) -> None:
         self._client = client
         self._model = model
+
+        # 上下文只用于服务端选择工具描述，不序列化进模型消息。
+        # 本次执行保存独立列表，不修改全局 TOOLS。
+        self._tools = model_tools_for_context(tool_context)
 
         if messages is not None:
             if system_prompt is not None or user_prompt is not None:
@@ -63,6 +69,7 @@ class DeepSeekDecisionMaker:
                 raise ValueError(
                     "未提供 messages 时，必须同时提供 system_prompt 和 user_prompt"
                 )
+
             self._messages: list[ChatCompletionMessageParam] = [
                 {
                     "role": "system",
@@ -91,7 +98,7 @@ class DeepSeekDecisionMaker:
         response = await self._client.chat.completions.create(
             model=self._model,
             messages=self._messages,
-            tools=TOOLS,
+            tools=self._tools,
             stream=False,
             extra_body={
                 "thinking": {
