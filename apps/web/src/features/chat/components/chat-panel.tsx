@@ -23,6 +23,7 @@ import WorkbenchIcon from "@/features/workbench/components/workbench-icon";
 import LoadingPlaceholder from "@/features/workbench/components/loading-placeholder";
 import TaskRunPanel from '@/features/workbench/components/task-run-panel';
 import ConversationExecutionPanel from '@/features/workbench/components/conversation-execution-panel';
+import ToolResult from "./tool-result";
 import RunSummaryCard from "./run-summary-card";
 import MarkdownMessage from "./markdown-message";
 
@@ -614,10 +615,20 @@ function TaskChat() {
                                                 <span className="shrink-0 text-xs text-muted-foreground">
                                                     {tool.status === "failed"
                                                         ? "失败"
-                                                        : tool.status ===
-                                                            "succeeded"
-                                                          ? "成功"
-                                                          : "运行中"}
+                                                        : tool.status === "succeeded"
+                                                          ? (
+                                                              tool.toolName === "run_command"
+                                                              || tool.toolName === "preview_file_edit"
+                                                                  ? "调用完成"
+                                                                  : "成功"
+                                                          )
+                                                          : (
+                                                              chatState.status === "done"
+                                                              || chatState.status === "error"
+                                                              || chatState.status === "aborted"
+                                                                  ? "结果未确认"
+                                                                  : "运行中"
+                                                          )}
                                                 </span>
                                             </div>
 
@@ -632,9 +643,21 @@ function TaskChat() {
                                             )}
 
                                             {tool.result && (
-                                                <p className="mt-2 whitespace-pre-wrap break-all">
-                                                    结果：{tool.result}
-                                                </p>
+                                                <ToolResult
+                                                    toolName={tool.toolName}
+                                                    result={tool.result}
+                                                    taskScope={
+                                                        workbench.localMode
+                                                        && workbench.selection?.task
+                                                            ? {
+                                                                workspaceId:
+                                                                    workbench.selection.workspace.external_id,
+                                                                taskId:
+                                                                    workbench.selection.task.external_id,
+                                                            }
+                                                            : undefined
+                                                    }
+                                                />
                                             )}
 
                                             {tool.errorMessage && (

@@ -1,3 +1,4 @@
+from app.services.runtime.execution.command_recovery_store import CommandRecoveryStore
 """真实 ASGI/PostgreSQL 验证共享容量拒绝与副作用边界。"""
 
 import asyncio
@@ -21,6 +22,7 @@ def test_cross_entry_capacity_blocks_other_conversation_without_side_effects(lab
     async def scenario():
         app, session_id, other = lab
         budget = app.state.execution_budget = ExecutionBudget(capacity=1)
+        app.state.command_recovery_store = CommandRecoveryStore()
         started, proceed = asyncio.Event(), asyncio.Event()
         calls = lifecycle.models(monkeypatch, started, proceed)
         task = asyncio.create_task(lifecycle.request(app, session_id, first))

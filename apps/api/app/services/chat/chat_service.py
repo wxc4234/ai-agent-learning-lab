@@ -46,6 +46,7 @@ from app.services.runtime.agent.tool_execution_context import (
     load_tool_execution_context,
 )
 from app.tools.context import ToolExecutionContext
+from app.tools.registry import CommandExecutor, tools_for_execution
 
 # 用户身份参与缓存定位；访问缓存前仍检查数据库中的会话归属。
 conversations: dict[
@@ -308,7 +309,7 @@ async def create_chat_reply(
         history.pop()
         raise
 
-# ===== 本课修改：正式聊天改为 Agent Runtime 结构化事件流 =====
+# ===== 正式聊天改为 Agent Runtime 结构化事件流 =====
 
 
 async def stream_chat_reply(
@@ -319,6 +320,7 @@ async def stream_chat_reply(
     run_id: int,
     execution_threads: ExecutionThreads,
     monitors: list[asyncio.Task[None]],
+    command_executor: CommandExecutor | None = None,
 ) -> AsyncGenerator[str, None]:
     """运行 Agent Loop，并逐行返回结构化 NDJSON 事件。"""
 
@@ -363,12 +365,24 @@ async def stream_chat_reply(
         # 后续执行失败时，现有回滚逻辑撤销本轮未持久化内容。
         history_checkpoint = len(history) - 1
 
+        # 只有本地模式使用服务端请求绑定的命令入口。
+        # tools_for_execution还会要求有效的任务上下文。
+        tool_definitions = tools_for_execution(
+            context=tool_context,
+            command_executor=(
+                command_executor
+                if settings.app_mode == "local"
+                else None
+            ),
+        )
+
+        # 展示与执行使用同一份能力快照，不能分别拼接工具列表。
         decision_maker = DeepSeekDecisionMaker(
             client=client,
             model=settings.deepseek_model,
             messages=messages_to_send,
-            # 控制本次模型请求中可见的工具，不把身份写入消息。
             tool_context=tool_context,
+            tool_definitions=tool_definitions,
         )
 
         async for event in stream_agent_loop(
@@ -376,8 +390,8 @@ async def stream_chat_reply(
             max_steps=5,
             max_total_tokens=settings.agent_max_total_tokens,
             execution_threads=execution_threads,
-            # 与模型适配器使用同一个对象，保持展示与执行范围一致。
             tool_context=tool_context,
+            tool_definitions=tool_definitions,
         ):
             if isinstance(event, ToolCallStarted):
                 payload: dict[str, object] = {

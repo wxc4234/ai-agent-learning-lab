@@ -19,21 +19,29 @@ from app.routers.auth.current_user import router as current_user_router
 from app.routers.auth.logout import router as logout_router
 from app.routers.workspace.workspace import router as workspace_router
 from app.services.runtime.execution.run_cancellation import close_cancellation_broker
+from app.services.runtime.execution.command_recovery_store import (
+    CommandRecoveryStore,
+)
 
 
 @asynccontextmanager
 async def lifespan(application: FastAPI) -> AsyncGenerator[None, None]:
-    # 迁移检查成功后才装配共享预算；每次启动使用新实例。
+    # 数据库准备完成后再创建应用级资源，每次启动使用独立实例。
     await asyncio.to_thread(check_database_ready)
     application.state.execution_budget = ExecutionBudget(
         capacity=settings.agent_max_concurrent_executions,
     )
+    application.state.command_recovery_store = CommandRecoveryStore()
+
     try:
         yield
     finally:
         try:
             await close_cancellation_broker()
         finally:
+            # 本课仅内存保存，应用退出不等于容器已经清理。
+            # 这里释放Python引用，不执行猜测性Docker删除。
+            del application.state.command_recovery_store
             del application.state.execution_budget
 
 

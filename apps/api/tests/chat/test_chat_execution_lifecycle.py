@@ -1,3 +1,4 @@
+from app.services.runtime.execution.command_recovery_store import CommandRecoveryStore
 from app.services.runtime.execution.execution_budget import ExecutionBudget
 """真实 ASGI 请求、PostgreSQL 与受控模型验证执行占用生命周期。"""
 
@@ -37,6 +38,7 @@ def lab(engine, scope_target, monkeypatch):
         monkeypatch.setattr(module, "SessionLocal", factory)
     app = FastAPI()
     app.state.execution_budget = ExecutionBudget(capacity=2)
+    app.state.command_recovery_store = CommandRecoveryStore()
     app.include_router(chat.router)
     app.dependency_overrides[require_current_user] = lambda: AuthenticatedUser(scope_target[0], "local", "local")
 
@@ -208,7 +210,7 @@ def test_cancel_during_database_commit_waits_then_finishes(lab, engine, monkeypa
 @pytest.mark.parametrize("spec", ["2.0", "2.4"])
 def test_disconnect_during_real_tool_keeps_slot_until_thread_stops(lab, engine, monkeypatch, spec):
     from app.services.runtime.agent.agent_runtime import ToolAction, ModelUsage
-    from app.tools.registry import TOOL_REGISTRY, ToolDefinition, GetCurrentTimeArguments
+    from app.tools.registry import ToolDefinition, GetCurrentTimeArguments
     from tests.runtime.execution.test_execution_threads import ControlledWork
 
     async def scenario():
@@ -224,10 +226,12 @@ def test_disconnect_during_real_tool_keeps_slot_until_thread_stops(lab, engine, 
                 return ToolAction(tool_call_id="test", tool_name="blocked", model_usage=ModelUsage(input_tokens=1, output_tokens=1, total_tokens=2), arguments='{"utc_offset_hours": 8}')
 
         monkeypatch.setattr(chat_service, "DeepSeekDecisionMaker", Decision)
-        monkeypatch.setitem(TOOL_REGISTRY, "blocked", ToolDefinition(
+        blocked = ToolDefinition(
             name="blocked", description="受控工具", arguments_model=GetCurrentTimeArguments,
             executor=lambda **kwargs: work(), timeout_seconds=5,
-        ))
+        )
+        # 聊天使用请求级能力快照，测试工具也从同一装配边界注入。
+        monkeypatch.setattr(chat_service, "tools_for_execution", lambda **kwargs: (blocked,))
         task = asyncio.create_task(request(lab[0], lab[1], "/chat/stream", spec=spec, disconnect=disconnected))
         try:
             await asyncio.wait_for(work.started.wait(), 3)

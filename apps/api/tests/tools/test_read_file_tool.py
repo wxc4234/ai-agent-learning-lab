@@ -89,7 +89,7 @@ def test_capability_filter_and_schema(provided):
     names = {tool["function"]["name"] for tool in tools}
     expected = {"get_current_time", "calculate_rectangle_area"}
     if provided is CONTEXT:
-        expected.update({"read_text_file", "list_directory", "search_text_file"})
+        expected.update({"read_text_file", "list_directory", "search_text_file", "find_files", "preview_file_edit", "create_file_edit_proposal"})
     assert names == expected
     schema = TOOL_REGISTRY["read_text_file"].as_model_tool()["function"]["parameters"]
     assert set(schema["properties"]) == {"relative_path"}

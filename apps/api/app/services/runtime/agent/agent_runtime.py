@@ -9,8 +9,13 @@ from typing import Literal, TypeAlias
 from pydantic import ValidationError
 
 from app.services.runtime.agent.token_budget import evaluate_token_budget
+from app.services.runtime.agent.tool_wait import ToolWaitTimeout, wait_for_tool
 from app.tools.context import ToolExecutionContext
-from app.tools.registry import TOOL_REGISTRY, ToolContextRequiredError
+from app.tools.registry import (
+    TOOL_REGISTRY,
+    ToolContextRequiredError,
+    ToolDefinition,
+)
 from app.services.runtime.execution.execution_threads import ExecutionThreads
 from app.tools.errors import SafeToolExecutionError
 
@@ -245,14 +250,24 @@ async def stream_agent_loop(
     decide: DecisionMaker,
     *,
     max_steps: int = 5,
-    # None 表示保持原有行为，不启用预算。
     max_total_tokens: int | None = None,
-    # 由外层执行作用域提供；Runtime 使用它，但不负责关闭。
     execution_threads: ExecutionThreads | None = None,
-    # 由服务端授权链路构造，不从模型 arguments 中读取。
     tool_context: ToolExecutionContext | None = None,
+    tool_definitions: tuple[ToolDefinition, ...] | None = None,
 ) -> AsyncIterator[AgentLoopEvent]:
     """逐步执行 Agent Loop，并在关键节点产生领域事件。"""
+
+    # 执行开始时取得独立查找表，不在不同请求之间共享绑定执行器。
+    # None保留旧调用方式，空元组明确关闭全部工具。
+    if tool_definitions is None:
+        tool_registry = dict(TOOL_REGISTRY)
+    else:
+        tool_registry = {
+            definition.name: definition
+            for definition in tool_definitions
+        }
+        if len(tool_registry) != len(tool_definitions):
+            raise ValueError("本次执行的工具名称不能重复")
 
     # 显式传入时，将工具登记到本次执行的线程集合。
     # 未传入时保留既有独立调用兼容；这类调用不受作用域保护。
@@ -362,7 +377,7 @@ async def stream_agent_loop(
                 return
 
         yield ToolCallStarted(action=decision)
-        tool_definition = TOOL_REGISTRY.get(decision.tool_name)
+        tool_definition = tool_registry.get(decision.tool_name)
 
         if tool_definition is None:
             error_observation = ToolErrorObservation(
@@ -409,19 +424,32 @@ async def stream_agent_loop(
         tool_started_at_ns = perf_counter_ns()
 
         try:
-            # 超时仍按原协议产生 tool_timeout。
-            # 使用跟踪器时，停止等待不会丢失后台工作的完成状态；
-            # 外层作用域仍会等待该线程结束后再释放占用。
-            tool_result = await asyncio.wait_for(
-                run_tool_in_thread(
+            # 根据服务端注册信息分派，不根据模型参数或返回值猜测类型。
+            # 此处取得待等待对象，随后统一交给现有超时边界。
+            if tool_definition.is_async:
+                # 异步工具在事件循环中执行，不经过工作线程。
+                tool_execution = tool_definition.execute_async(
+                    validated_arguments,
+                    context=tool_context,
+                )
+            else:
+                # 同步工具保留原有线程跟踪机制。
+                # 停止等待不等于线程停止，外层作用域仍负责等待线程收尾。
+                tool_execution = run_tool_in_thread(
                     tool_definition.execute,
                     validated_arguments,
                     context=tool_context,
-                ),
+                )
+
+            # 正常完成时取得字符串结果，继续沿用现有Observation协议。
+            # 超时会请求取消异步执行；执行器应完成必要收尾并传播取消。
+            # 等待收尾可能超出配置时间，因此不是硬截止时间。
+            tool_result = await wait_for_tool(
+                tool_execution,
                 timeout=tool_definition.timeout_seconds,
             )
-        except asyncio.TimeoutError:
-            # 超时时也记录 Runtime 等待时间
+        except ToolWaitTimeout:
+            # 只有Runtime自身预算耗尽才报告tool_timeout。
             tool_duration_ms = _elapsed_milliseconds(tool_started_at_ns)
 
             error_observation = ToolErrorObservation(
@@ -508,21 +536,19 @@ async def run_agent_loop(
     max_total_tokens: int | None = None,
     execution_threads: ExecutionThreads | None = None,
     tool_context: ToolExecutionContext | None = None,
+    tool_definitions: tuple[ToolDefinition, ...] | None = None,
 ) -> AgentLoopResult:
-    """消费 Agent 事件流，并返回原有的最终结果。"""
+    """消费Agent事件流，透传同一份请求级能力集合。"""
 
-    # 两种入口共享同一个线程跟踪器与上下文。
-    # 不在这里重新构造身份，也不另建工具执行作用域。
     async for event in stream_agent_loop(
         decide,
         max_steps=max_steps,
         max_total_tokens=max_total_tokens,
         execution_threads=execution_threads,
         tool_context=tool_context,
+        tool_definitions=tool_definitions,
     ):
         if isinstance(event, AgentLoopCompleted):
             return event.result
 
-    # 按照事件协议，生成器必须产生 AgentLoopCompleted。
-    # 防止未来修改生成器时遗漏终态。
     raise RuntimeError("Agent Loop 未产生终态事件")

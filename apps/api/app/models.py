@@ -11,6 +11,7 @@ from sqlalchemy import (
     Text,
     UniqueConstraint,
     func,
+    Boolean
 )
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -494,4 +495,82 @@ class AgentRunEvent(Base):
     # 与 AgentRun.events 对应，便于 event.run 访问所属执行。
     run: Mapped[AgentRun] = relationship(
         back_populates="events",
+    )
+
+class FileEditProposal(Base):
+    """保存确定的修改内容；创建提案不等于批准或应用修改。"""
+
+    __tablename__ = "file_edit_proposals"
+
+    __table_args__ = (
+        CheckConstraint(
+            "status = 'pending'",
+            name="ck_file_edit_proposals_status",
+        ),
+        CheckConstraint(
+            "char_length(bound_root) BETWEEN 1 AND 4096",
+            name="ck_file_edit_proposals_root",
+        ),
+        CheckConstraint(
+            "char_length(relative_path) BETWEEN 1 AND 4096",
+            name="ck_file_edit_proposals_path",
+        ),
+        CheckConstraint(
+            "baseline_sha256 ~ '^[0-9a-f]{64}$'",
+            name="ck_file_edit_proposals_baseline",
+        ),
+        CheckConstraint(
+            "proposed_sha256 ~ '^[0-9a-f]{64}$'",
+            name="ck_file_edit_proposals_proposed_hash",
+        ),
+        CheckConstraint(
+            "octet_length(proposed_content) <= 262144",
+            name="ck_file_edit_proposals_content_size",
+        ),
+        CheckConstraint(
+            "char_length(diff) BETWEEN 1 AND 16384",
+            name="ck_file_edit_proposals_diff_size",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    external_id: Mapped[str] = mapped_column(
+        String(32),
+        unique=True,
+        index=True,
+        nullable=False,
+    )
+
+    # 归属沿Task→Workspace查询，不重复维护用户和项目字段。
+    # 本课提案只处于pending；任务删除时由数据库同时清理。
+    # 不添加ORM反向关系，避免ORM提前将外键置空。
+    task_id: Mapped[int] = mapped_column(
+        ForeignKey("tasks.id", ondelete="CASCADE"),
+        index=True,
+        nullable=False,
+    )
+
+    # 仅供服务端核对目录绑定，不放入公开返回对象。
+    bound_root: Mapped[str] = mapped_column(Text, nullable=False)
+    relative_path: Mapped[str] = mapped_column(String(4096), nullable=False)
+
+    baseline_sha256: Mapped[str] = mapped_column(String(64), nullable=False)
+
+    # 保存确定的新内容，后续不能从模型重新取一份内容来执行。
+    proposed_content: Mapped[str] = mapped_column(Text, nullable=False)
+    proposed_sha256: Mapped[str] = mapped_column(String(64), nullable=False)
+
+    diff: Mapped[str] = mapped_column(Text, nullable=False)
+    diff_truncated: Mapped[bool] = mapped_column(Boolean, nullable=False)
+
+    # 当前只有待审批状态；其他状态与转换在后续课程中实现。
+    status: Mapped[str] = mapped_column(
+        String(20),
+        server_default="pending",
+        nullable=False,
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False,
     )

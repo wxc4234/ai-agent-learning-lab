@@ -156,3 +156,47 @@ def test_independent_truncation_and_json_round_trip(stdout_truncated, stderr_tru
     assert restored.stderr_truncated is stderr_truncated
     with pytest.raises(ValidationError):
         result.exit_code = 0
+
+
+@pytest.mark.parametrize("oom", [None, False, True])
+@pytest.mark.parametrize("daemon_error", [None, False, True])
+@pytest.mark.parametrize("code", [0, 7])
+def test_success_requires_known_negative_error_facts(oom, daemon_error, code):
+    result = CommandResult(status="exited", exit_code=code, duration_ms=0,
+                           oom_killed=oom, daemon_error=daemon_error)
+    assert result.succeeded is (code == 0 and oom is False and daemon_error is False)
+    restored = CommandResult.model_validate_json(result.model_dump_json())
+    assert restored == result and restored.succeeded is result.succeeded
+    assert "succeeded" not in result.model_dump()
+
+
+@pytest.mark.parametrize("status", ["timed_out", "cancelled"])
+def test_interruption_is_not_success_even_with_clean_exit(status):
+    result = CommandResult(status=status, exit_code=0, duration_ms=1,
+                           oom_killed=False, daemon_error=False)
+    assert not result.succeeded
+
+
+@pytest.mark.parametrize("field", ["oom_killed", "daemon_error"])
+@pytest.mark.parametrize("value", [0, 1, "false", "true", 0.0])
+def test_exit_error_facts_are_strict_booleans(field, value):
+    with pytest.raises(ValidationError):
+        CommandResult(status="exited", exit_code=0, duration_ms=0, **{field: value})
+
+
+@pytest.mark.parametrize("field", ["oom_killed", "daemon_error"])
+@pytest.mark.parametrize("value", [False, True])
+def test_start_failure_cannot_claim_observed_exit_facts(field, value):
+    with pytest.raises(ValidationError):
+        CommandResult(status="start_failed", start_error_code="process_start_failed",
+                      duration_ms=0, **{field: value})
+
+
+def test_absent_exit_facts_stay_unknown_and_success_cannot_be_supplied():
+    result = CommandResult(status="exited", exit_code=0, duration_ms=0)
+    assert result.oom_killed is None and result.daemon_error is None
+    assert not result.succeeded
+    with pytest.raises(ValidationError):
+        CommandResult.model_validate(result.model_dump() | {"succeeded": True})
+    with pytest.raises(ValidationError):
+        result.oom_killed = False

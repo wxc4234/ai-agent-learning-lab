@@ -75,7 +75,7 @@ try:
             ROOT / "apps/web/src/app/api/auth/login/route.ts",
             web / "app/api/auth/login/route.ts",
         )
-        for route in ("sessions/[sessionId]/execution/recover", "sessions/[sessionId]/execution", "runs/[runId]", "auth/register", "workspaces", "workspaces/[workspaceId]/directory", "workspaces/[workspaceId]/directory/select", "workspaces/[workspaceId]/tasks", "workspaces/[workspaceId]/tasks/[taskId]", "workspaces/[workspaceId]/tasks/[taskId]/messages", "workspaces/[workspaceId]/tasks/[taskId]/runs", "workspaces/[workspaceId]/tasks/[taskId]/title"):
+        for route in ("sessions/[sessionId]/execution/recover", "sessions/[sessionId]/execution", "runs/[runId]", "auth/register", "workspaces", "workspaces/[workspaceId]/directory", "workspaces/[workspaceId]/directory/select", "workspaces/[workspaceId]/tasks", "workspaces/[workspaceId]/tasks/[taskId]", "workspaces/[workspaceId]/tasks/[taskId]/messages", "workspaces/[workspaceId]/tasks/[taskId]/runs", "workspaces/[workspaceId]/tasks/[taskId]/file-edit-proposals/[proposalId]", "workspaces/[workspaceId]/tasks/[taskId]/title"):
             destination = web / "app/api" / route
             destination.mkdir(parents=True, exist_ok=True)
             shutil.copyfile(ROOT / "apps/web/src/app/api" / route / "route.ts", destination / "route.ts")
@@ -242,6 +242,10 @@ try:
                 timeout=720,
                 env=os.environ | browser_fixture | {"AUTH_TEST_BASE_URL": "http://localhost:13000", "BROWSER_APP_MODE": test_mode, "BROWSER_TEST_DIRECTORY": env.get("BROWSER_TEST_DIRECTORY", "")},
             )
+            if os.environ.get("BROWSER_TEST_SCRIPT") == "proposal-tools.mjs":
+                from proposal_model import verify_proposal_rows
+
+                verify_proposal_rows(engine)
         finally:
             for process in reversed(processes):
                 process.terminate()

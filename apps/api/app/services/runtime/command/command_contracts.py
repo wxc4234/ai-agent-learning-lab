@@ -136,6 +136,11 @@ class CommandResult(BaseModel):
     # 不限定为非负数，为 POSIX 信号导致的负返回码保留表达空间。
     exit_code: int | None = None
 
+    # None 表示尚未提供该事实，不能把“未知”默认当作“没有错误”。
+    # Docker 适配器会从已确认的退出结果中明确填入 True 或 False。
+    oom_killed: bool | None = None
+    daemon_error: bool | None = None
+
     stdout: str = Field(
         default="",
         max_length=MAX_OUTPUT_CHARACTERS_PER_STREAM,
@@ -163,6 +168,11 @@ class CommandResult(BaseModel):
             if self.exit_code is not None:
                 raise ValueError("未启动的进程不能具有退出码")
 
+            # 未启动就没有本次进程的退出事实。
+            # 即便填入 False，也是在声称已经观察到了这些字段。
+            if self.oom_killed is not None or self.daemon_error is not None:
+                raise ValueError("启动失败不能包含进程退出事实")
+
             if (
                 self.stdout
                 or self.stderr
@@ -180,3 +190,16 @@ class CommandResult(BaseModel):
             raise ValueError("已退出的命令必须提供退出码")
 
         return self
+
+    @property
+    def succeeded(self) -> bool:
+        """只有明确的退出与错误事实齐全时，才判断进程结果成功。"""
+
+        # 超时或取消即使后来取得退出码0，也不能改判成本次执行成功。
+        # is False 保证 None（未知）不会被当成没有错误。
+        return (
+            self.status == "exited"
+            and self.exit_code == 0
+            and self.oom_killed is False
+            and self.daemon_error is False
+        )

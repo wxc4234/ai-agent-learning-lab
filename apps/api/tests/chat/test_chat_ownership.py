@@ -1,3 +1,4 @@
+from app.services.runtime.execution.command_recovery_store import CommandRecoveryStore
 from app.services.runtime.execution.execution_budget import ExecutionBudget
 from app.services.runtime.execution import conversation_execution_scope
 """Real HTTP identities, ownership, cache and persistence with model calls mocked."""
@@ -59,6 +60,7 @@ def lab(engine, monkeypatch):
     chat_service.conversations.clear()
     app = FastAPI()
     app.state.execution_budget = ExecutionBudget(capacity=2)
+    app.state.command_recovery_store = CommandRecoveryStore()
     app.include_router(chat.router)
     app.include_router(conversation.router)
     with TestClient(app) as client:

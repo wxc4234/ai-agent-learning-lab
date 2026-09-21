@@ -6,7 +6,7 @@ import os
 if not os.environ.get("DATABASE_URL", "").split("?")[0].rsplit("/", 1)[-1].startswith("agent_lab_test_"):
     raise RuntimeError("Browser test app requires a generated isolated database")
 
-from app.main import app  # noqa: F401 -- uvicorn entry point after isolation guard
+from app.main import app  # uvicorn entry point after isolation guard
 from app.services.chat import chat_service
 from app.routers.runtime import runs
 from app.services.runtime.agent.agent_runtime import FinalAnswer, ModelUsage, ToolAction
@@ -17,6 +17,22 @@ class BrowserDecisionMaker:
         self.prompt = str(kwargs.get("messages", ""))
 
     async def __call__(self, observations):
+        if "[proposal-" in self.prompt:
+            from proposal_model import proposal_decision
+
+            return proposal_decision(self.prompt, observations)
+        if "[preview-" in self.prompt:
+            from preview_model import preview_decision
+
+            return preview_decision(self.prompt, observations)
+        if "[find-" in self.prompt:
+            from find_model import find_decision
+
+            return find_decision(self.prompt, observations)
+        if "[command-" in self.prompt:
+            from command_model import command_decision
+
+            return command_decision(self.prompt, observations)
         if "[readonly-" in self.prompt:
             from readonly_model import readonly_decision
 
@@ -82,3 +98,9 @@ async def browser_task_title(messages):
     return "自动总结的任务标题"
 
 task_workspace.generate_title = browser_task_title
+
+
+if os.environ.get("BROWSER_TEST_SCRIPT") == "command-tools.mjs":
+    from command_model import install_command_fixture
+
+    install_command_fixture(app)

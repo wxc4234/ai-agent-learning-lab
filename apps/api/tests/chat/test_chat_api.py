@@ -1,3 +1,4 @@
+from app.services.runtime.execution.command_recovery_store import CommandRecoveryStore
 from app.services.runtime.execution.execution_budget import ExecutionBudget
 from unittest.mock import AsyncMock
 
@@ -13,6 +14,7 @@ from app.services.auth.authentication_service import AuthenticatedUser
 def test_chat_rejects_request_missing_required_fields():
     app = FastAPI()
     app.state.execution_budget = ExecutionBudget(capacity=2)
+    app.state.command_recovery_store = CommandRecoveryStore()
     app.include_router(chat_router_module.router)
     app.dependency_overrides[require_current_user] = lambda: AuthenticatedUser(1, "test-user", "tester")
     client = TestClient(app)
@@ -31,6 +33,7 @@ def test_chat_returns_friendly_error_when_model_is_unavailable(monkeypatch, exec
 
     app = FastAPI()
     app.state.execution_budget = ExecutionBudget(capacity=2)
+    app.state.command_recovery_store = CommandRecoveryStore()
     app.include_router(chat_router_module.router)
     app.dependency_overrides[require_current_user] = lambda: AuthenticatedUser(1, "test-user", "tester")
     client = TestClient(app)

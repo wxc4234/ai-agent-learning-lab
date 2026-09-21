@@ -21,7 +21,7 @@ from app.services.runtime.agent.agent_runtime import (
     ModelUsage,
 )
 from app.tools.context import ToolExecutionContext
-from app.tools.registry import model_tools_for_context
+from app.tools.registry import ToolDefinition, model_tools_for_context
 
 DEFAULT_SYSTEM_PROMPT = """你是一个可以使用工具解决问题的 AI 助手。
 需要外部计算或实时信息时，请调用提供的工具；收到工具结果后再给出最终回答。
@@ -45,13 +45,21 @@ class DeepSeekDecisionMaker:
         user_prompt: str | None = None,
         messages: Sequence[ChatCompletionMessageParam] | None = None,
         tool_context: ToolExecutionContext | None = None,
+        tool_definitions: tuple[ToolDefinition, ...] | None = None,
     ) -> None:
         self._client = client
         self._model = model
 
-        # 上下文只用于服务端选择工具描述，不序列化进模型消息。
-        # 本次执行保存独立列表，不修改全局 TOOLS。
-        self._tools = model_tools_for_context(tool_context)
+        # 显式传入时，模型只看到本次执行能力快照中的描述。
+        # 不序列化执行器、上下文、Run ID或恢复记录容器。
+        self._tools = (
+            model_tools_for_context(tool_context)
+            if tool_definitions is None
+            else [
+                definition.as_model_tool()
+                for definition in tool_definitions
+            ]
+        )
 
         if messages is not None:
             if system_prompt is not None or user_prompt is not None:

@@ -193,3 +193,39 @@ def test_real_context_file_and_persistence(engine, target, tmp_path, monkeypatch
         assert [(message.role, message.content) for message in messages] == [("user", "read"), ("assistant", "已处理")]
         types = session.scalars(select(AgentRunEvent.event_type).where(AgentRunEvent.run_id == run_id)).all()
         assert ("TOOL_CALL_RESULT" if bound else "TOOL_CALL_ERROR") in types
+
+
+@pytest.mark.parametrize("mode", ["local", "account"])
+def test_request_command_capability_snapshot_shared_by_model_and_runtime(unit, monkeypatch, mode):
+    monkeypatch.setattr(settings, "app_mode", mode)
+    expected = ToolExecutionContext(1, "c", "w", "t")
+    monkeypatch.setattr(service, "load_tool_execution_context", lambda **kwargs: expected)
+    async def prepare(**kwargs):
+        return [{"role": "user", "content": "test"}], []
+    monkeypatch.setattr(service, "_prepare_chat_messages", prepare)
+    snapshots = []
+    def model(**kwargs):
+        snapshots.append(kwargs["tool_definitions"])
+        return object()
+    async def loop(decide, **kwargs):
+        assert kwargs["tool_definitions"] is snapshots[0]
+        assert ("run_command" in {item.name for item in snapshots[0]}) is (mode == "local")
+        yield AgentLoopCompleted(AgentLoopResult("completed", "done", 1, ()))
+    async def command(**kwargs):
+        pytest.fail("registration must not execute command")
+    monkeypatch.setattr(service, "DeepSeekDecisionMaker", model)
+    monkeypatch.setattr(service, "stream_agent_loop", loop)
+    async def scenario():
+        tracker, monitors = ExecutionThreads(), []
+        try:
+            events = [json.loads(line) async for line in service.stream_chat_reply(
+                user_id=1, session_id="c", prompt="test", run_id=1,
+                execution_threads=tracker, monitors=monitors, command_executor=command,
+            )]
+            assert events[-1]["type"] == "RUN_FINISHED"
+        finally:
+            for monitor in monitors:
+                monitor.cancel()
+            await asyncio.gather(*monitors, return_exceptions=True)
+            await tracker.wait_closed()
+    asyncio.run(scenario())

@@ -1,3 +1,4 @@
+from app.services.runtime.execution.command_recovery_store import CommandRecoveryStore
 from app.services.runtime.execution.execution_budget import ExecutionBudget
 """Chat authentication must finish before creating a run or invoking a model."""
 
@@ -17,6 +18,7 @@ from app.services.auth.login_session_resolver import InvalidLoginSessionError
 def boundary(monkeypatch, execution_stub):
     application = FastAPI()
     application.state.execution_budget = ExecutionBudget(capacity=2)
+    application.state.command_recovery_store = CommandRecoveryStore()
     application.include_router(chat.router)
     create_run = Mock(return_value=123)
     reply = AsyncMock(return_value="测试回复")

@@ -53,7 +53,14 @@ from app.services.tasks.task_deletion_service import (
     TaskRunUnsettledError,
     delete_workspace_task,
 )
-from app.schemas import TaskDetailResponse, TaskRunListResponse
+from app.schemas import (
+    FileEditProposalDetailResponse,
+    TaskDetailResponse,
+    TaskRunListResponse,
+)
+from app.services.workspace.file_edit_proposal_service import (
+    get_task_file_edit_proposal,
+)
 from app.services.tasks.task_run_query import (
     MAX_PAGE_SIZE,
     MAX_RUN_ID,
@@ -806,6 +813,67 @@ def read_task_detail(
         user_id=current_user.id,
         workspace_id=workspace_id,
         task_id=task_id,
+    )
+
+@router.get(
+    "/{workspace_id}/tasks/{task_id}/file-edit-proposals/{proposal_id}",
+    response_model=FileEditProposalDetailResponse,
+    responses={
+        401: {
+            "model": WorkspaceErrorResponse,
+            "description": "身份无效",
+        },
+        403: {
+            "model": WorkspaceErrorResponse,
+            "description": "非本地模式或本地访问边界校验失败",
+        },
+        404: {
+            "model": WorkspaceErrorResponse,
+            "description": "项目、任务或提案不存在或不可访问",
+        },
+        422: {
+            "model": WorkspaceErrorResponse,
+            "description": "公开标识格式不符合要求",
+        },
+        500: {
+            "model": WorkspaceErrorResponse,
+            "description": "提案详情暂时无法读取",
+        },
+    },
+)
+def read_file_edit_proposal_detail(
+    workspace_id: TaskIdentifier,
+    task_id: TaskIdentifier,
+    proposal_id: TaskIdentifier,
+    current_user: CurrentUser,
+) -> FileEditProposalDetailResponse:
+    """返回已授权提案的保存快照，不检查当前文件是否仍符合基线。"""
+
+    # 身份由服务端依赖解析，不能从请求参数接受user_id。
+    # 使用普通def，让同步数据库查询在线程池中执行。
+    detail = get_task_file_edit_proposal(
+        user_id=current_user.id,
+        workspace_id=workspace_id,
+        task_id=task_id,
+        proposal_id=proposal_id,
+    )
+
+    # 查询服务已经关闭Session；这里只转换公开普通字段，
+    # 不开启新事务、不返回ORM对象，也不重新读取文件。
+    # 服务状态为str；在HTTP边界验证Literal，而非强转或伪造pending。
+    return FileEditProposalDetailResponse.model_validate(
+        {
+            "proposal_id": detail.proposal_id,
+            "workspace_id": detail.workspace_id,
+            "task_id": detail.task_id,
+            "relative_path": detail.relative_path,
+            "status": detail.status,
+            "baseline_sha256": detail.baseline_sha256,
+            "proposed_sha256": detail.proposed_sha256,
+            "diff": detail.diff,
+            "diff_truncated": detail.diff_truncated,
+            "created_at": detail.created_at,
+        }
     )
 
 @router.get(

@@ -311,6 +311,58 @@ class TaskDetailResponse(BaseModel):
     workspace: WorkspaceResponse
     task: TaskResponse
 
+class FileEditProposalDetailResponse(BaseModel):
+    """提案审阅详情，不暴露宿主目录、内部主键或完整待写正文。"""
+
+    model_config = ConfigDict(
+        strict=True,
+        extra="forbid",
+    )
+
+    # 标识用于前端核对当前查看对象，不作为授权凭据。
+    proposal_id: str = Field(
+        min_length=32,
+        max_length=32,
+        pattern=r"^[0-9a-f]{32}$",
+    )
+    workspace_id: str = Field(
+        min_length=32,
+        max_length=32,
+        pattern=r"^[0-9a-f]{32}$",
+    )
+    task_id: str = Field(
+        min_length=32,
+        max_length=32,
+        pattern=r"^[0-9a-f]{32}$",
+    )
+
+    relative_path: str = Field(
+        min_length=1,
+        max_length=4096,
+    )
+
+    # 当前数据库只支持pending，未来扩展状态时同步修改响应契约。
+    status: Literal["pending"]
+
+    baseline_sha256: str = Field(
+        min_length=64,
+        max_length=64,
+        pattern=r"^[0-9a-f]{64}$",
+    )
+    proposed_sha256: str = Field(
+        min_length=64,
+        max_length=64,
+        pattern=r"^[0-9a-f]{64}$",
+    )
+
+    # Diff来自保存记录；截断时不能声称已经完整审阅。
+    diff: str = Field(
+        min_length=1,
+        max_length=16384,
+    )
+    diff_truncated: bool
+    created_at: datetime
+
 class TaskRunItemResponse(BaseModel):
     """任务运行列表中的单条概要，不包含事件正文。"""
 

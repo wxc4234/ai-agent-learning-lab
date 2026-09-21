@@ -1,3 +1,4 @@
+from app.services.runtime.execution.command_recovery_store import CommandRecoveryStore
 from app.services.runtime.execution.execution_budget import ExecutionBudget
 """Real PostgreSQL sessions at both chat boundaries; no external model calls."""
 
@@ -59,6 +60,7 @@ def authenticated_chat(engine, monkeypatch, execution_stub):
     monkeypatch.setattr(chat, "stream_chat_reply", stream)
     app = FastAPI()
     app.state.execution_budget = ExecutionBudget(capacity=2)
+    app.state.command_recovery_store = CommandRecoveryStore()
     app.include_router(chat.router)
     with TestClient(app) as client:
         yield client, issued.token.get_secret_value(), create_run, model
