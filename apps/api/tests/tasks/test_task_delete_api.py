@@ -7,10 +7,10 @@ from sqlalchemy.orm import Session
 from app import dependencies
 from app.config import settings
 from app.models import AgentRun, AgentRunEvent, Conversation, ConversationExecutionSlot, Message, Task, User, Workspace
-from app.routers.workspace import workspace
+from app.routers.workspace import tasks as workspace
 from tests.local.test_local_mode import HEADERS
 from tests.tasks.test_task_workspace import task
-import tests.workspace.test_workspace_binding_api as binding
+import tests.workspace.directory.test_workspace_binding_api as binding
 
 local_client = binding.local_client
 target = binding.target

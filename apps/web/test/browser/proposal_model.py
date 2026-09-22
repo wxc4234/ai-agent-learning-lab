@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from app.models import FileEditProposal, Task
 from app.services.runtime.agent.agent_runtime import FinalAnswer, ModelUsage, ToolAction, ToolErrorObservation
-from app.services.workspace.file_edit_proposal_service import get_task_file_edit_proposal
+from app.services.workspace.proposals.file_edit_proposal_service import get_task_file_edit_proposal
 
 
 def proposal_decision(prompt, observations):
@@ -37,7 +37,7 @@ def verify_proposal_rows(engine):
     # 浏览器证据只在隔离启动器中读取，不为生产应用增加测试HTTP接口。
     report = json.loads(Path("/private/tmp/agent-ui-proposal/output/playwright/evidence.json").read_text())
     # 启动器进程的默认Session仍可能指向开发库，必须显式绑定隔离engine。
-    with patch("app.services.workspace.file_edit_proposal_service.SessionLocal", sessionmaker(bind=engine)), Session(engine) as session:
+    with patch("app.services.workspace.proposals.file_edit_proposal_service.SessionLocal", sessionmaker(bind=engine)), Session(engine) as session:
         rows = list(session.scalars(select(FileEditProposal)))
         assert len(rows) == 3, "刷新不得新增提案；失败及纯预览不保存"
         for item in report:

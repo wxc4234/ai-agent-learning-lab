@@ -61,7 +61,7 @@ def test_round_trip_and_metadata(migrated):
 
 
 @pytest.mark.parametrize("overrides,state", [
-    ({"status": "approved"}, "23514"), ({"status": None}, "23502"),
+    ({"status": "unknown"}, "23514"), ({"status": None}, "23502"),
     ({"bound_root": ""}, "23514"), ({"bound_root": "x" * 4097}, "23514"),
     ({"relative_path": ""}, "23514"), ({"relative_path": "x" * 4097}, "22001"),
     ({"baseline_sha256": "B" * 64}, "23514"), ({"baseline_sha256": "b" * 63}, "23514"),

@@ -10,8 +10,8 @@ from sqlalchemy.orm import Session
 from app import dependencies
 from app.config import settings
 from app.models import Conversation, Task, User, Workspace
-from app.routers.workspace import workspace
-import tests.workspace.test_workspace_binding_api as binding
+from app.routers.workspace import tasks as workspace
+import tests.workspace.directory.test_workspace_binding_api as binding
 from tests.local.test_local_mode import HEADERS
 
 local_client = binding.local_client

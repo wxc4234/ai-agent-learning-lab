@@ -42,6 +42,7 @@ const BACKEND_ERRORS: Record<number, Record<string, string>> = {
         workspace_not_accessible: "工作空间不存在或不可访问",
     },
     409: {
+        proposal_application_busy: "存在执行中或结果未确认的文件应用，暂不能变更资源",
         workspace_already_bound: "工作空间已绑定其他项目目录",
     },
     415: {

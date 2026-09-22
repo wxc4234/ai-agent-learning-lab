@@ -5,6 +5,8 @@ from dataclasses import dataclass
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
+from app.repositories.workspace.proposal_application_guard import require_no_active_proposal_application
+
 from app.models import AgentRun, AgentRunEvent, Conversation, ConversationExecutionSlot, Message, Task
 from app.repositories.workspace.workspace_repository import (
     WorkspaceNotAccessibleError,
@@ -81,6 +83,9 @@ def delete_workspace_task(
             # 正常创建事务会同时创建会话。
             # 缺失会话或归属错配时拒绝，不借删除服务修复异常数据。
             raise WorkspaceNotAccessibleError()
+
+        # 与应用领取串行；在任何DELETE之前拒绝未结束的文件副作用。
+        require_no_active_proposal_application(session, workspace_id=workspace.id, task_id=task.id)
 
         # 获取/释放占用也先锁会话；在同一行锁内检查才能与它们串行。
         # 占用可能早于 Run 创建，也可能在 Run 终态后继续收尾。

@@ -712,7 +712,7 @@ Workspace 创建服务最终验收：后端全量 **614 passed，零弃用警告
 ```bash
 # 从 apps/api
 ../../.venv/bin/python -W error::DeprecationWarning -m pytest -q tests/workspace/test_workspace_api.py tests/workspace/test_workspace_service.py tests/auth/test_current_user_dependency.py
-../../.venv/bin/python -m ruff check app/routers/workspace/workspace.py app/schemas.py app/main.py tests/workspace/test_workspace_api.py
+../../.venv/bin/python -m ruff check app/routers/workspace/router.py app/schemas.py app/main.py tests/workspace/test_workspace_api.py
 ```
 
 Ruff（本次修改文件）和 git diff --check 通过。未运行后端全量、前端、浏览器、模型/流式取消或迁移回归：本课新增独立 HTTP 路由与 schema，没有修改这些实现。614 passed 是上一课全量结果，不能当成本次全量结果。今后回归先按改动及调用链、共享依赖和风险选取；影响范围不清、共享机制或数据库结构变化时扩大范围。
@@ -817,8 +817,8 @@ BROWSER_APP_MODE=account BROWSER_TEST_SCRIPT=workspace-list.mjs .venv/bin/python
 
 ```bash
 cd apps/api
-../../.venv/bin/python -W error::DeprecationWarning -m pytest -q tests/workspace/test_workspace_directory.py
-../../.venv/bin/python -m ruff check app/services/workspace/workspace_directory.py tests/workspace/test_workspace_directory.py
+../../.venv/bin/python -W error::DeprecationWarning -m pytest -q tests/workspace/directory/test_workspace_directory.py
+../../.venv/bin/python -m ruff check app/services/workspace/directory/workspace_directory.py tests/workspace/directory/test_workspace_directory.py
 ```
 
 核心实现与参考一致，仅补空行及末尾换行；定向 Ruff 和 git diff --check 通过。首次从根目录执行 pytest 未设置 app 导入路径，收集失败；切到 apps/api 按上面命令运行后通过。本课不涉及数据库、前端或账号模式，未重复其回归。当前只完成目录校验，尚无目录绑定字段、接口或文件工具授权。
@@ -833,7 +833,7 @@ cd apps/api
 
 ```bash
 cd apps/api
-../../.venv/bin/python -W error::DeprecationWarning -m pytest -xq tests/workspace/test_workspace_root_path.py tests/migrations/test_workspace_migration.py tests/workspace/test_workspace_repository.py tests/workspace/test_workspace_service.py tests/workspace/test_workspace_list.py
+../../.venv/bin/python -W error::DeprecationWarning -m pytest -xq tests/workspace/directory/test_workspace_root_path.py tests/migrations/test_workspace_migration.py tests/workspace/test_workspace_repository.py tests/workspace/test_workspace_service.py tests/workspace/test_workspace_list.py
 ```
 
 开发库原为 d94e31b706fa，升级前实际结构及 CHECK 与旧版本快照一致。执行 alembic upgrade e05f42c817ab 成功，current 为 e05f42c817ab (head)，alembic check 无差异；未执行 stamp、回退或业务数据回填。实际 /workspaces 和 /api/workspaces?limit=1 均为 200，未启动额外开发服务。其他电脑仍需各自执行正常升级。此次未跑账号流程、完整前端、浏览器交互或完整后端回归。
@@ -846,7 +846,7 @@ cd apps/api
 
 ```bash
 cd apps/api
-../../.venv/bin/python -W error::DeprecationWarning -m pytest -xq tests/workspace/test_workspace_binding.py tests/workspace/test_workspace_directory.py tests/workspace/test_workspace_repository.py tests/workspace/test_workspace_service.py
+../../.venv/bin/python -W error::DeprecationWarning -m pytest -xq tests/workspace/directory/test_workspace_binding.py tests/workspace/directory/test_workspace_directory.py tests/workspace/test_workspace_repository.py tests/workspace/test_workspace_service.py
 ```
 
 本课只完成服务层，尚未接 HTTP/BFF 或页面；未新增迁移、启动额外开发进程或运行账号/UI/模型全量回归。行锁仅保护数据库绑定决策，文件系统仍可能在检查后变化；目录内文件访问边界尚待实现。
@@ -857,7 +857,7 @@ cd apps/api
 
 ```bash
 cd apps/api
-../../.venv/bin/python -W error::DeprecationWarning -m pytest -xq tests/workspace/test_workspace_binding_api.py tests/workspace/test_workspace_binding.py tests/workspace/test_workspace_directory.py tests/workspace/test_workspace_list.py::test_local_list_keeps_registered_resources_separate
+../../.venv/bin/python -W error::DeprecationWarning -m pytest -xq tests/workspace/directory/test_workspace_binding_api.py tests/workspace/directory/test_workspace_binding.py tests/workspace/directory/test_workspace_directory.py tests/workspace/test_workspace_list.py::test_local_list_keeps_registered_resources_separate
 ```
 
 使用真实 app/本地身份与自动清理的隔离 PostgreSQL，不运行开发库 lifespan。覆盖创建→绑定→重复→列表白名单，冲突保持原值，正文额外字段/类型/空值、标识格式、真实目录失败、资源不可访问、Host/Origin/内部凭证、非 local 提前拒绝、JSON 类型/解析、目录故障映射和未知错误脱敏。验证身份 Session 在业务前关闭，业务失败及响应构造时 Session 均关闭。提交后响应构造故障返回安全 500，但独立数据库查询证实记录已绑定，响应文案因此使用“结果未确认”。
@@ -908,7 +908,7 @@ Playwright/Chrome 路径配置同前文。临时服务与隔离 PostgreSQL 已�
 
 ```bash
 cd apps/api
-../../.venv/bin/python -W error::DeprecationWarning -m pytest -xq tests/workspace/test_workspace_directory_api.py tests/workspace/test_workspace_binding_api.py tests/workspace/test_workspace_list.py::test_local_list_keeps_registered_resources_separate
+../../.venv/bin/python -W error::DeprecationWarning -m pytest -xq tests/workspace/directory/test_workspace_directory_api.py tests/workspace/directory/test_workspace_binding_api.py tests/workspace/test_workspace_list.py::test_local_list_keeps_registered_resources_separate
 ```
 
 真实 app/隔离 PostgreSQL 验证无 Origin 的合法 GET、NULL 与绑定路径回读、目录删除后仍读取保存状态、标识及资源/Host/Origin/凭证边界、非 local 提前拒绝、身份和业务 Session 关闭、读取禁止 commit，以及查询/响应异常固定 500 而非 NULL。另一连接持有写锁且 flush 未提交时，读取在 1 秒 statement_timeout 内返回先前已提交 NULL，验证未使用 FOR UPDATE。绑定 PUT 及原本地创建/列表仍通过。未启动额外服务、写开发业务数据、新增迁移或回归账号功能/UI；夹具自动清理隔离数据库。
@@ -936,7 +936,7 @@ TypeScript 和定向 ESLint 通过；首轮类型检查发现教练新增测试�
 
 ```bash
 cd apps/api
-../../.venv/bin/python -m pytest -q tests/workspace/test_directory_picker.py tests/workspace/test_workspace_selection_api.py tests/workspace/test_workspace_directory_api.py tests/workspace/test_workspace_binding_api.py
+../../.venv/bin/python -m pytest -q tests/workspace/directory/test_directory_picker.py tests/workspace/directory/test_workspace_selection_api.py tests/workspace/directory/test_workspace_directory_api.py tests/workspace/directory/test_workspace_binding_api.py
 cd ../..
 node --experimental-strip-types --test apps/web/test/features/workspaces/directory-select-route.test.ts apps/web/test/features/workspaces/directory-read-route.test.ts apps/web/test/features/workspaces/binding-route.test.ts
 BROWSER_APP_MODE=local BROWSER_TEST_SCRIPT=workspace-directory.mjs .venv/bin/python apps/web/test/browser/run-isolated.py
@@ -953,7 +953,7 @@ Playwright/Chrome 配置同前文。最终浏览器 6/6 场景通过：取消→
 
 ```bash
 cd apps/api
-../../.venv/bin/python -W error -m pytest -q tests/tasks/test_task_model.py tests/migrations/test_task_migration.py tests/migrations/test_workspace_migration.py tests/workspace/test_workspace_root_path.py tests/workspace/test_workspace_repository.py tests/runtime/test_run_repository.py
+../../.venv/bin/python -W error -m pytest -q tests/tasks/test_task_model.py tests/migrations/test_task_migration.py tests/migrations/test_workspace_migration.py tests/workspace/directory/test_workspace_root_path.py tests/workspace/test_workspace_repository.py tests/runtime/test_run_repository.py
 ../../.venv/bin/python -m alembic check
 ```
 
@@ -970,7 +970,7 @@ cd apps/api
 
 ```bash
 cd apps/api
-../../.venv/bin/python -W error -m pytest -q tests/tasks/test_task_service.py tests/tasks/test_task_model.py tests/workspace/test_workspace_binding.py tests/runtime/test_run_repository.py
+../../.venv/bin/python -W error -m pytest -q tests/tasks/test_task_service.py tests/tasks/test_task_model.py tests/workspace/directory/test_workspace_binding.py tests/runtime/test_run_repository.py
 ../../.venv/bin/python -m ruff check app/services/tasks/task_service.py tests/tasks/test_task_service.py
 ```
 
@@ -985,7 +985,7 @@ test_task_api.py 最终 33 条。首轮 Task 32 条 + 绑定 HTTP 32 + 目录读
 
 ```bash
 cd apps/api
-../../.venv/bin/python -W error -m pytest -q tests/tasks/test_task_api.py tests/workspace/test_workspace_binding_api.py tests/workspace/test_workspace_directory_api.py tests/workspace/test_workspace_selection_api.py
+../../.venv/bin/python -W error -m pytest -q tests/tasks/test_task_api.py tests/workspace/directory/test_workspace_binding_api.py tests/workspace/directory/test_workspace_directory_api.py tests/workspace/directory/test_workspace_selection_api.py
 ../../.venv/bin/python -W error -m pytest -q tests/tasks/test_task_api.py tests/local/test_local_mode.py::test_local_identity_stable_and_does_not_adopt_registered_user tests/workspace/test_workspace_list.py::test_local_list_keeps_registered_resources_separate
 ```
 
@@ -1073,7 +1073,7 @@ TypeScript、定向 ESLint、diff check 与聊天 84 条专项通过。沿用 wo
 ```bash
 cd apps/api
 ../../.venv/bin/python -W error -m pytest -q tests/tasks/test_task_detail.py tests/tasks/test_task_workspace.py tests/tasks/test_task_api.py
-../../.venv/bin/python -m ruff check app/schemas.py app/services/tasks/task_workspace.py app/routers/workspace/workspace.py tests/tasks/test_task_detail.py
+../../.venv/bin/python -m ruff check app/schemas.py app/services/tasks/task_workspace.py app/routers/workspace/router.py tests/tasks/test_task_detail.py
 ```
 
 复用 local_client 的隔离 PostgreSQL 会话工厂，验证真实 HTTP 与公开字段、Cookie/身份头不改变归属、22 条任务中第一页外的旧任务可直接定位、未知任务/项目/错误项目/他人项目/会话归属错配统一 404、非法路径 422、非本地模式提前拒绝及内部异常脱敏。直接服务测试捕获 SQL，确认仅 SELECT、未 commit，Session 已关闭且序列化不再触发查询；重读标题保持不变。测试库自动清理；未访问开发业务表、运行迁移、调用模型或启动额外服务。本课不涉及前端，不运行浏览器或无关全量回归。
@@ -1753,10 +1753,10 @@ CHROME_EXECUTABLE='/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
 
 ## 2026-09-20 第5周 Workspace 路径边界验收
 
-学习者实现 `apps/api/app/services/workspace/workspace_path.py`，核心与参考一致，教练仅补末尾换行；新增 `apps/api/tests/workspace/test_workspace_path.py`。使用项目 Python 3.12 虚拟环境，在 `apps/api` 执行：
+学习者实现 `apps/api/app/services/workspace/directory/workspace_path.py`，核心与参考一致，教练仅补末尾换行；新增 `apps/api/tests/workspace/directory/test_workspace_path.py`。使用项目 Python 3.12 虚拟环境，在 `apps/api` 执行：
 
 ```bash
-../../.venv/bin/python -W error -m pytest -xq --tb=short tests/workspace/test_workspace_path.py
+../../.venv/bin/python -W error -m pytest -xq --tb=short tests/workspace/directory/test_workspace_path.py
 ../../.venv/bin/python -W error -m pytest -xq --tb=short tests/workspace tests/tasks tests/local
 ../../.venv/bin/python -m ruff check app tests
 ```
@@ -1772,11 +1772,11 @@ CHROME_EXECUTABLE='/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
 
 ## 2026-09-20 受限文本文件读取验收
 
-学习者完成 `apps/api/app/services/workspace/workspace_file.py`，核心与参考一致，教练仅补末尾换行。新增 `apps/api/tests/workspace/test_workspace_file.py` 35条，与上一课63条合计98条通过（1.69s）。按用户要求仅运行新增和直接相关测试，无领域或后端全量。在 `apps/api` 执行：
+学习者完成 `apps/api/app/services/workspace/files/workspace_file.py`，核心与参考一致，教练仅补末尾换行。新增 `apps/api/tests/workspace/files/test_workspace_file.py` 35条，与上一课63条合计98条通过（1.69s）。按用户要求仅运行新增和直接相关测试，无领域或后端全量。在 `apps/api` 执行：
 
 ```bash
-../../.venv/bin/python -W error -m pytest -xq --tb=short tests/workspace/test_workspace_file.py tests/workspace/test_workspace_path.py
-../../.venv/bin/python -m ruff check app/services/workspace/workspace_file.py tests/workspace/test_workspace_file.py
+../../.venv/bin/python -W error -m pytest -xq --tb=short tests/workspace/files/test_workspace_file.py tests/workspace/directory/test_workspace_path.py
+../../.venv/bin/python -m ruff check app/services/workspace/files/workspace_file.py tests/workspace/files/test_workspace_file.py
 ```
 
 定向Ruff及 `git diff --check` 通过。真实macOS文件系统/描述符验证空文件、Unicode、恰好256KiB、超限、NUL/非法UTF-8、目录/FIFO/链接拒绝；确定性替换中间目录为链接、末端文件为链接/普通文件/FIFO时不读取替换对象。读取期间增长、缩小、同长度修改与增长超限会拒绝，实际读取量不超过上限+1；短读正确累积。跟踪真实os.open/os.close验证成功和异常后句柄清零，故障注入覆盖open/fstat/read异常脱敏及平台能力不足拒绝。
@@ -1844,11 +1844,11 @@ CHROME_EXECUTABLE='/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
 
 ## 2026-09-20 受限目录枚举服务验收
 
-workspace_listing.py与参考一致，核心无需修改；新增tests/workspace/test_workspace_listing.py。只在apps/api运行本课专项：
+workspace_listing.py与参考一致，核心无需修改；新增tests/workspace/files/test_workspace_listing.py。只在apps/api运行本课专项：
 
 ```bash
-../../.venv/bin/python -W error -m pytest -xq --tb=short tests/workspace/test_workspace_listing.py
-../../.venv/bin/python -m ruff check app/services/workspace/workspace_listing.py tests/workspace/test_workspace_listing.py
+../../.venv/bin/python -W error -m pytest -xq --tb=short tests/workspace/files/test_workspace_listing.py
+../../.venv/bin/python -m ruff check app/services/workspace/files/workspace_listing.py tests/workspace/files/test_workspace_listing.py
 ```
 
 26条通过（1.11s，-W error），定向Ruff及git diff --check通过。真实macOS临时目录覆盖0/1/200/201/250项，跟踪迭代次数最多201次、截断和排序；Unicode/空格/隐藏项、文件/目录/内部外部断链/FIFO分类且不递归/不读取正文或链接目标；末端与祖先目录打开前替换为链接拒绝；子项stat前消失和目录元信息变化拒绝。open/scandir/stat权限与I/O错误故障注入验证脱敏，跟踪目录描述符和scandir迭代器在正常、截断与失败时关闭。能力不足明确拒绝。
@@ -1872,11 +1872,11 @@ workspace_listing.py与参考一致，核心无需修改；新增tests/workspace
 
 ## 2026-09-20 受限单文件文本搜索验收
 
-workspace_search.py核心与参考一致，无需修改。新增tests/workspace/test_workspace_search.py，仅在apps/api执行本课专项：
+workspace_search.py核心与参考一致，无需修改。新增tests/workspace/files/test_workspace_search.py，仅在apps/api执行本课专项：
 
 ```bash
-../../.venv/bin/python -W error -m pytest -xq --tb=short tests/workspace/test_workspace_search.py
-../../.venv/bin/python -m ruff check app/services/workspace/workspace_search.py tests/workspace/test_workspace_search.py
+../../.venv/bin/python -W error -m pytest -xq --tb=short tests/workspace/files/test_workspace_search.py
+../../.venv/bin/python -m ruff check app/services/workspace/files/workspace_search.py tests/workspace/files/test_workspace_search.py
 ```
 
 43条通过（1.07s，-W error），定向Ruff及git diff --check通过。覆盖10种非法查询且不触发I/O、空格/128字符/Unicode保留、身份参数透传、不可变结果、字面量与大小写/首次命中、CRLF/CR/LF及Unicode分隔符规则、Python字符列号（含emoji和组合字符）、0/49/50/51/100匹配行、完整最长查询片段及坐标、10000字符正文上限与双截断、5类读取异常原样传播。
@@ -2543,14 +2543,14 @@ pnpm exec eslint src/features/chat/command-result-view.ts src/features/chat/comp
 
 ## 受限跨目录文件查找验收（2026-09-21）
 
-学习者新增workspace_find.py与参考一致，未修改核心实现。教练新增tests/workspace/test_workspace_find.py，共55条专项；复用既有目录资源跟踪夹具和根PostgreSQL隔离夹具。
+学习者新增workspace_find.py与参考一致，未修改核心实现。教练新增tests/workspace/files/test_workspace_find.py，共55条专项；复用既有目录资源跟踪夹具和根PostgreSQL隔离夹具。
 
 从apps/api执行：
 
 ```bash
-../../.venv/bin/python -W error -m pytest -q tests/workspace/test_workspace_find.py tests/workspace/test_workspace_path.py tests/workspace/test_workspace_listing.py
-../../.venv/bin/python -W error -m pytest -q tests/workspace/test_workspace_find.py -k 'start_directory or fstat_failure or exact_path'
-../../.venv/bin/python -m ruff check app/services/workspace/workspace_find.py tests/workspace/test_workspace_find.py
+../../.venv/bin/python -W error -m pytest -q tests/workspace/files/test_workspace_find.py tests/workspace/directory/test_workspace_path.py tests/workspace/files/test_workspace_listing.py
+../../.venv/bin/python -W error -m pytest -q tests/workspace/files/test_workspace_find.py -k 'start_directory or fstat_failure or exact_path'
+../../.venv/bin/python -m ruff check app/services/workspace/files/workspace_find.py tests/workspace/files/test_workspace_find.py
 ```
 
 首次纯文件系统45条通过（1.66s，5条数据库用例未选）；随后新文件首批50条连同直接相关路径63/枚举26，共139条通过（2.69s）。追加5条起始路径替换/消失、子fd打开后fstat失败、路径长度精确边界后单独运行通过（0.74s）。最终新增55条、相关合计144条分批通过，未重复全量回归；上方第一条命令在最终文件状态会收集144条。
@@ -2602,14 +2602,14 @@ node --check apps/web/test/browser/find-tools.mjs
 
 ## 单文件文本替换预览验收（2026-09-21）
 
-学习者workspace_edit_preview.py与参考一致，未修改核心。新增tests/workspace/test_workspace_edit_preview.py 65条纯内存专项。
+学习者workspace_edit_preview.py与参考一致，未修改核心。新增tests/workspace/edits/test_workspace_edit_preview.py 65条纯内存专项。
 
 从apps/api执行：
 
 ```bash
-../../.venv/bin/python -W error -m pytest -q tests/workspace/test_workspace_edit_preview.py
-../../.venv/bin/python -W error -m pytest -q tests/workspace/test_workspace_edit_preview.py -k 'invalid_text or line_endings'
-../../.venv/bin/python -m ruff check app/services/workspace/workspace_edit_preview.py tests/workspace/test_workspace_edit_preview.py
+../../.venv/bin/python -W error -m pytest -q tests/workspace/edits/test_workspace_edit_preview.py
+../../.venv/bin/python -W error -m pytest -q tests/workspace/edits/test_workspace_edit_preview.py -k 'invalid_text or line_endings'
+../../.venv/bin/python -m ruff check app/services/workspace/edits/workspace_edit_preview.py tests/workspace/edits/test_workspace_edit_preview.py
 ```
 
 65条通过（0.11s）。Ruff对测试中两个不同孤立代理项的转义字面量误报PT014，改用chr(0xD800)/chr(0xDFFF)明确构造；另把换行断言拆为可读变量，相关25条复验通过（0.06s）。最终Ruff及git diff --check通过。
@@ -2620,13 +2620,13 @@ node --check apps/web/test/browser/find-tools.mjs
 
 ## 授权文件预览与基线摘要验收（2026-09-21）
 
-学习者workspace_file_preview.py与参考一致，未修改核心；新增tests/workspace/test_workspace_file_preview.py 28条。
+学习者workspace_file_preview.py与参考一致，未修改核心；新增tests/workspace/edits/test_workspace_file_preview.py 28条。
 
 从apps/api执行：
 
 ```bash
-../../.venv/bin/python -W error -m pytest -q tests/workspace/test_workspace_file_preview.py tests/workspace/test_workspace_edit_preview.py tests/workspace/test_workspace_file.py
-../../.venv/bin/python -m ruff check app/services/workspace/workspace_file_preview.py tests/workspace/test_workspace_file_preview.py
+../../.venv/bin/python -W error -m pytest -q tests/workspace/edits/test_workspace_file_preview.py tests/workspace/edits/test_workspace_edit_preview.py tests/workspace/files/test_workspace_file.py
+../../.venv/bin/python -m ruff check app/services/workspace/edits/workspace_file_preview.py tests/workspace/edits/test_workspace_file_preview.py
 ```
 
 新增28条连同预览65/读取35，共128条通过（1.89s，-W error）；Ruff及git diff --check通过。覆盖身份参数透传、规范相对路径、单次读取、原文而非修改后SHA-256、UTF-8/中文/emoji/BOM/CR/LF/CRLF、嵌套不可变结果、截断Diff保留完整新内容、授权/目录/路径/读取/未知异常/取消原样传播，以及替换失败不生成摘要。
@@ -2696,8 +2696,8 @@ pnpm exec eslint src/features/chat/file-edit-preview-view.ts src/features/chat/c
 从apps/api运行本课与直接相关验收：
 
 ```bash
-../../.venv/bin/python -W error -m pytest -q tests/workspace/test_file_edit_proposal_service.py tests/migrations/test_file_edit_proposal_migration.py tests/tasks/test_task_deletion_service.py tests/workspace/test_workspace_file_preview.py tests/migrations/test_database_readiness.py
-../../.venv/bin/python -m ruff check app/models.py app/repositories/workspace/file_edit_proposal_repository.py app/services/workspace/file_edit_proposal_service.py migrations/versions/4eb108c473ab_add_file_edit_proposals.py tests/workspace/test_file_edit_proposal_service.py tests/migrations/test_file_edit_proposal_migration.py
+../../.venv/bin/python -W error -m pytest -q tests/workspace/proposals/test_file_edit_proposal_service.py tests/migrations/test_file_edit_proposal_migration.py tests/tasks/test_task_deletion_service.py tests/workspace/edits/test_workspace_file_preview.py tests/migrations/test_database_readiness.py
+../../.venv/bin/python -m ruff check app/models.py app/repositories/workspace/file_edit_proposal_repository.py app/services/workspace/proposals/file_edit_proposal_service.py migrations/versions/4eb108c473ab_add_file_edit_proposals.py tests/workspace/proposals/test_file_edit_proposal_service.py tests/migrations/test_file_edit_proposal_migration.py
 ```
 
 覆盖真实旧版升级/回退/再升级及旧业务数据保留，ORM与迁移无漂移、数据库pending默认值/约束/UTF-8字节边界/唯一索引/CASCADE；保存提交与公开不可变结果、BOM/CRLF及规范相对路径、删除至空内容、Diff截断仍存完整新内容、重复调用独立ID、flush后和commit前故障回滚、初次及保存前越权/绑定变化/任务删除拒绝、事务外文件读取、实际加锁顺序、保存/删除双向锁竞争及回滚释放。外部编辑后提案仍保留同一次读取基线，服务不覆盖文件；该证据不代表写入冲突检测已实现。
@@ -2718,8 +2718,8 @@ pnpm exec eslint src/features/chat/file-edit-preview-view.ts src/features/chat/c
 从apps/api运行：
 
 ```bash
-../../.venv/bin/python -W error -m pytest -q tests/workspace/test_file_edit_proposal_query.py tests/workspace/test_file_edit_proposal_service.py
-../../.venv/bin/python -m ruff check app/repositories/workspace/file_edit_proposal_repository.py app/services/workspace/file_edit_proposal_service.py tests/workspace/test_file_edit_proposal_query.py
+../../.venv/bin/python -W error -m pytest -q tests/workspace/proposals/test_file_edit_proposal_query.py tests/workspace/proposals/test_file_edit_proposal_service.py
+../../.venv/bin/python -m ruff check app/repositories/workspace/file_edit_proposal_repository.py app/services/workspace/proposals/file_edit_proposal_service.py tests/workspace/proposals/test_file_edit_proposal_query.py
 ```
 
 新增15条加保存服务18条，共33条通过（3.72s）；Ruff及git diff --check通过。覆盖单SELECT、无FOR UPDATE/commit/autoflush、不加载bound_root/proposed_content、公开字段精确集合与不可变结果、跨用户/项目/任务/缺失资源统一安全错误、会话缺失/归属变化/任务删除、截断Diff和摘要精确保存、成功/拒绝/数据库异常后Session清理。文件删除及目录解绑后仍返回保存的历史快照，这不表示当前文件仍满足基线，也不表示批准或可应用。提案Diff本身仍可能包含被修改文本，公开字段控制不等于内容脱敏。
@@ -2734,7 +2734,7 @@ pnpm exec eslint src/features/chat/file-edit-preview-view.ts src/features/chat/c
 
 ```bash
 ../../.venv/bin/python -W error -m pytest -q tests/tools/test_create_file_edit_proposal_tool.py tests/tools/test_preview_file_edit_tool.py tests/tools/test_read_file_tool.py tests/tools/test_request_command_tools.py -k 'not real_docker'
-../../.venv/bin/python -W error -m pytest -q tests/tools/test_file_edit_proposal_integration.py tests/workspace/test_file_edit_proposal_service.py tests/workspace/test_file_edit_proposal_query.py
+../../.venv/bin/python -W error -m pytest -q tests/tools/test_file_edit_proposal_integration.py tests/workspace/proposals/test_file_edit_proposal_service.py tests/workspace/proposals/test_file_edit_proposal_query.py
 ../../.venv/bin/python -m ruff check app/tools/create_file_edit_proposal.py app/tools/registry.py app/tools/errors.py tests/tools/test_create_file_edit_proposal_tool.py tests/tools/test_file_edit_proposal_integration.py tests/tools/test_read_file_tool.py
 ```
 
@@ -2792,8 +2792,8 @@ pnpm exec eslint src/features/chat/file-edit-proposal-view.ts src/features/chat/
 从apps/api运行：
 
 ```bash
-../../.venv/bin/python -W error -m pytest -q tests/workspace/test_file_edit_proposal_api.py tests/workspace/test_file_edit_proposal_query.py tests/tasks/test_task_run_api.py
-../../.venv/bin/python -m ruff check app/schemas.py app/routers/workspace/workspace.py tests/workspace/test_file_edit_proposal_api.py
+../../.venv/bin/python -W error -m pytest -q tests/workspace/proposals/test_file_edit_proposal_api.py tests/workspace/proposals/test_file_edit_proposal_query.py tests/tasks/test_task_run_api.py
+../../.venv/bin/python -m ruff check app/schemas.py app/routers/workspace/router.py tests/workspace/proposals/test_file_edit_proposal_api.py
 ```
 
 新增24条，相关81条分批通过：首轮80通过、1条新测试误将local身份初始化INSERT视作业务写入；修正断言后HTTP24条通过（3.67s）。本地身份依赖执行INSERT ON CONFLICT DO NOTHING，不能声称整个GET链路只有SELECT；提案服务单次SELECT、无FOR UPDATE/commit，Session关闭验证通过。Ruff与git diff --check通过。
@@ -2841,3 +2841,682 @@ pnpm exec eslint src/features/chat/components/file-edit-proposal-detail.tsx src/
 ## 2026-09-21 当日归档
 
 用户要求停止今日学习，更新既有文档并将累计改动推送main，再创建新学习会话。归档范围为本日课程代码与配套，排除临时浏览器输出和环境凭证；各课定向验证结果见上述记录，本次不重复全量回归。收尾执行git diff --check、暂存差异检查与远端main同步核对；提交/推送事实以Git记录及本次任务结果为准。主仓库学习约定保持不变，新会话入口LEARNING_HANDOFF.md。
+
+
+## 文件修改提案审批状态与决策服务验收（2026-09-22）
+
+学习者核心实现与参考一致；只补换行和函数间空行。新增决策服务测试43条、迁移8条、local详情HTTP2条，以及BFF6条、真实TSX状态展示3条。同步两个旧测试的非法状态样本approved→unknown，创建回执仍拒绝非pending状态。
+
+首轮Docker未启动，129条均在数据库夹具初始化时报连接错误，未进入业务断言。通过应用启动和Docker socket所需权限后，启动Docker Desktop及infra/compose.yaml既有PostgreSQL/Redis；两者健康。随后使用项目.venv与根conftest随机独立测试库/私有schema，自动清理，未连接开发业务表进行测试。
+
+从apps/api运行：
+
+```bash
+../../.venv/bin/python -W error -m pytest -q --tb=short -x tests/workspace/proposals/test_file_edit_proposal_decision.py tests/migrations/test_file_edit_proposal_decision_migration.py tests/migrations/test_file_edit_proposal_migration.py tests/workspace/proposals/test_file_edit_proposal_service.py tests/workspace/proposals/test_file_edit_proposal_query.py tests/workspace/proposals/test_file_edit_proposal_api.py
+../../.venv/bin/python -W error -m pytest -q --tb=short -x tests/tools/test_create_file_edit_proposal_tool.py tests/tools/test_file_edit_proposal_integration.py
+```
+
+分别129条（15.78s）、79条（1.16s）通过，直接相关共208条。真实独立连接确认提交；覆盖全部授权归属、重复/反向决策、绑定变更/解绑、截断、回滚和Session关闭。6组双线程竞争以pg_blocking_pids确认实际阻塞，再释放持锁事务，覆盖先提交和先回滚；固定四级锁序及绑定/会话归属修改/任务删除阻塞验证通过。迁移保留历史记录、无损往返、终态阻止降级、数据库约束和metadata一致通过。文件被外部修改或删除仍可记录批准，验证审批不等于当前文件基线有效。
+
+从apps/web运行：
+
+```bash
+node --experimental-strip-types --test test/features/workspaces/file-edit-proposal-route.test.ts test/features/chat/file-edit-proposal.test.ts test/features/chat/file-edit-proposal-detail.test.ts test/features/chat/file-edit-preview.test.ts test/features/chat/command-result.test.ts
+pnpm exec tsc --noEmit
+pnpm exec eslint src/features/chat/file-edit-proposal-view.ts src/features/workbench/file-edit-proposal-data.ts src/features/chat/components/file-edit-proposal-detail.tsx test/features/chat/render-tool-result.ts test/features/chat/file-edit-proposal-detail.test.ts test/features/workspaces/file-edit-proposal-route.test.ts
+```
+
+172条（1.45s）通过，TypeScript/定向ESLint及后端改动文件Ruff/diff check通过。三种详情状态经BFF公开投影保留，approved+截断安全502；状态展示以受控ready状态渲染真实TSX并检查文本转义，未做浏览器点击或PC布局验收。HTTP测试使用真实local身份/决策服务/隔离数据库；BFF上游fetch受控，不能称作真实浏览器端到端。
+
+开发库经独立操作从4eb108c473ab升级5fc219d584bc：先在内存保存全部业务表逐行快照，升级后核对完全一致，不输出敏感内容；alembic check无新操作，check_database_ready通过。其他机器需在apps/api运行../../.venv/bin/python -m alembic upgrade head。存在已审批记录时禁止无损降级，不删除或改写决策来回退。
+
+无模型审批工具、审批HTTP/BFF/UI入口或文件应用；无真实模型/全量回归，未提交推送。下一课文件修改提案审批HTTP接口。
+
+
+## 文件修改提案审批HTTP接口验收（2026-09-22）
+
+学习者核心与参考一致，无业务修正，仅补新增函数间空行。新增tests/workspace/proposals/test_file_edit_proposal_decision_api.py共60条。严格执行AGENTS.md回归范围：新增HTTP测试覆盖真实local身份/审批服务/隔离PostgreSQL；既有仅选11条共享_workspace_failure_response与RequestValidationError分支受影响用例，不整文件扩大回归。
+
+apps/api下首批命令：
+
+```bash
+../../.venv/bin/python -W error -m pytest -q --tb=short -x tests/workspace/proposals/test_file_edit_proposal_decision_api.py
+```
+
+首批58条通过（6.49s）。随后补FastAPI响应校验失败及OpenAPI2条，调整null正文测试不再发送无关的首次空请求；只重跑该调整用例和2条新增，连同以下11条既有回归共14条通过（2.28s）。合计71个不同用例通过，共72次执行；不把重复执行计成新增覆盖。
+
+补充批次的精确node id（使用同一pytest命令追加这些参数）：
+
+```text
+tests/workspace/proposals/test_file_edit_proposal_decision_api.py::test_uncertain_response_never_claims_rollback_or_retries[fastapi-response]
+tests/workspace/proposals/test_file_edit_proposal_decision_api.py::test_openapi_decision_contract
+tests/workspace/proposals/test_file_edit_proposal_decision_api.py::test_strict_body_rejected_before_service[None]
+tests/tasks/test_task_api.py::test_sessions_close_and_postcommit_failure_is_uncertain[service]
+tests/tasks/test_task_api.py::test_sessions_close_and_postcommit_failure_is_uncertain[serialization]
+tests/tasks/test_task_delete_api.py::test_session_lifecycle_and_uncertain_response[before-service]
+tests/tasks/test_task_delete_api.py::test_session_lifecycle_and_uncertain_response[after-commit]
+tests/tasks/test_task_run_api.py::test_safe_failures[internal]
+tests/workspace/directory/test_workspace_directory_api.py::test_readonly_and_sessions_closed[query]
+tests/workspace/directory/test_workspace_binding_api.py::test_sessions_close_and_failures_are_safe[service]
+tests/tasks/test_task_api.py::test_invalid_path[bad]
+tests/tasks/test_task_delete_api.py::test_invalid_path_never_calls_service[bad-task]
+tests/tasks/test_task_run_api.py::test_invalid_query[limit-0]
+tests/workspace/proposals/test_file_edit_proposal_api.py::test_invalid_identifiers[PRIVATE-6]
+```
+
+zsh中包含方括号的node id需要单引号包裹。选测依据：新分支位于共享错误处理器最前方，因此验证既有创建/删除/运行列表/目录读写的未知异常分类不被抢占，并验证创建/删除/运行查询/详情路径的参数错误分类不变。没有按领域目录运行全部测试。
+
+新增覆盖：批准/拒绝真实提交后独立连接和GET详情核对；响应仅四公开字段；伪造身份头无效；正文严格类型/extra forbid、三路径标识含编码换行、额外查询、来源/Host/凭证/local模式和Content-Type/JSON边界；跨资源、归属变化、任务删除统一404；重复/相反决定、目录变化/解绑及截断409；拒绝仍可关闭失效提案。固定错误映射和未知错误脱敏，成功/失败no-store，无自动重试，文件字节不变。
+
+真实SQL异常/提交前异常保持pending；提交后异常、路由模型校验失败、FastAPI响应校验失败已为approved，三者都返回500结果未确认，随后GET详情核对事实。后两类响应故障为受控注入，数据库提交真实；不声称测试了网络断连或浏览器端到端。
+
+定向静态检查：
+
+```bash
+../../.venv/bin/python -m ruff check app/routers/workspace/router.py app/schemas.py tests/workspace/proposals/test_file_edit_proposal_decision_api.py
+git diff --check
+```
+
+均通过。根conftest独立测试库/私有schema自动清理；无开发库变更，迁移仍5fc219d584bc。本课不跑前端、浏览器、事务服务整套或迁移整套测试，无真实模型/全量回归，未提交推送。下一课审批BFF代理。
+
+
+## 文件修改提案审批BFF代理验收（2026-09-22）
+
+学习者file-edit-proposal-decision-data.ts、file-edit-proposal-decision-proxy.ts与decision/route.ts三个新文件与参考一致，核心无需修改。新增file-edit-proposal-decision-route.test.ts 93条通过（0.66s）；严格限新增测试，未重跑既有详情/后端/数据库/浏览器或其他领域。
+
+从apps/web运行：
+
+```bash
+node --experimental-strip-types --test test/features/workspaces/file-edit-proposal-decision-route.test.ts
+pnpm exec tsc --noEmit
+pnpm exec eslint src/features/workbench/file-edit-proposal-decision-data.ts src/app/api/_shared/file-edit-proposal-decision-proxy.ts 'src/app/api/workspaces/[workspaceId]/tasks/[taskId]/file-edit-proposals/[proposalId]/decision/route.ts' test/features/workspaces/file-edit-proposal-decision-route.test.ts
+git diff --check
+```
+
+均通过。测试直接导入真实Next POST→代理→解析器，仅fetch上游受控。覆盖批准/拒绝的精确URL、可信Origin与内部凭证、显式正文和公开回执、Cookie/Authorization/伪造内部头隔离；本地模式/Host/Origin/配置/跨站边界；路径长度/大小写/末尾换行、严格正文/额外字段/查询、JSON类型与畸形正文；三标识和决定匹配、错误状态+错误码白名单、原型属性名拒绝、未知状态释放未读响应流、无重试和no-store。
+
+取消由事件驱动：转发前4个阶段均不调用fetch；转发后取消/超时各6阶段（fetch、响应头、成功正文、JSON完成、错误正文、未知状态释放正文）均结果未确认。校验20秒上游预算；不把模拟signal事件声称为真实网络或后端事务中止。入站浏览器正文接收不在该20秒预算内。
+
+无后端/开发数据库/迁移变化，无真实模型或浏览器端到端，未提交推送。下一课提案审批交互；结果未确认时查询pending不能作为原请求已停止或可立即重提的证明。
+
+## 2026-09-22 文件修改提案审批交互定向验收
+
+学习者新增Actions及详情接入核心无需修正。教练新增渲染测试和真实浏览器脚本、更新组件编译夹具及隔离启动器。仅验证新增审批行为与直接受影响的详情组件，不运行后端、BFF或前端既有整套回归。
+
+在`apps/web`执行：
+
+```bash
+node --experimental-strip-types --test test/features/chat/file-edit-proposal-actions.test.ts test/features/chat/file-edit-proposal-detail.test.ts
+pnpm exec tsc --noEmit
+pnpm exec eslint src/features/chat/components/file-edit-proposal-actions.tsx src/features/chat/components/file-edit-proposal-detail.tsx test/features/chat/render-tool-result.ts test/features/chat/file-edit-proposal-actions.test.ts
+```
+
+19条通过（11条新增状态渲染+8条受影响详情，1.34s）；TypeScript/定向ESLint通过。状态渲染测试使用受控hooks，不冒充事件交互证据。根目录的`node --check apps/web/test/browser/proposal-actions.mjs`、`.venv/bin/python -m ruff check apps/web/test/browser/run-isolated.py`及`git diff --check`通过。
+
+根目录浏览器命令（首次默认六场景，第二批仅未完成三场景）：
+
+```bash
+BROWSER_APP_MODE=local BROWSER_TEST_SCRIPT=proposal-actions.mjs PLAYWRIGHT_MODULE=/Users/wanxiancheng/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright CHROME_EXECUTABLE='/Applications/Google Chrome.app/Contents/MacOS/Google Chrome' .venv/bin/python apps/web/test/browser/run-isolated.py
+BROWSER_APP_MODE=local BROWSER_TEST_SCRIPT=proposal-actions.mjs BROWSER_ACTION_SCENARIOS=unknown,safe-error,switch PLAYWRIGHT_MODULE=/Users/wanxiancheng/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright CHROME_EXECUTABLE='/Applications/Google Chrome.app/Contents/MacOS/Google Chrome' .venv/bin/python apps/web/test/browser/run-isolated.py
+```
+
+- 第一批approve/reject/truncated通过：同一事件循环双击仅一次请求，键盘拒绝，截断禁批；真实BFF/API/隔离PostgreSQL详情分别为approved/rejected/rejected，每场景源文件字节不变。之后unknown场景的刷新审阅断言失败：历史运行只有原始工具结果，没有审阅入口。这是参考方案遗漏，记录为下一课，不通过代写新增核心掩盖问题。第一批未到最终数据库总量断言。
+- 第二批unknown/safe-error/switch全部通过：未知错误屏蔽私有文案、收起重开保留防重；刷新只核对标记保留及没有重发。存储写入失败不发请求，确定未执行的受控409清除标记后可真实拒绝。通过实际“新对话”切换卸载，延迟响应不更新新视图且标记保留。最终数据库恰好3条，逐ID匹配pending/rejected/pending，无重复；源文件字节不变。
+- 六场景均完成1366/1920 PC截图和横向溢出检查（switch截图为新对话）。approve-1366与unknown-1366已视查。截图位于`/private/tmp/agent-ui-proposal-actions/output/playwright/`，`evidence.json`为第二批3场景报告；运行日志分别`/tmp/proposal-actions-browser.log`和`/tmp/proposal-actions-browser-followup.log`。
+- 模型决策受控；提案创建、正常审批和详情读取通过真实浏览器/BFF/API/临时文件及隔离数据库，异常/迟到决策响应受控，不证明真实网络取消使服务端停止。两批临时目录、服务及数据库/schema均已清理，未修改开发业务库，未调用真实模型，未提交推送。
+
+验收范围：当前运行的审批入口已通过，批准不等于写入。刷新后的历史提案审阅/审批入口尚未完成；唯一下一课已更新到LEARNING_HANDOFF.md，不能声称本课完成了刷新后的审批UI恢复。
+
+## 2026-09-22 历史运行提案审阅与审批入口验收
+
+用户授权直接实现。生产改动仅TaskRunPanel：成功提案事件复用现有ToolResult，当前Workspace/Task范围向下传递并加入详情组件key，历史文字明确审批不写入文件。失败事件、非提案工具和未知协议不提供审批入口。
+
+选测依据：历史事件新增分派 → 新增historical-proposal.test.ts 8条；复用提案详情并传递任务范围 → 既有file-edit-proposal-detail.test.ts 8条。合计16条通过（1.30s）。无后端/BFF协议变更，不重复相关整套；不运行全量回归。
+
+在apps/web执行并通过：
+
+```bash
+node --experimental-strip-types --test test/features/chat/historical-proposal.test.ts test/features/chat/file-edit-proposal-detail.test.ts
+pnpm exec tsc --noEmit
+pnpm exec eslint src/features/workbench/components/task-run-panel.tsx test/features/chat/render-tool-result.ts test/features/chat/historical-proposal.test.ts
+```
+
+根目录脚本语法检查及以下浏览器命令通过：
+
+```bash
+node --check apps/web/test/browser/proposal-actions.mjs
+BROWSER_APP_MODE=local BROWSER_TEST_SCRIPT=proposal-actions.mjs BROWSER_PROPOSAL_HISTORY=1 BROWSER_ACTION_SCENARIOS=approve,truncated,unknown,switch PLAYWRIGHT_MODULE=/Users/wanxiancheng/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright CHROME_EXECUTABLE='/Applications/Google Chrome.app/Contents/MacOS/Google Chrome' .venv/bin/python apps/web/test/browser/run-isolated.py
+```
+
+四场景均先创建真实提案，再刷新进入历史运行，核对打开历史不自动读取提案或重发聊天。批准/截断拒绝后再次导航进入可查询终态；未知结果收起、刷新后重新查询pending仍禁止提交；挂起审批后点新对话卸载，释放迟到响应再返回原Task，未知标记仍保留。双击仅一次审批请求，真实正常决策通过BFF/API/隔离PostgreSQL；未知/迟到响应注入于浏览器，不证明服务端取消。1366/1920宽度无横向溢出；approve-1366和switch-1920截图已视查。
+
+最终数据库恰好4条提案，逐ID核对approved/rejected/pending/pending；源文件原始字节保持不变。模型受控、无真实模型调用，无开发库写入。临时文件、服务及测试库/schema已清理。日志`/tmp/proposal-history-browser.log`；截图与本轮四场景evidence.json位于`/private/tmp/agent-ui-proposal-actions/output/playwright/`（会覆盖前课同名临时证据）。此轮补齐前课刷新后历史入口缺口；未提交推送。
+
+## 2026-09-22 已批准提案的应用前授权与基线核对
+
+用户授权直接完成。新增`file_edit_proposal_preflight.py`、内部授权投影及42条专项；受限读取/路径解析增加可选内部expected_bound_root，默认调用保持原行为。结果仅公开定位/相对路径/摘要/字节数，不携带完整正文或宿主路径，无HTTP/工具入口，无文件或数据库写入。
+
+选测依据：新增服务与仓库 → 新增专项；现有文件读取及路径解析新增绑定检查 → 只选真实授权、未绑定拒绝、Session在文件I/O前关闭等10条既有用例，不按领域整套回归。apps/api下首批命令：
+
+```bash
+../../.venv/bin/python -m pytest -q tests/workspace/proposals/test_file_edit_proposal_preflight.py tests/workspace/directory/test_workspace_path.py::test_owned_task_reads_only_and_closes_before_filesystem tests/workspace/directory/test_workspace_path.py::test_authorization_precedes_path_parsing_and_filesystem tests/workspace/directory/test_workspace_path.py::test_unbound_workspace_has_no_cwd_fallback tests/workspace/files/test_workspace_file.py::test_real_authorization_to_read tests/workspace/files/test_workspace_file.py::test_real_authorization_rejection_precedes_read
+```
+
+首批48通过/3失败（5.69s）：非法摘要和两种超长内容在构造测试数据时被数据库CHECK约束拒绝，未进入服务；调整为内部读取边界注入验证服务防御分支，保留实际可落库内容篡改的真实数据库测试。仅运行修正3条及新增仓库不flush用例：
+
+```bash
+../../.venv/bin/python -m pytest -q tests/workspace/proposals/test_file_edit_proposal_preflight.py -k 'storage_constraint_defense or internal_repository_does_not_flush'
+```
+
+4通过（1.11s），最终52个不同用例通过（42新增+10既有），未重复运行已通过部分。根目录定向静态检查及git diff --check通过：
+
+```bash
+.venv/bin/python -m ruff check apps/api/app/services/workspace/proposals/file_edit_proposal_preflight.py apps/api/app/services/workspace/files/workspace_file.py apps/api/app/services/workspace/directory/workspace_path.py apps/api/app/repositories/workspace/file_edit_proposal_repository.py apps/api/tests/workspace/proposals/test_file_edit_proposal_preflight.py
+```
+
+覆盖成功不可变投影、纯SELECT/无commit/无flush及事务释放；10类资源授权失败；pending/rejected拒绝；目录绑定失效；完整新内容与摘要验证、空文件；BOM/CRLF字节差异；真实文件缺失/越界链接/目录/二进制/超限；快照后绑定改变在文件访问前拒绝；读取期间绑定/归属/状态/内容改变的二次核对；查询失败关闭Session；受控内部非法值。读取后外部编辑的专门用例明确证明结果只是快照，不能消除TOCTOU/ABA，不能当作未来写入授权。
+
+共用PostgreSQL隔离库/schema夹具，正常结束自动清理；未写开发业务表、无开发库迁移，无前端/浏览器/模型或全量回归。未提交推送。
+
+## 2026-09-22 提案应用状态与执行占用
+
+新增独立应用状态和内部执行令牌，审批status契约不变；事务服务只操作数据库，无文件I/O、公开HTTP/模型执行入口。领取要求批准、绑定有效、idle；匹配令牌的running可登记applied/not_applied/uncertain。终态不是本服务验证过的文件结果，必须由未来可信执行器提供真实证据。全部已领取状态禁止重领，无超时释放。资源删除/重绑在领取事务之后仍待保护，下一课先补齐，不能宣称真实写入闭环完成。
+
+选测：48条新增（应用事务37+迁移11）；已有审批迁移8条受新增模型列/head影响，已将旧版本快照改为实际表列并核对新列默认值；审批锁竞争6条验证共享提案模型约束下原决定转换不变；preflight公开只读快照1条验证新增内部字段不泄漏。共63条分两批通过，未运行其他领域或全量回归。
+
+apps/api执行：
+
+```bash
+../../.venv/bin/python -m pytest -q tests/workspace/proposals/test_file_edit_proposal_application.py tests/migrations/test_proposal_application_migration.py tests/migrations/test_file_edit_proposal_decision_migration.py tests/workspace/proposals/test_file_edit_proposal_preflight.py::test_snapshot_is_readonly_private_and_closes_transactions tests/workspace/proposals/test_file_edit_proposal_decision.py::test_real_competing_decisions_wait_and_recheck
+../../.venv/bin/python -m pytest -q tests/workspace/proposals/test_file_edit_proposal_application.py -k failure_after_commit
+```
+
+首批61条7.09s通过；随后新增提交成功后响应异常2条1.00s通过，没有重复运行已通过用例。覆盖真实PostgreSQL并发领取/完成仅一个成功，20组领取和完成授权拒绝、未批准/失效绑定拒绝、令牌与终态防重、提交前回滚与提交后异常持久状态、原文件不变；迁移历史数据无损往返、4种执行记录拒绝降级、6组数据库约束。隔离数据库/schema自动清理。
+
+根目录定向Ruff与diff check通过：
+
+```bash
+.venv/bin/python -m ruff check apps/api/app/services/workspace/proposals/file_edit_proposal_application.py apps/api/app/models.py apps/api/migrations/versions/60d32ae695cd_add_proposal_application_claim.py apps/api/tests/workspace/proposals/test_file_edit_proposal_application.py apps/api/tests/migrations/test_proposal_application_migration.py apps/api/tests/migrations/test_file_edit_proposal_decision_migration.py
+git diff --check
+```
+
+开发库已从5fc219d584bc升级60d32ae695cd。同一事务内以5秒锁等待预算锁住业务写入，迁移前后逐行比对全部既有业务列，未输出业务数据；全部一致，新列均idle/null。alembic check无新操作，check_database_ready通过。其他机器需在apps/api执行`../../.venv/bin/python -m alembic upgrade head`。有应用记录时拒绝无损降级。未运行前端/浏览器/模型或实际文件应用，未提交推送。
+
+## 2026-09-22 应用占用期间资源保护
+
+新增锁内应用占用检查；Task删除检查目标任务，目录目标变化检查整个项目。running/uncertain拒绝，同路径重复绑定不阻止。无Workspace删除/解绑/覆盖重绑入口，不新增无需求接口。HTTP与Task删除/目录绑定/系统选择器三个BFF明确安全409，删除UI保持任务、选择和草稿，归类rejected。
+
+后端新增20条（服务14+HTTP6）、受影响6条（删除成功2、绑定成功2、原应用授权测试中删除相关2）共26条3.46s通过。原finish/deleted-task用例因合法删除现在被保护，改为确认资源保留；其他授权用例未重复。apps/api命令：
+
+```bash
+../../.venv/bin/python -m pytest -q tests/workspace/proposals/test_proposal_application_guard.py tests/workspace/proposals/test_proposal_application_guard_api.py tests/tasks/test_task_deletion_service.py::test_delete_commits_and_plain_result_survives_session_close tests/workspace/directory/test_workspace_binding.py::test_success_is_committed_detached_and_repeatable tests/workspace/proposals/test_file_edit_proposal_application.py::test_both_operations_reauthorize -k 'not both_operations or deleted-task'
+```
+
+4组竞争经pg_blocking_pids确认真实阻塞，验证领取先提交、删除先提交和绑定拒绝回滚后领取。覆盖两种占用、确认终态允许删除、兄弟任务隔离、归属先于占用查询、同路径幂等，以及真实local HTTP选择器等待期间的并发绑定/领取保护。隔离库自动清理，无开发业务表写入或迁移。
+
+apps/web运行三个BFF测试文件，仅`--test-name-pattern=proposal_application_busy`新增用例：首批2通过，绑定用例误放未知错误组失败；修正测试分组，仅重跑binding-route.test.ts这一条通过。共3个不同新增用例全部通过。TypeScript、受影响源码/测试定向ESLint、后端定向Ruff及git diff --check通过。
+
+```bash
+node --experimental-strip-types --test --test-name-pattern=proposal_application_busy test/features/workspaces/task-delete-route.test.ts test/features/workspaces/binding-route.test.ts test/features/workspaces/directory-select-route.test.ts
+pnpm exec tsc --noEmit
+```
+
+根目录仅运行新增浏览器场景：
+
+```bash
+BROWSER_APP_MODE=local BROWSER_TEST_SCRIPT=task-delete.mjs BROWSER_SCENARIO='delete UI proposal application conflict' PLAYWRIGHT_MODULE=/Users/wanxiancheng/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright CHROME_EXECUTABLE='/Applications/Google Chrome.app/Contents/MacOS/Google Chrome' .venv/bin/python apps/web/test/browser/run-isolated.py
+```
+
+1通过0失败；真实创建/读取Task，浏览器受控409验证拒绝提示、私有文案不透传、单次请求、选择/草稿保留、可手动重试，1366/1920无横向溢出。1366截图已视查；`/private/tmp/agent-ui-preview/output/playwright/proposal-application-busy-1366.png`和1920同名截图，日志`/tmp/proposal-guard-browser.log`。此UI场景的占用响应受控，真实后端占用证据来自上述HTTP/数据库用例；未宣称整链浏览器真实占用。临时服务/隔离库清理，无模型调用或全量回归，未提交推送。
+
+## 2026-09-22 受限文件替换原语（仅临时样例）
+
+学习者新增workspace_file_replace.py与参考一致；核心算法无需修改，仅补教练参考遗漏的`except Exception`处BLE001注释，保留替换尝试后的未知异常分类。教练新增`apps/api/tests/workspace/files/test_workspace_file_replace.py`。没有修改既有读取/路径解析助手，仅新增调用者，因此只跑新增专项，不扩大既有功能回归。
+
+apps/api执行：
+
+```bash
+../../.venv/bin/python -m pytest -q tests/workspace/files/test_workspace_file_replace.py
+```
+
+首批60通过、1失败（1.11s）。失败为setuid目标拒绝测试：环境实测`chmod(04640)`后观察到模式0640，特殊位没有保留，并非服务忽略了已存在的特殊位。测试改为仅在特殊位无法实际设置时注入目标元信息，验证拒绝分支；不将其记为真实setuid文件覆盖证据。补6条边界场景，仅运行修正与新增7条：
+
+```bash
+../../.venv/bin/python -m pytest -q tests/workspace/files/test_workspace_file_replace.py -k 'setuid or replacement_between_stat or source_changes_during_read or staged_content_corruption or post_replace_change'
+```
+
+7通过、60未选（0.80s）；最终67个不同新增用例通过，已通过用例未重复运行。
+
+根目录静态检查与diff check通过：
+
+```bash
+.venv/bin/python -m ruff check apps/api/app/services/workspace/files/workspace_file_replace.py apps/api/tests/workspace/files/test_workspace_file_replace.py
+git diff --check
+```
+
+覆盖真实BOM/CRLF、Unicode、空内容与256KiB边界、基本模式/属主/属组保留、结果不可变；输入在打开前拒绝；目录/FIFO/符号链接/多硬链接/只读目标/属主拒绝；根或中间目录链接拒绝；摘要冲突/非UTF-8/NUL/超限/缺失；临时名冲突不删除既有文件；短写入/零写入/写异常；chmod/文件同步/replace前后/目录同步/替换后核对失败；源文件和目录/临时项变化；清理失败独立表达、close失败不覆盖成功、KeyboardInterrupt释放资源；stat到open竞争和读取期间变化。描述符包装委托真实OS调用并跟踪关闭，故障由明确阶段注入。
+
+专项`test_last_check_is_not_atomic_compare_and_swap`直接证明最后检查后的外部编辑可被替换覆盖。`replaced`仅描述本次观察，不是未来文件状态、整个路径树的持续授权或外部编辑器CAS；ACL、扩展属性、文件标志等尚未完整处理。只在pytest临时样例运行，故意保留的清理失败/临时项被替换样例归pytest临时目录管理，未写真实项目文件。无数据库连接/迁移、HTTP、前端、浏览器或模型调用，无全量回归，未提交推送。下一课先补元数据保护，再推进执行器装配。
+
+
+## 2026-09-22 文件替换元数据保护专项
+
+文件替换元数据保护课完成（临时样例范围）：学习者已完成元数据模块及大部分接入，用户授权教练补齐替换后核对与错误分类。macOS描述符ACL读取/复制/回读，保留mode/uid/gid，检测可见扩展属性或非零文件标志即拒绝；替换前拒绝与替换后uncertain沿用原提交边界。新增28条与直接受影响既有25条共53条分批通过，Ruff/diff check通过。当前宿主新建文件自动带com.apple.provenance且删除后仍存在；真实扩展属性拒绝已验证，成功路径仅过滤该系统属性模拟支持环境，ACL与文件操作仍为真实调用，不宣称当前宿主无模拟成功写入或完整元数据保留。仍非CAS，未接真实项目/数据库/HTTP/工具，无全量回归、未提交推送。下一课为临时样例中的提案应用执行装配。
+
+选测依据：元数据调用位于临时文件创建前、权限复制、替换前及替换后；因此选择经过这些阶段的正文写入、同步、并发检查、清理和结果分类共25条既有测试，不跑输入/路径预检、数据库或前端测试。新增28条覆盖真实空/非空ACL、父目录继承ACL覆盖、真实xattr拒绝、flags/平台拒绝、原生失败、资源释放、快照变化及提交前后错误映射。
+
+执行目录`apps/api`，解释器`../../.venv/bin/python`。首轮未隔离宿主provenance时4个既有成功用例被正确拒绝；确认真实属性后使用tests/workspace/metadata/metadata_support.py仅过滤com.apple.provenance的名称查询，未修改生产策略。正式组合命令：
+
+```sh
+../../.venv/bin/python -m pytest -q tests/workspace/metadata/test_workspace_file_metadata.py tests/workspace/files/test_workspace_file_replace.py -k 'not invalid_input and not unsupported_target and not directory_links and not source_content_failure and not missing_target and not unsupported_platform and not replacement_between_stat and not source_changes_during' --tb=short
+```
+
+当时45 passed / 2 failed / 42 deselected（1.43s），2条为测试ACL文本少分隔符，修正后仅重跑native_acl_copy：2 passed（0.90s）。随后新增6条专项6 passed（1.03s）；改进target_readback测试使其真正触发目标权限回读不匹配，单条重跑通过（0.81s）。最终共53个不同用例分批通过，不代表再跑整套。测试辅助仅支持macOS，与本课原语范围一致。
+
+
+## 2026-09-22 提案应用执行装配专项
+
+临时样例中的提案应用执行装配课完成：学习者实现与参考一致，核心无需修正。执行器按单次领取、重新授权/占用令牌与绑定核对、只读preflight、再次快照核对、受限替换、单次终态登记运行，文件I/O前释放数据库事务。回执分开表达文件证据与已确认数据库状态；登记回执丢失返回unknown，不回滚文件或重试，BaseException传播并保留占用。新增37条分批通过（35条4.70s、补充2条1.00s），Ruff/diff check通过；真实隔离PostgreSQL验证提交前/后故障与并发仅一个写入者。成功文件路径沿用仅过滤provenance的测试模拟，额外验证无模拟真实xattr拒绝和核对后外部编辑；不宣称当前宿主完整无模拟写入或CAS。仅新增测试，无既有整套/数据库迁移/前端/浏览器/模型调用，未提交推送。下一课提案应用状态的只读查询。
+
+新增`apps/api/tests/workspace/proposals/test_file_edit_proposal_execution.py`，只运行本课新增测试；既有服务未修改，其组合行为在新集成测试直接覆盖。使用根conftest的随机独立PostgreSQL数据库/每例schema，自动清理，所有新增服务SessionLocal绑定该隔离库。本地模式验收，未连接开发业务表。
+
+从apps/api执行：
+
+```sh
+../../.venv/bin/python -m pytest -q tests/workspace/proposals/test_file_edit_proposal_execution.py --tb=short
+../../.venv/bin/python -m pytest -q tests/workspace/proposals/test_file_edit_proposal_execution.py -k 'real_unsupported_metadata or external_edit_after' --tb=short
+```
+
+首轮35条均在夹具阶段遭遇沙箱127.0.0.1:5432 Operation not permitted；允许本机连接后首条命令35 passed（4.70s）。补充两条后只执行第二条命令，2 passed / 35 deselected（1.00s），合计37个不同用例通过。覆盖实际领取/登记事务提交前后故障、外部元数据/字节变化、重新授权失败、源快照/令牌变化、返回协议异常、清理结果映射、中断传播、资源释放、私有字段隔离与并发仅一个写入者。成功路径仍仅模拟无provenance，未放宽生产元数据规则。
+
+
+## 2026-09-22 提案应用状态只读查询专项
+
+提案应用状态只读查询课完成：学习者核心与参考一致，教练仅补仓库函数间空行和末尾换行。单次联合查询重新授权Workspace/Task/Conversation/Proposal，仅投影三资源标识与application_status；五种状态严格校验，不读取文件、不领取/登记/重试，未知状态拒绝。新增29条分批通过（首轮24通过/5条因测试令牌与公开项目编号碰撞误报；修正独立令牌后5条1.22s通过），Ruff/diff check通过。隔离PostgreSQL验证归属、仅SELECT/无锁/无flush/无commit、私有字段不加载、会话关闭、绑定变化和文件删除后历史查询及无缓存读取。无既有全量/文件替换/前端/浏览器/迁移，未提交推送。下一课提案应用状态查询HTTP接口。
+
+选测依据：只新增仓库查询函数和服务，不改已有执行/核对/查询行为；仅执行新增`apps/api/tests/workspace/proposals/test_file_edit_proposal_application_query.py`。复用根conftest独立PostgreSQL数据库和私有schema，正常清理，本地模式；开发业务表和迁移未操作。
+
+从apps/api执行：
+
+```sh
+../../.venv/bin/python -m pytest -q tests/workspace/proposals/test_file_edit_proposal_application_query.py --tb=short
+../../.venv/bin/python -m pytest -q tests/workspace/proposals/test_file_edit_proposal_application_query.py -k five_states --tb=short
+```
+
+首轮24 passed / 5 failed（3.53s），5条失败为测试令牌a重复32次与夹具workspace_id相同，非业务泄露。替换为独立测试令牌后只重跑5条，5 passed / 24 deselected（1.22s），共29个不同用例通过。定向Ruff及git diff --check通过。不需要磁盘元数据模拟，因为本课不执行任何项目文件操作。
+
+
+## 2026-09-22 应用状态查询HTTP与路由整理专项
+
+提案应用状态查询HTTP课及workspace路由整理完成：学习者接口核心与参考一致。新增GET application-status返回四字段严格Schema，复用local身份边界、统一404与no-store，非法标识/额外查询422，未知状态及响应异常安全500。用户要求整理workspace.py，已合并排序导入，集中请求/标识类型，按安全边界、工作空间/目录、任务/运行历史、提案审阅/审批/状态分区并统一格式；全部函数/类含装饰器AST与整理前一致，无业务逻辑调整。新增34条和直接受影响既有18条共52条分批通过（首批33通过，1条OpenAPI测试缺本地凭证；补凭证后修正1条+既有18条共19条2.95s通过），Ruff/diff check通过。隔离PostgreSQL与真实HTTP验证；无文件执行/前端/浏览器/模型/全量回归，未提交推送。下一课提案应用状态查询BFF代理。
+
+新增`tests/workspace/proposals/test_proposal_application_status_api.py`34条，首批33 passed/1 failed（4.63s），失败原因为OpenAPI请求未带本地凭证，补齐测试请求后通过。业务核心无需修正。成功五状态、7类归属失败、9个非法标识、3类额外查询、本地模式/凭证/Host/Origin拒绝、未知状态/私有异常/响应生成失败、历史文件删除、OpenAPI及路由唯一性均覆盖。
+
+既有选测依据：新增分支影响共享RequestValidationError和_workspace_failure_response，提案路由移至同一分区影响注册；只选详情未知错误、审批路径验证、未知提交回执、审批成功及详情读取18条。没有因格式整理重跑整个workspace领域。整理前后所有函数/类含装饰器AST一致；导入使用Ruff合并排序。
+
+从apps/api执行：
+
+```sh
+../../.venv/bin/python -m pytest -q tests/workspace/proposals/test_proposal_application_status_api.py --tb=short
+../../.venv/bin/python -m pytest -q tests/workspace/proposals/test_proposal_application_status_api.py::test_openapi_contract_and_routes_are_unique tests/workspace/proposals/test_file_edit_proposal_api.py::test_internal_failure_and_unknown_status_are_safe_500 tests/workspace/proposals/test_file_edit_proposal_decision_api.py::test_uncertain_response_never_claims_rollback_or_retries tests/workspace/proposals/test_file_edit_proposal_decision_api.py::test_path_validation_precedes_service tests/workspace/proposals/test_file_edit_proposal_decision_api.py::test_commits_then_returns_public_result_and_detail --tb=short
+```
+
+第二批19 passed（2.95s），累计52个不同用例通过。隔离PostgreSQL夹具自动清理，无开发业务表/迁移修改。未运行前端、浏览器、模型或全量测试。
+
+
+## 2026-09-22 应用状态查询BFF专项
+
+提案应用状态查询BFF代理课完成（用户授权直接实现）：新增四字段状态解析器、服务端代理与同源GET application-status路由；local访问边界、内部凭证隔离、严格三标识与额外查询拒绝、五状态及资源匹配、公开字段投影、no-store和20秒取消/超时预算覆盖正文读取。未知协议安全502，不默认idle、不自动重试或触发执行。55条新增测试通过（0.59s），TypeScript/定向ESLint/diff check通过。上游fetch受控模拟，无真实HTTP/数据库/浏览器/后端/既有整套/全量回归，无UI或执行入口，未提交推送。下一课提案应用状态按需展示。
+
+仅新增三个生产文件与`apps/web/test/features/workspaces/proposal-application-status-route.test.ts`；已有详情代理、共享runtime及标识校验未修改，因此不回归已有领域测试。新增55条覆盖本地访问拒绝、错误状态脱敏、非法JSON/网络故障无重试、三阶段取消与超时、准确URL/请求头、资源不匹配与未知状态拒绝、公开投影、错误流取消和五种状态。fetch受控，未宣称真实BFF到API或PC浏览器验收。
+
+仓库根执行：
+
+```sh
+node --experimental-strip-types --test apps/web/test/features/workspaces/proposal-application-status-route.test.ts
+```
+
+55 passed，593ms。从apps/web执行`pnpm exec tsc --noEmit`通过；ESLint仅检查新增解析器、代理、路由与测试文件通过。未运行build、全量前端/后端、浏览器或数据库迁移。
+
+
+## 2026-09-22 应用状态按需展示专项
+
+提案应用状态按需展示课完成（用户授权直接实现）：新增独立查询组件接入提案详情，五状态、加载/错误、重新查询和取消；按三资源标识key隔离实例，卸载abort并通过controller身份阻止旧响应。审批标签改为已批准，不再从审批状态推断尚未应用。新增8条与受影响详情8条共16条通过（1.41s），TypeScript/定向ESLint/启动器Ruff/脚本语法通过。PC真实BFF/API/隔离PostgreSQL验证idle，另外四状态和异常响应受控；收起卸载后的延迟响应隔离、显式取消、跨任务导航、键盘查询、1366/1920无横向溢出及截图视查通过，原文件不变，提案写请求为0。无执行入口/全量回归/真实模型调用，未提交推送。下一课有界扩展属性读取。
+
+选测范围：新增状态组件8条与直接接入处详情组件8条，未重跑未修改的BFF/后端测试。浏览器隔离启动器增加application-status路由复制，复用真实本地工作台、Next BFF、FastAPI及独立PostgreSQL迁移库，模拟模型只负责生成提案。首次idle响应未经拦截，其他四状态、未知协议/资源不匹配/404和迟到响应受控；不宣称四终态由数据库真实执行产生。
+
+命令：
+
+```sh
+node --experimental-strip-types --test apps/web/test/features/chat/proposal-application-status.test.ts apps/web/test/features/chat/file-edit-proposal-detail.test.ts
+BROWSER_APP_MODE=local BROWSER_TEST_SCRIPT=proposal-application-status.mjs PLAYWRIGHT_MODULE=/Users/wanxiancheng/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright CHROME_EXECUTABLE='/Applications/Google Chrome.app/Contents/MacOS/Google Chrome' .venv/bin/python apps/web/test/browser/run-isolated.py
+```
+
+浏览器第一批PASS，10次状态GET、0次提案写请求，源文件字节未变。临时服务关闭、schema/database清理。证据：`/private/tmp/agent-ui-application-status/output/playwright/evidence.json`及`application-status-1366.png`、`application-status-1920.png`，两图已视查。
+
+浏览器第二批仅设置`BROWSER_STATUS_EXTRA_ONLY=1`补跑显式取消和跨任务导航两项，PASS；迟到applied响应未污染当前页面，0提案写请求，源文件未变，临时服务和数据库清理完成。没有重复首批五状态展示专项。
+
+
+## 2026-09-22 有界扩展属性读取专项
+
+有界扩展属性读取课完成：学习者核心与参考一致，无需修正。新增macOS描述符级只读xattr模块，固定两轮快照及前中后fstat、名称集合复核，预算128项/16KiB名称/64KiB单值/256KiB每轮逻辑总量；空值合法，异常不降级为空，名称和值不进入repr。新增39条0.13s通过，Ruff/diff check通过；真实临时文件验证二进制/空值/中文名称及内容、元信息、描述符偏移不变，受控ABI验证预算分配前拒绝、数量/总量边界、非法名称、变化/权限/平台失败及固定轮数。没有修改现有替换策略、无数据库/前端/浏览器/既有整套/全量回归，未提交推送。读取只覆盖当前进程可见属性，不是原子快照/CAS或复制许可。下一课扩展属性复制能力探测（临时样例）。
+
+只新增`tests/workspace/metadata/test_workspace_file_xattrs.py`，原模块未修改，无既有回归必要。测试只使用临时文件与受控ctypes ABI，不使用数据库；真实xattr测试没有过滤provenance，也没有删除系统属性。文件描述符由调用方持有，读取不关闭、不改变偏移。预算限制逻辑数据量，不是Python实际峰值内存或系统调用硬超时。
+
+从apps/api执行：
+
+```sh
+../../.venv/bin/python -m pytest -q tests/workspace/metadata/test_workspace_file_xattrs.py --tb=short
+```
+
+39 passed（0.13s），两个新增文件Ruff及git diff --check通过。没有声称覆盖全部不可见属性、ABA或原子快照。
+
+
+## 2026-09-22 扩展属性复制能力探测专项
+
+扩展属性复制能力探测课完成（临时样例）：学习者核心与参考一致，仅合并临时文件上下文并整理缩进。探测函数只创建自有临时文件，分别记录matched_before/set_accepted/readback、目标额外可见属性与最终快照一致性，不输出属性值/摘要，不删除系统属性、不修改替换策略。新增19条0.08s通过，Ruff/diff check通过；真实macOS三个普通样例从目标缺失到回读相同，provenance源/目标原本相同且调用成功/回读相同，不能据此证明不同值复制能力。受控测试覆盖调用失败但原本相同、成功却缺失/不同、额外属性、源变化、读取失败、创建/清理/中断路径及资源关闭。无数据库/前端/浏览器/既有整套/全量回归，未提交推送。下一课受限扩展属性复制原语（临时样例）。
+
+从apps/api执行`../../.venv/bin/python -m pytest -q -s tests/workspace/metadata/test_workspace_xattr_probe.py --tb=short`，19 passed（0.08s）。仅运行新增模块专项；底层有界读取与已有文件替换未修改，不重跑其测试。真实探测没有过滤provenance，普通text/empty/binary三个样例matched_before=false、set_accepted=true、readback=matched；provenance为true/true/matched，最终visible_snapshot_equal=true且extra_target_names为空。这只是当前临时样例的可见结果，不是其他文件系统或不同provenance值的复制保证。
+
+故障测试使用真实临时文件生命周期与受控ABI/读取投影；覆盖二次创建失败关闭首文件、源核对失败、目标回读unavailable、清理失败不返回完整回执、KeyboardInterrupt传播并关闭文件。未打印属性值或摘要，未改项目源文件/删除系统属性。
+
+
+## 2026-09-22 受限扩展属性复制专项
+
+受限扩展属性复制原语课完成（用户授权直接实现，临时样例）：新增copy_file_xattrs，校验源快照及源/目标对象身份，拒绝同inode、目标多硬链接/非当前属主/非零flags/特殊权限位，目标额外属性在写前拒绝。复制仅使用当次有界读取值，相同属性跳过设置，不删除属性/绕过权限；最终回读完整可见快照并复核源与文件信息。失败可留下部分修改，目标清理由可信调用方负责，不关闭调用方描述符、不执行replace。新增26条分批通过（21条0.14s、补充5条0.08s），Ruff/diff check通过；真实临时文件验证普通属性复制及重复调用零设置、正文/偏移不变，受控测试覆盖返回成功但不生效、源变化、目标额外属性、部分失败和中断。不保证临时性/独占性/原子快照，provenance原本相同不证明不同值复制能力。未接现有替换入口，无数据库/前端/浏览器/全量回归，未提交推送。下一课元数据保护装配扩展属性复制（临时样例）。
+
+仅新增`workspace_xattr_copy.py`和`tests/workspace/metadata/test_workspace_xattr_copy.py`，原有有界读取、探测、元数据和replace代码均未修改，无既有回归必要。
+
+从apps/api执行：
+
+```sh
+../../.venv/bin/python -m pytest -q tests/workspace/metadata/test_workspace_xattr_copy.py --tb=short
+../../.venv/bin/python -m pytest -q tests/workspace/metadata/test_workspace_xattr_copy.py -k 'target_permission_policy or native_exception' --tb=short
+```
+
+首批21 passed（0.14s），补充5 passed/21 deselected（0.08s），共26条不同用例。真实源/目标临时文件不使用provenance过滤，已有相同值跳过设置，普通空/二进制属性完整回读；不宣称provenance不同值复制已验证。目标权限/flags的拒绝采用受控stat，部分故障采用受控原生接口。Ruff及diff check通过。无开发库、真实项目文件或HTTP入口变更。
+
+
+## 2026-09-22 元数据装配验收
+
+元数据保护装配扩展属性复制课完成（临时样例）：FileMetadata纳入完整可见xattr，两轮ACL/xattr快照及前中后stat核对；属组→权限→xattr→ACL→完整回读。拒绝同inode、目标额外属性和源/目标变化，失败保留临时目标部分修改并交调用方清理。学习者核心与参考一致；教练修正contextmanager返回标注为Generator[int, None, None]及空行。删除测试代理的provenance过滤，真实临时样例ACL/xattr复制、替换及隔离PostgreSQL执行登记通过。16条新增与40条直接受影响测试共56条分批通过；Ruff/diff check通过。仍非CAS，不保证不可见属性、不同provenance值可复制或断电持久化，无HTTP/UI写入口、全量回归、提交推送。
+
+Python 3.12.13。保留contextlib.contextmanager，返回类型改为collections.abc.Generator[int, None, None]；弃用的是typeshed的Iterator标注重载，并非装饰器本身。未运行Pylance编辑器诊断，运行时ACL释放路径已由测试覆盖。
+
+范围依据：元数据读取/复制协议改变，运行该模块26条现有用例与16条新增装配测试；替换器依赖完整元数据验证，选择12条成功与替换前后故障分类；执行器依赖原生替换结果，选择2条真实成功及xattr持久化登记。未重跑无改动的底层xattr整套测试、授权/数据库其余测试、前端和浏览器。
+
+从apps/api执行：
+
+```sh
+../../.venv/bin/python -m pytest tests/workspace/metadata/test_workspace_metadata_xattrs.py tests/workspace/metadata/test_workspace_file_metadata.py -q
+../../.venv/bin/python -m pytest tests/workspace/files/test_workspace_file_replace.py -k 'exact_content_metadata or failure_classification_follows_replace_attempt or post_replace_change' -q
+../../.venv/bin/python -m pytest tests/workspace/proposals/test_file_edit_proposal_execution.py -k 'real_success_private or real_xattrs_are_applied' -q
+../../.venv/bin/python -m pytest tests/workspace/metadata/test_workspace_metadata_xattrs.py -k 'permissions_xattrs_acl_order or content_change_during_copy' -q
+```
+
+首批39 passed（1.33s）；替换12 passed/55 deselected（0.95s）；执行器2 passed/35 deselected（1.18s），独立随机PostgreSQL测试库/schema自动清理；补充3 passed/13 deselected（0.95s）。总计56条不同用例。首次新增文件命令路径多写apps/api前缀，未创建文件也未运行测试，纠正路径后执行。Ruff发现一处测试dict生成器写法，改为字典推导后通过。
+
+
+## 2026-09-22 提案应用完整链路专项
+
+临时样例提案应用完整链路验收完成：新增7条服务串联测试，经真实创建、审批、执行和授权查询，不直接改审批状态。隔离PostgreSQL及真实临时文件验证有/无ACL、普通二进制/空xattr与完整可见元数据保留（不滤provenance）、正文精确替换、临时文件清理、文件I/O前关闭事务、一次领取及重复不写；验证批准后基线过期、pending/rejected拒绝、终态登记提交前/后故障下文件成功与记录确认分离。7 passed（1.83s），Ruff/diff check通过。仅新增测试与文档，无业务代码修改，无既有回归/前端/浏览器/模型调用/开发库操作，未提交推送。
+
+从apps/api执行：
+
+```sh
+../../.venv/bin/python -m pytest tests/workspace/proposals/test_proposal_application_lifecycle.py -q
+```
+
+结果7 passed（1.83s）。数据库复用根conftest独立随机库/schema，退出自动清理；临时项目由tmp_path创建。成功路径不使用原生元数据过滤或替换结果模拟；故障场景仅在终态登记事务的before_commit/after_commit注入异常。重复执行是测试主动调用，用于证明不会二次写入，不代表产品自动重试。登记失败后查询结果分别为running/applied，原调用回执仍为unknown；查询不修复或释放占用。
+
+本课没有修改业务模块，因此只运行新增7条，无需重跑前课56条或其他既有测试。Ruff定向检查新增文件，git diff --check通过。服务层集成验收不等于HTTP/浏览器闭环或真实模型验证，也不消除文件系统最后核对与replace之间的竞争窗口。
+
+
+## 2026-09-22 提案执行公开响应契约验收
+
+提案应用执行结果的公开响应契约课完成：学习者核心与参考一致，教练仅补类间空行。新增严格冻结Schema与显式投影，校验三个公开标识、回执提案匹配、文件/登记/清理状态及固定错误码组合；拒绝额外字段、隐式类型转换和未知协议。新增57条0.94s通过，包含240种组合穷举（17合法/223拒绝）、敏感字段隔离、缺字段/错误对象及无执行/数据库/文件I/O调用检查。Ruff/diff check通过。未接HTTP路由、未改执行器，无既有回归/数据库/前端/浏览器/全量回归，未提交推送。
+
+从apps/api执行：
+
+```sh
+../../.venv/bin/python -m pytest tests/workspace/proposals/test_proposal_execution_response.py -q
+```
+
+结果57 passed（0.94s）。17种合法回执逐项往返JSON；单独穷举字段声明范围内240种组合，17接受、223拒绝。其余覆盖严格布尔/编号/状态/错误码、全部必填字段、额外敏感字段、错误对象与子类、编号不匹配、冻结及纯转换边界。错误通过转换函数折叠为固定公开异常，格式化异常链不包含测试私有输入；Schema原始ValidationError不是对外错误协议。
+
+范围依据：只增加Schema类型与未被路由调用的纯转换函数，既有Schema和服务行为不变，故仅运行新增测试；无PostgreSQL/前端/浏览器/文件复制回归。Ruff定向检查schemas.py、新转换函数及新测试；git diff --check通过。无新HTTP路由、无授权能力；资源归属仍由未来可信调用方验证，响应转换失败不证明文件未写入。
+
+
+## 2026-09-22 执行回执前端解析验收
+
+提案应用执行结果的前端解析契约课完成：学习者实现与参考一致，无核心修正。纯解析器校验三个资源标识、自有必填字段、严格类型及17种合法组合，显式投影公开字段，保留replaced/unknown证据，不查询/执行/重试。新增51条通过（0.78s），含调用真实后端Schema逐项对照240种组合（17接受/223拒绝）、缺字段与原型链、错误资源/状态/清理值、冻结输入不变及敏感字段隔离。TypeScript、定向ESLint、diff check通过。无HTTP/BFF/UI接入、数据库/浏览器/既有全量回归，未提交推送。
+
+从apps/web执行：
+
+```sh
+node --experimental-strip-types --test test/features/workspaces/proposal-execution-data.test.ts
+pnpm exec tsc --noEmit
+pnpm exec eslint src/features/workbench/proposal-execution-data.ts test/features/workspaces/proposal-execution-data.test.ts
+```
+
+51 passed（779ms）。对照用例通过仓库根.venv/bin/python加载apps/api的真实Pydantic Schema，用JSON stdin/stdout批量校验240种组合；需要已安装后端依赖的项目虚拟环境，不连接数据库，也不运行执行器。其余测试覆盖必填字段自有性、协议类型、三资源匹配与标识格式、未知结果保留、额外私有字段不投影/不读取、冻结输入不变及无fetch调用。
+
+范围依据：仅新增未接入现有调用链的纯解析器和测试，无既有消费者行为变化，故不跑既有前后端测试、浏览器或数据库验收。TypeScript检查兼容性，ESLint仅检查新增两文件。首次创建命令路径多写apps/web前缀，文件未创建、测试未运行；修正路径后上述检查通过。没有对恶意Proxy或访问器输入作通用沙箱保证，输入边界面向解码后的JSON响应。
+
+
+## 2026-09-22 执行回执只读组件验收
+
+提案应用执行结果的只读展示组件课完成（用户授权直接实现）：新增ProposalExecutionResultPanel，展示边界重新解析资源及协议，分别表达文件结果、登记确认、临时资源清理；区分领取未确认与登记未确认，非法回执不推断未写入，不展示令牌/路径/正文。独立无状态组件，无fetch/执行/重试按钮，尚未接工作台页面。新增25条静态渲染测试0.88s通过，覆盖17种合法回执、非法输入/错资源、切换隔离及敏感字段；TypeScript、定向ESLint、diff check通过。未做浏览器视觉验收、既有回归或全量回归，未提交推送。
+
+从apps/web执行：
+
+```sh
+node --experimental-strip-types --test test/features/chat/proposal-execution-result.test.ts
+pnpm exec tsc --noEmit
+pnpm exec eslint src/features/chat/components/proposal-execution-result.tsx test/features/chat/proposal-execution-result.test.ts
+```
+
+25 passed（876ms）。测试转译真实TSX并注入真实回执解析器，用React服务端静态渲染覆盖全部17种合法回执，验证分离的文件/登记/清理文案、role=status/alert、非法输入与错资源、不显示旧提案成功、无按钮/链接/表单、无fetch及冻结输入不变。不是浏览器交互或PC布局截图验收；组件尚未接产品页面，未伪造生产回执。
+
+只新增独立组件与专用测试，没有修改解析器/现有组件或共享测试工具，故不重跑既有测试。没有新增重要设计考点，复用已有公开契约与两提交边界题，不为纯展示单独入库。
+
+
+## 2026-09-22 提案应用请求契约验收
+
+提案应用请求契约课完成：学习者实现与参考一致，仅补类间空行。新增严格冻结FileEditProposalExecutionRequest，只接受必填action=apply，禁止额外身份/路径/正文/令牌/权限字段。新增32条0.10s通过，覆盖字典与JSON合法/非法输入、精确动作、冻结及Schema必填说明，Ruff/diff check通过。执行范围仅完成设计约束：未来实验入口须由服务端创建并登记临时样例，APP_MODE=local或浏览器声明不构成范围授权；可信样例登记与门禁尚未实现。未接路由、无文件执行/数据库/前端/既有或全量回归，未提交推送。
+
+从apps/api执行：
+
+```sh
+../../.venv/bin/python -m pytest tests/workspace/proposals/test_proposal_execution_request.py -q
+```
+
+32 passed（0.10s）。仅新增请求Schema和专用测试，不改变既有消费者或响应类型，因此不运行既有后端、数据库、前端或浏览器测试。Ruff定向检查schemas.py及新测试，git diff --check通过。无路由绑定，不能把这份测试结果称作HTTP执行入口或可信范围门禁已验收。固定action只是请求意图，不证明审批、资源归属或真人点击；重复JSON键的原始字节层处理不在本次模型验证范围。
+
+
+## 2026-09-22 临时样例生命周期验收
+
+服务端临时样例目录生命周期课完成（用户授权直接实现）：新增temporary_proposal_sample上下文管理器，无外部路径参数，macOS服务端临时目录内独占创建0700目录和0600固定example.txt（old\n）；持有父/子目录描述符核对身份，支持短写，退出仅清理已知单硬链接普通样例文件（允许可信原子替换），拒绝未知内容/链接/身份或权限变化，不递归删除。异常和中断释放描述符；清理失败保留现场，以固定错误报告或给原异常追加note。21条最终0.10s通过，Ruff/diff check通过。无HTTP/数据库/注册门禁接入，无既有或全量回归，未提交推送。路径对象不是授权凭证，必须作用域内结束使用且无外部写者，身份核对不是CAS。
+
+从apps/api执行：
+
+```sh
+../../.venv/bin/python -m pytest tests/workspace/samples/test_temporary_proposal_sample.py -q
+```
+
+首批18 passed（0.12s），补充清理系统调用失败和权限变化测试、强化chmod前目录身份核对后，最终21 passed（0.10s）。Ruff发现测试嵌套with格式，合并后通过。真实临时目录由tmp_path隔离；故障遗留现场交pytest临时目录生命周期处理，生产组件不递归清理。成功/异常/KeyboardInterrupt及打开失败均检查描述符关闭。
+
+仅新增模块和专项测试，未改变现有执行器或文件替换，故不运行数据库、浏览器、前端及既有回归。仅macOS实现；服务端临时目录配置可信，调用方需保证没有外部写者、后台操作不越过上下文结束。清理允许固定文件经可信执行器替换，并非跟踪原始文件inode；目录未知条目或残留暂存文件会保守拒绝，后续需独立恢复策略。无fsync/断电持久化承诺，返回路径过期后不得继续使用。
+
+
+## 2026-09-22 样例登记与失效验收
+
+临时样例服务端登记与失效边界课完成（用户授权直接实现）：新增TemporarySampleRegistry，只经内部自建流程登记，不提供任意路径/对象注册。随机内部句柄、最多32项、独占借用；close立即撤销新借用，活动借用退出后清理，正常归还允许后续借用。借用异常撤销并清理，清理失败保留失效登记/容量和现场，不自动重试；目录/父目录身份及权限变化拒绝。新实例不恢复旧登记，PID变化在碰锁前拒绝。18条分批通过（16条0.10s、补充2条0.07s），Ruff/diff check通过；包含真实线程关闭、创建失败、失效与异常保留。未改旧模块，无数据库/HTTP/用户资源授权接入、既有或全量回归，未提交推送。
+
+从apps/api执行：
+
+```sh
+../../.venv/bin/python -m pytest tests/workspace/samples/test_temporary_sample_registry.py -q
+../../.venv/bin/python -m pytest tests/workspace/samples/test_temporary_sample_registry.py -k 'identity_capture_failure or missing_root' -q
+```
+
+首批16 passed（0.10s），补充2 passed/16 deselected（0.07s）。只新增登记模块与测试，未修改底层生命周期模块，因此没有重跑其21条测试；新测试使用真实临时目录，线程Event协调验证close不删除正在使用的目录，未知/旧/跨实例句柄、容量及碰撞、创建/身份捕获失败、目录替换/缺失、借用异常/中断及清理失败均覆盖。fork使用受控PID模拟，未执行真实fork；进程重启语义通过新登记实例不认识旧句柄验证，未做宿主进程崩溃恢复。
+
+close返回False表示已撤销且等待归还，不代表清理失败或可以重试执行；借用路径只能在作用域内使用，无法撤销调用方已复制的路径。失败登记继续占容量，未来需独立恢复策略；不按时间强制清理活动任务。登记不持久化、不共享多进程，不承诺CAS，内部随机句柄不是用户授权或可公开能力。Ruff及diff check通过。
+
+
+## 2026-09-22 临时样例用户任务绑定验收
+
+临时样例与用户任务授权绑定课完成（用户授权直接实现）：新增内部TaskSampleBindings，local模式下按用户/Workspace/Task建立私有登记，只接收资源标识不接受路径/句柄；创建前授权，创建后持项目→任务→会话锁重新授权，仅绑定未绑定Workspace，复用整个项目的running/uncertain占用保护。借用重新授权及核对目录绑定，文件使用期间无数据库事务；忙时拒绝关闭。正常关闭先确认解绑提交再清理。提交尝试前失败清理未发布样例；绑定/解绑commit结果未知及使用异常保留目录并封锁登记，不自动恢复或重试。23条分批通过（18条1.62s、补充5条0.67s），Ruff/diff check通过。无既有模块修改、HTTP/执行器接入、前端/浏览器/全量回归，未提交推送。
+
+从apps/api执行：
+
+```sh
+../../.venv/bin/python -m pytest tests/workspace/samples/test_task_sample_binding.py -q
+../../.venv/bin/python -m pytest tests/workspace/samples/test_task_sample_binding.py -k 'active_application or duplicate_bind' -q
+```
+
+首批18 passed（1.62s），补充5 passed/18 deselected（0.67s）。隔离随机PostgreSQL数据库与私有schema自动清理，文件仅写入tmp_path。提交before_commit/after_commit事件注入分别验证绑定可能未提交/已提交、解绑可能仍绑定/已解绑，均保留目录且封锁；flush失败在未尝试commit时清理。二次授权前注入竞争绑定验证不覆盖；用户/会话归属变化与目录变化拒绝借用，错误用户/兄弟Task不能使用或关闭登记。真实占用行验证running/uncertain阻止绑定变更。
+
+测试夹具结束时以可信内部测试清理回收保留样例，不是生产自动恢复策略。模块应由进程长生命周期调用方持有；新实例不能收养现有已绑定目录。失败后的生产恢复待实现，无持久化跨进程恢复。借用只保证当次授权快照，不防止随后数据库变更；未来执行器必须继续重新授权，且文件核对仍非CAS。Workspace目录是项目级共享字段，但内部登记只允许指定Task借用；不宣称它对旧文件工具构成沙箱隔离。
+
+未改现有服务/仓库函数，故仅运行新增测试，不重跑此前生命周期/登记测试或账号模式整套测试。Ruff最初发现测试未用导入和过宽异常断言，补占用测试并收紧断言后通过；git diff --check通过。没有新增路由，不证明HTTP已具备样例范围门禁。
+
+
+## 2026-09-22 样例门禁执行装配验收
+
+样例授权门禁与提案执行器装配课完成（用户授权直接实现）：新增execute_sample_proposal，在可信TaskSampleBindings借用内重新授权提案及目录/固定文件范围后调用执行器，借用持续到执行结束。临时样例保存创建时目录dev/ino；执行器及预检增加可选期望目录/文件约束，替换原语在打开实际父目录后、访问文件前核对期望身份。回执经既有严格Schema验证，unknown/uncertain、非法回执和中断使登记封锁，保留目录/原文件证据，无自动重试。19条新增与24条直接受影响既有共43条不同用例通过，Ruff/diff check通过。真实隔离PostgreSQL及临时文件验证成功、错误范围、数据库改绑/目录替换、登记故障、重复执行及清理拒绝；无HTTP/前端/浏览器/全量回归，未提交推送。
+
+从apps/api执行的最终批次：
+
+```sh
+../../.venv/bin/python -m pytest tests/workspace/samples/test_sample_proposal_execution.py tests/workspace/proposals/test_file_edit_proposal_execution.py tests/workspace/proposals/test_file_edit_proposal_preflight.py -k 'test_sample_proposal_execution or real_success_private_receipt or preparation_failure_consumes_attempt or recheck_after_preflight or snapshot_is_readonly_private or binding_changed_between_snapshot' -q
+../../.venv/bin/python -m pytest tests/workspace/files/test_workspace_file_replace.py tests/workspace/samples/test_temporary_proposal_sample.py tests/workspace/samples/test_temporary_sample_registry.py -k 'exact_content_metadata or failure_classification_follows_replace_attempt or fixed_private_sample or create_borrow_close' -q
+../../.venv/bin/python -m pytest tests/workspace/samples/test_sample_proposal_execution.py -k uncertain_file_result -q
+```
+
+首批14条新增2.35s通过；补严格回执校验与用例后第一最终批次30 passed/67 deselected（3.79s），第二批次12 passed/94 deselected（0.92s），补充1 passed/18 deselected（0.91s），最终共43条不同用例（19新增、24既有），初始14条不重复计数。
+
+影响依据：执行器/预检新增可选范围参数，回归默认成功、准备失败和再次核对；替换器新增可选目录身份，回归默认成功与替换前后故障分类；样例返回对象增加创建时身份字段，回归创建/登记/清理成功。除此之外无模块影响，不扩大全量。原生临时文件成功路径无provenance过滤；uncertain文件结果测试使用受控原语回执，登记提交前后故障用真实PostgreSQL事务事件注入。跨系统操作依旧不是CAS，目录身份约束不提供跨进程授权或阻止外部写者。
+
+默认无范围参数的执行器仍是可信内部原语；未来HTTP必须只调用新增样例门禁，不能直接调用它。内部授权绑定尚未通过HTTP创建或注册，门禁不是发布入口。借用退出前不允许解绑清理；已确认not_applied可正常归还，unknown/uncertain即使数据库已有终态也封锁本地登记，后续恢复单独设计。
+
+
+### 2026-09-22：受限样例应用HTTP与Workspace结构整理
+
+验证范围仅新增及本次拆分直接影响的测试。以下路径相对 `apps/api/`，使用 `../../.venv/bin/python -m pytest -q`：
+
+- 新增 `tests/workspace/proposals/test_sample_execution_api.py`，23条分批通过：真实HTTP写入、重复请求不二次写入、严格正文/路径/查询/来源/Token/Host/内容类型、无登记拒绝、资源范围与重新授权、模式限制、登记提交前后失败以及响应生成失败的安全未确认语义。
+- 既有386条：`tests/workspace/directory/test_workspace_{binding,directory,selection}_api.py`，`tests/workspace/proposals/test_file_edit_proposal{,_decision}_api.py`、`test_proposal_application_status_api.py`、`test_proposal_application_guard_api.py`，`tests/tasks/test_task_{api,detail,run_api,delete_api,idempotency_api,workspace}.py`，`tests/local/test_local_mode.py`。花括号表示文件集合，按文件逐项传入pytest。覆盖全部拆分的本地Workspace子路由及共用边界。
+- 第一批404 passed（35.01s，包含18条新增），补充5 passed（1.65s）；共409条不同用例。首次沙箱内连接本机PostgreSQL被拒绝，放行后使用随机独立库/私有schema执行并自动清理，不操作开发业务表。
+- 静态证据：拆分前后完整OpenAPI完全相同；27个服务模块除导入外业务AST一致，27个路由函数/类AST一致；包含嵌套导入的旧路径审计通过。Ruff与git diff --check通过。移动范围的测试及其调用方已完成collect-only；收集成功不记作行为测试通过。
+- 未全量回归，未运行账号专项、模型、Docker或浏览器。前端业务未因本次结构整理而改动，仅更新隔离浏览器辅助脚本导入。当前默认登记为空，接口不会自行接纳已有路径；BFF代理和UI应用入口仍待后续课。
+
+
+### 2026-09-22：受限样例提案应用BFF代理
+
+学习者核心与参考一致，未改代理行为。新增 `apps/web/test/features/workspaces/proposal-execution-route.test.ts`；从 `apps/web` 执行：
+
+```bash
+node --experimental-strip-types --test test/features/workspaces/proposal-execution-route.test.ts
+pnpm exec eslint src/app/api/_shared/proposal-execution-proxy.ts 'src/app/api/workspaces/[workspaceId]/tasks/[taskId]/file-edit-proposals/[proposalId]/apply/route.ts' test/features/workspaces/proposal-execution-route.test.ts
+pnpm typecheck
+```
+
+结果：106 passed，0 failed（696.19ms）；定向ESLint及Next路由类型生成/TypeScript通过。覆盖实际POST路由、请求URL和凭证白名单、严格正文/资源/来源、公开回执脱敏与资源匹配、合法未知/不确定结果、状态/错误码组合、重定向拒绝、无效JSON、网络错误、转发前取消、请求与响应读取期间取消/超时，确认不重试。测试以受控fetch响应与事件驱动取消进行，无真实网络、数据库或文件写入。共享模块未修改，不扩展既有回归；未全量回归或浏览器验收。git diff --check通过。
+
+
+### 2026-09-22：提案应用客户端请求状态管理
+
+新增 `apps/web/src/features/workbench/proposal-execution-request.ts` 与 `apps/web/test/features/workspaces/proposal-execution-request.test.ts`。从 `apps/web` 使用：
+
+```bash
+node --experimental-strip-types --test test/features/workspaces/proposal-execution-request.test.ts
+pnpm exec eslint src/features/workbench/proposal-execution-request.ts test/features/workspaces/proposal-execution-request.test.ts
+pnpm typecheck
+```
+
+实际分批：首批23条通过（433.84ms）；补充旧响应隔离与订阅异常2条通过（398.29ms），共25条不同用例。TypeScript/路由类型生成、定向ESLint及diff check通过。覆盖同步防重、提交前持久标记、存储读写故障、同标签页多实例、重建恢复、资源快照、迟到响应、取消/销毁/超时/正文读取中断、非法回执、未知登记证据与不重试。测试用Map实现Storage接口和受控fetch，未运行真实浏览器sessionStorage、后端或文件写入。没有改共享模块，不扩大既有回归。持久保护要求页面装配时传入真实sessionStorage；该模块本身不自动绑定浏览器对象，未接工作台。
+
+
+### 2026-09-22：受限样例提案应用交互组件
+
+新增组件 `apps/web/src/features/chat/components/proposal-execution-actions.tsx` 和专项 `apps/web/test/features/chat/proposal-execution-actions.test.ts`。从 `apps/web` 执行：
+
+```bash
+node --experimental-strip-types --test test/features/chat/proposal-execution-actions.test.ts
+pnpm exec eslint src/features/chat/components/proposal-execution-actions.tsx test/features/chat/proposal-execution-actions.test.ts
+pnpm typecheck
+```
+
+14条通过；定向ESLint及TypeScript通过，git diff --check通过。测试转译真实TSX，使用React静态渲染与受控Hook调度，注入真实请求控制器和回执展示：检查阶段/禁用状态、确认勾选、连续点击防重、存储getter故障、取消与卸载中止、迟到响应不更新、资源key隔离及unknown恢复。它们不等于真实React DOM挂载、StrictMode、键盘或视觉验收；这些是唯一下一课。未挂生产工作台，未访问后端/文件，无既有或全量回归；本课未新增重要面试考点，沿用已有持久防重/取消知识点。
+
+
+### 2026-09-22：受限样例应用组件PC浏览器验收
+
+夹具：`apps/web/test/browser/execution-component/{entry.tsx,typescript-loader.cjs,run.mjs,verify.mjs}`。不增加产品路由，Webpack仅在系统随机临时目录编译，finally关闭浏览器/HTTP服务器并删除本轮构建目录。Tailwind处理真实全局样式，生产构建仍使用Next。首次沙箱监听127.0.0.1被拒绝，放行后执行成功。
+
+从 `apps/web` 执行：
+
+```bash
+node test/browser/execution-component/run.mjs
+pnpm exec eslint test/browser/execution-component/entry.tsx test/browser/execution-component/run.mjs test/browser/execution-component/verify.mjs test/browser/execution-component/typescript-loader.cjs
+pnpm typecheck
+```
+
+运行环境须能解析Playwright；可用 `PLAYWRIGHT_MODULE` 指向已有安装的绝对目录，`CHROME_EXECUTABLE` 指向已有Chrome二进制。本次使用已有npm缓存中的Playwright与macOS Google Chrome，未安装新依赖。包装CLI查询遇到网络等待，改用仓库已有的Node/Playwright脚本形式执行。
+
+结果：7组专项通过、7次受控POST，pageerror为0。真实StrictMode effect挂载次数为2；首次无请求，Space勾选、Tab聚焦、Enter提交仅1次。覆盖成功刷新、停止等待保留标记、卸载重挂、A/B资源切换与迟到响应隔离、unknown回执刷新、非法回执脱敏、sessionStorage getter故障拒绝。笔记本1366×900和宽屏1920×1080截图已人工核对，无页面横向溢出；疑似文字越界经DOM复核为内容区及段落clientWidth/scrollWidth均720px，正常换行，无需修改组件。初次通过后仅为该布局疑问复跑，结果一致，不重复计算用例数。
+
+证据在 `apps/web/output/playwright/execution-component/`：`evidence.json`、`laptop-idle.png`、`laptop-unknown.png`、`desktop-success.png`；生成目录已忽略，不将图片构建产物纳入源码。定向ESLint、TypeScript、diff check通过。未调用真实BFF/API、数据库或文件执行；这不是端到端文件写入证据，无既有或全量回归。
+
+
+### 2026-09-22：受限样例应用真实端到端验收
+
+新增 `apps/web/test/browser/execution-e2e/`：`sample_app.py`在隔离API lifespan内建用户/任务、绑定自有临时样例、调用真实提案生成/批准服务；`run.py`复用tests/conftest.py随机数据库/schema夹具并运行完整Alembic迁移，复制真实BFF/组件到临时Next应用；`verify.mjs`使用真实Chrome，不拦截apply网络请求。没有生产样例登记路由或工作台改动。
+
+仓库根目录执行（环境变量PLAYWRIGHT_MODULE/CHROME_EXECUTABLE沿用上节已有安装配置）：
+
+```bash
+.venv/bin/python apps/web/test/browser/execution-e2e/run.py
+.venv/bin/ruff check apps/web/test/browser/execution-e2e
+```
+
+从apps/web执行定向ESLint：`pnpm exec eslint test/browser/execution-e2e/verify.mjs`。
+
+真实验收证据：
+
+- 调用前独立读取example.txt为old加换行，proposal已approved且application_status=idle。
+- 额外path字段被BFF拒绝422；页面勾选/点击后真实回执HTTP200，file_status=replaced、application_status=applied、cleanup_complete=true，公开字段恰好7个且no-store，无Set-Cookie。
+- 调用后独立读取example.txt为new加换行，数据库applied；刷新展示sessionStorage回执不重复POST，UI请求恰好1次，页面无错误，1366×900截图已检查。
+- 绕过UI直接重复HTTP返回200但code=proposal_application_claim_unconfirmed；文件内容、inode、mtime均不变。该回执不是第二次成功，登记按保护逻辑封锁，生产close拒绝。
+- 首轮发现夹具错误地假定重复后仍能正常close，导致收尾失败；没有放松生产保护。修正仅测试收尾：HTTP请求结束后，确认数据库applied、自有文件new及登记非busy/uncertain，再在独立事务解绑并关闭自有registry。重跑完整专项通过；Workspace.root_path=None、样例目录不存在，Next/API停止，随机schema/database夹具成功清理。
+- 首轮残留自有样例也在进程及测试库结束后核对0700/所有者/单一固定普通文件及内容后清理，未递归删除或操作其他目录。后续封锁现场不能套用该测试收尾流程作为产品恢复策略。
+
+证据：`apps/web/output/playwright/execution-e2e/evidence.json`、`browser.json`、`real-success.png`及api/web.log（均为忽略的本地产物）。Ruff、定向ESLint、diff check通过。只做本专项，不重跑已有或全量测试；未验证真实端到端断网/提交未知注入、跨进程恢复、多标签页竞争或普通项目写入。
+
+
+### 2026-09-22：受限样例登记状态只读查询
+
+修改 `apps/api/app/services/workspace/samples/task_sample_binding.py`，新增 `apps/api/tests/workspace/samples/test_task_sample_status.py`。从 `apps/api` 执行：
+
+```bash
+../../.venv/bin/python -m pytest -xq tests/workspace/samples/test_task_sample_status.py tests/workspace/samples/test_task_sample_binding.py
+```
+
+41 passed（3.08s）：新增18条，直接影响的绑定生命周期23条。真实独立PostgreSQL库/schema及自有临时文件，自动清理。覆盖missing→ready→真实跨线程busy→ready→关闭后missing；冻结且仅含status的快照；无登记/有登记均重新检查用户、项目、任务、会话归属；根绑定变化、封锁/未知内部状态与准备中状态；不调用registry create/borrow/close，不commit；新实例不恢复登记、进程/模式边界先于DB、DB失败不当missing、异常借用封锁不因查询解除。共用Tracked Session确认全部Session关闭且无活动事务。Ruff与git diff --check通过。
+
+本课只内部服务，无HTTP/BFF/UI/浏览器/模型调用或全量回归。查询持有短数据库归属锁以保持既有锁顺序，不是无锁查询；当前借用在文件执行期间不持有数据库事务，因此跨线程busy查询可返回。ready只反映本次内存登记与数据库绑定快照，不检查实际文件内容、元数据、提案可执行状态，也不是执行权预留。
+
+
+### 2026-09-22：受限样例登记状态HTTP接口
+
+新增 `routers/workspace/samples.py`，聚合路由注册；`schemas.py`增加TaskSampleStatusResponse；共用request_kinds/boundary/errors仅增加该GET的校验与故障分类。新增 `tests/workspace/samples/test_task_sample_status_api.py`。
+
+从apps/api执行：
+
+```bash
+../../.venv/bin/python -m pytest -xq tests/workspace/samples/test_task_sample_status_api.py tests/workspace/proposals/test_sample_execution_api.py tests/workspace/proposals/test_proposal_application_status_api.py
+```
+
+77 passed（8.29s），新增20条，直接相关57条。覆盖四状态真实HTTP投影、无登记仍重新授权、错项目/任务/用户归属、路径/查询/正文拒绝、local模式/Host/Token/Origin边界、GET允许省略Origin但仍要求内部凭证、DB与登记故障、非法内部状态、no-store/无Cookie/脱敏，以及读取不创建或借用登记。PostgreSQL独立随机测试库/schema与自有临时样例自动清理，未访问开发业务表。Ruff、diff check通过。未全量回归，未改BFF/UI或运行浏览器；未把读取快照当作执行权限。

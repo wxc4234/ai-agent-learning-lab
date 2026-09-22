@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import LoadingPlaceholder from './loading-placeholder';
 import TaskRunHistory from './task-run-history';
 import { readRunDetail, type RunDetail, type RunTimelineEvent } from '../run-detail-data';
+import ToolResult from '@/features/chat/components/tool-result';
 import RunSummaryCard from '@/features/chat/components/run-summary-card';
 import { readHistoricalRunSummary } from '../historical-run-summary';
 
@@ -28,7 +29,10 @@ function eventLabel(type: string): string {
     }
 }
 
-function EventContent({ event }: { event: RunTimelineEvent }) {
+function EventContent({ event, taskScope }: {
+    event: RunTimelineEvent;
+    taskScope: { workspaceId: string; taskId: string };
+}) {
     const payload = event.payload;
     // 仅展示公开的已知字段，文本由 React 转义，不执行工具结果中的 HTML。
     const fields = [
@@ -42,7 +46,18 @@ function EventContent({ event }: { event: RunTimelineEvent }) {
                 return typeof value === 'string' && value.length > 0 ? (
                     <div key={field}>
                         <p className="text-muted-foreground">{label}</p>
-                        <p className="whitespace-pre-wrap break-words [overflow-wrap:anywhere]">{value}</p>
+                        {/* 仅成功提案接入审批；范围来自当前任务，不能信任历史结果中的归属字段。 */}
+                        {field === 'result'
+                            && event.event_type === 'TOOL_CALL_RESULT'
+                            && payload.tool_name === 'create_file_edit_proposal' ? (
+                            <ToolResult
+                                toolName={payload.tool_name}
+                                result={value}
+                                taskScope={taskScope}
+                            />
+                        ) : (
+                            <p className="whitespace-pre-wrap break-words [overflow-wrap:anywhere]">{value}</p>
+                        )}
                     </div>
                 ) : null;
             })}
@@ -57,9 +72,11 @@ function EventContent({ event }: { event: RunTimelineEvent }) {
 
 function HistoricalRunDetail({
     runId,
+    taskScope,
     onRetry,
 }: {
     runId: number;
+    taskScope: { workspaceId: string; taskId: string };
     onRetry: () => void;
 }) {
     const [state, setState] = useState<DetailState>({ phase: 'loading' });
@@ -140,7 +157,7 @@ function HistoricalRunDetail({
     return (
         <div className="mt-3 space-y-4">
             <p className="text-base text-muted-foreground">
-                历史记录，只读展示
+                运行事件为历史记录；提案可按需查询当前状态并审批，批准不会写入文件。
             </p>
 
             {detail.duration_ms !== null && (
@@ -186,7 +203,7 @@ function HistoricalRunDetail({
                                     { hour12: false },
                                 )}
                             </time>
-                            <EventContent event={event} />
+                            <EventContent event={event} taskScope={taskScope} />
                         </li>
                     ))}
                 </ol>
@@ -213,7 +230,7 @@ export default function TaskRunPanel({ workspaceId, taskId }: { workspaceId: str
                         <h3 className="text-base font-medium">运行 #{selectedRunId}</h3>
                         <Button type="button" variant="ghost" onClick={() => setSelectedRunId(null)}>返回列表</Button>
                     </div>
-                    <HistoricalRunDetail key={`${selectedRunId}:${attempt}`} runId={selectedRunId} onRetry={() => setAttempt(value => value + 1)} />
+                    <HistoricalRunDetail key={`${workspaceId}:${taskId}:${selectedRunId}:${attempt}`} taskScope={{ workspaceId, taskId }} runId={selectedRunId} onRetry={() => setAttempt(value => value + 1)} />
                 </section>
             )}
         </div>

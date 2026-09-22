@@ -7,14 +7,14 @@ from sqlalchemy.exc import SQLAlchemyError
 from app.repositories.workspace.workspace_repository import (
     WorkspaceNotAccessibleError,
 )
-from app.services.workspace.file_edit_proposal_service import (
+from app.services.workspace.proposals.file_edit_proposal_service import (
     ProposalBindingChangedError,
     create_task_file_edit_proposal,
 )
-from app.services.workspace.workspace_directory import WorkspaceDirectoryError
-from app.services.workspace.workspace_edit_preview import EditPreviewError
-from app.services.workspace.workspace_file import WorkspaceFileError
-from app.services.workspace.workspace_path import WorkspacePathError
+from app.services.workspace.directory.workspace_directory import WorkspaceDirectoryError
+from app.services.workspace.edits.workspace_edit_preview import EditPreviewError
+from app.services.workspace.files.workspace_file import WorkspaceFileError
+from app.services.workspace.directory.workspace_path import WorkspacePathError
 from app.tools.context import ToolExecutionContext
 from app.tools.errors import SafeToolExecutionError
 from app.tools.preview_file_edit import PreviewFileEditArguments

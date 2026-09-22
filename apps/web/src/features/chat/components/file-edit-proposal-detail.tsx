@@ -7,6 +7,8 @@ import {
     type FileEditProposalDetail,
 } from "../../workbench/file-edit-proposal-data";
 import { Button } from "@/components/ui/button";
+import FileEditProposalActions from "./file-edit-proposal-actions";
+import ProposalApplicationStatusPanel from "./proposal-application-status";
 
 type DetailState =
     | { status: "idle" }
@@ -199,7 +201,12 @@ export default function FileEditProposalDetailPanel({
             {state.status === "ready" && (
                 <div className="min-w-0 space-y-3 text-xs">
                     <p className="font-medium">
-                        查询时状态：待审批
+                        查询时状态：
+                        {state.detail.status === "pending"
+                            ? "待审批"
+                            : state.detail.status === "approved"
+                                ? "已批准"
+                                : "已拒绝"}
                     </p>
                     <p className="break-all font-mono">
                         {state.detail.relative_path}
@@ -242,9 +249,41 @@ export default function FileEditProposalDetailPanel({
 
                     <p className="text-muted-foreground">
                         这是保存的审阅内容，不代表当前文件仍符合基线。
-                        Diff 仅供审阅，不能直接用于 git apply；
-                        此操作不会批准或写入文件。
+                        Diff 仅供审阅，不能直接用于 git apply。
+                        读取详情不会改变审批状态；批准也不会直接写入文件。
                     </p>
+
+                    <ProposalApplicationStatusPanel
+                        workspaceId={state.detail.workspace_id}
+                        taskId={state.detail.task_id}
+                        proposalId={state.detail.proposal_id}
+                    />
+
+                    <FileEditProposalActions
+                        key={
+                            `${state.detail.workspace_id}:`
+                            + `${state.detail.task_id}:`
+                            + state.detail.proposal_id
+                        }
+                        detail={state.detail}
+                        onDecided={(decision) => {
+                            // 审批组件只在当前ready分支挂载。
+                            // 已核对的成功回执更新当前快照，不另发写请求。
+                            setState((previous) => {
+                                if (previous.status !== "ready") {
+                                    return previous;
+                                }
+
+                                return {
+                                    status: "ready",
+                                    detail: {
+                                        ...previous.detail,
+                                        status: decision,
+                                    },
+                                };
+                            });
+                        }}
+                    />
                 </div>
             )}
         </section>

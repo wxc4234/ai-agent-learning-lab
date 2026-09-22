@@ -17,7 +17,7 @@ from app.routers.auth.registration import router as registration_router
 from app.routers.auth.login import router as login_router
 from app.routers.auth.current_user import router as current_user_router
 from app.routers.auth.logout import router as logout_router
-from app.routers.workspace.workspace import router as workspace_router
+from app.routers.workspace.router import router as workspace_router
 from app.services.runtime.execution.run_cancellation import close_cancellation_broker
 from app.services.runtime.execution.command_recovery_store import (
     CommandRecoveryStore,

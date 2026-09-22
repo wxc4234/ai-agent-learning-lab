@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from app.models import Conversation, Message
 from sqlalchemy import select
 from app.services.tasks import task_workspace
-import tests.workspace.test_workspace_binding_api as binding
+import tests.workspace.directory.test_workspace_binding_api as binding
 from tests.local.test_local_mode import HEADERS
 from tests.tasks.test_task_api import post
 

@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 
 from app.models import User, Workspace
 from app.repositories.workspace.workspace_repository import list_owned_workspaces
-from app.routers.workspace import workspace
+from app.routers.workspace import projects as workspace
 import tests.workspace.test_workspace_api as api_fixtures
 from tests.workspace.test_workspace_api import assert_safe, headers
 import tests.local.test_local_mode as local_fixtures

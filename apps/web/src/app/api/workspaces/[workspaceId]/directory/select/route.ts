@@ -3,6 +3,7 @@ import { isLocalMode, localHeaders } from "../../../../_shared/runtime.ts";
 
 export const runtime = "nodejs";
 const ERRORS: Record<string, [number, string]> = {
+    proposal_application_busy: [409, "存在执行中或结果未确认的文件应用，暂不能变更资源"],
     local_mode_required: [403, "项目目录功能仅支持本地模式"],
     local_access_rejected: [403, "本地服务拒绝访问，请检查运行配置"],
     workspace_origin_rejected: [403, "请求来源不被允许"],

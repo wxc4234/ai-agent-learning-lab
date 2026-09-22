@@ -4,11 +4,11 @@ import json
 
 import pytest
 
-from app.services.workspace.file_edit_proposal_service import get_task_file_edit_proposal
+from app.services.workspace.proposals.file_edit_proposal_service import get_task_file_edit_proposal
 from app.tools.context import ToolExecutionContext
 from app.tools.errors import SafeToolExecutionError
 from app.tools.registry import TOOL_REGISTRY
-from tests.workspace import test_file_edit_proposal_service as persistence
+from tests.workspace.proposals import test_file_edit_proposal_service as persistence
 
 root = persistence.root
 target = persistence.target

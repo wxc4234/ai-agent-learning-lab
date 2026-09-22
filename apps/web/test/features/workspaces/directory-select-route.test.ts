@@ -57,7 +57,7 @@ for (const headers of [{ Origin: "" }, { Origin: "https://evil.test" }, { "Sec-F
         assert.equal(mock.mock.callCount(), 0);
     });
 }
-for (const [status, code] of [[408, "directory_picker_timeout"], [409, "directory_picker_busy"], [501, "directory_picker_unsupported"], [503, "directory_picker_unavailable"], [409, "workspace_already_bound"], [500, "workspace_binding_failed"]] as const) {
+for (const [status, code] of [ [409, "proposal_application_busy"],[408, "directory_picker_timeout"], [409, "directory_picker_busy"], [501, "directory_picker_unsupported"], [503, "directory_picker_unavailable"], [409, "workspace_already_bound"], [500, "workspace_binding_failed"]] as const) {
     test(`maps ${code}`, async t => {
         t.mock.method(globalThis, "fetch", async () => Response.json({ code, message: "PRIVATE" }, { status }));
         await check(await POST(request(), context()), status, code);

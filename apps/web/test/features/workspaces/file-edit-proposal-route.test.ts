@@ -180,7 +180,7 @@ for (const query of ['user_id=1', 'before=1', 'proposal_id=x', 'x=1&x=2', 'x='])
 }
 for (const [field, value] of [
     ['workspace_id', taskId], ['task_id', workspaceId], ['proposal_id', workspaceId],
-    ['status', 'approved'], ['relative_path', ''], ['baseline_sha256', 'x'], ['proposed_sha256', 'A'.repeat(64)],
+    ['status', 'unknown'], ['relative_path', ''], ['baseline_sha256', 'x'], ['proposed_sha256', 'A'.repeat(64)],
     ['created_at', '2026-02-30T00:00:00Z'], ['diff', ''], ['diff', null],
     ['diff', '😀'.repeat(16385)], ['diff_truncated', 'false'],
 ] as const) {
@@ -209,3 +209,28 @@ test('unused error response body is cancelled', async (t) => {
     await assertFailure(await route(), 404);
     assert.equal(cancelled, true);
 });
+
+
+for (const status of ['pending', 'approved', 'rejected'] as const) {
+    test(`current ${status} decision survives BFF projection`, async (t) => {
+        const payload = { ...detail(), status };
+        t.mock.method(globalThis, 'fetch', async () => Response.json({ ...payload, proposed_content: 'PRIVATE' }));
+        const response = await route();
+        assert.equal(response.status, 200);
+        assert.equal(response.headers.get('cache-control'), 'no-store');
+        assert.deepEqual(await response.json(), payload);
+    });
+}
+for (const status of ['pending', 'approved', 'rejected'] as const) {
+    test(`truncated ${status} response obeys approval constraint`, async (t) => {
+        const payload = { ...detail(), status, diff_truncated: true };
+        t.mock.method(globalThis, 'fetch', async () => Response.json(payload));
+        const response = await route();
+        if (status === 'approved') {
+            await assertFailure(response, 502);
+        } else {
+            assert.equal(response.status, 200);
+            assert.deepEqual(await response.json(), payload);
+        }
+    });
+}

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { renderToolResult } from "./render-tool-result.ts";
+import { renderToolResult, renderProposalDetailSnapshot } from "./render-tool-result.ts";
 
 const result = JSON.stringify({ proposal_id: "c".repeat(32), status: "pending", relative_path: "file.txt",
     baseline_sha256: "a".repeat(64), proposed_sha256: "b".repeat(64), created_at: "2026-09-21T00:00:00Z", diff_truncated: false });
@@ -33,3 +33,21 @@ test("unknown protocol cannot create detail controls", () => {
     assert.ok(html.includes("提案回执格式未识别"));
     assert.ok(!html.includes("查看提案详情"));
 });
+
+
+for (const [status, label] of [
+    ["pending", "待审批"], ["approved", "已批准"], ["rejected", "已拒绝"],
+] as const) {
+    test(`loaded ${status} displays current decision and escaped Diff`, () => {
+        const html = renderProposalDetailSnapshot({
+            proposal_id: "c".repeat(32), workspace_id: scope.workspaceId, task_id: scope.taskId,
+            status, relative_path: "file.txt", baseline_sha256: "a".repeat(64),
+            proposed_sha256: "b".repeat(64), created_at: "2026-09-21T00:00:00Z",
+            diff_truncated: false, diff: "<script>alert(1)</script>",
+        });
+        assert.ok(html.includes(`查询时状态：${label}`));
+        assert.ok(html.includes("&lt;script&gt;"));
+        assert.ok(!html.includes("<script>"));
+        assert.ok(!/>批准<|>拒绝<|>应用</.test(html));
+    });
+}

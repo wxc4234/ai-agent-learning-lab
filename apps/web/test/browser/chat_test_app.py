@@ -77,7 +77,7 @@ runs.publish_run_cancellation = publish_local_cancellation
 
 # 仅隔离浏览器测试替换系统窗口；HTTP、授权、目录校验和数据库保存均为真实实现。
 if os.environ.get("BROWSER_TEST_DIRECTORY"):
-    from app.routers.workspace import workspace
+    from app.routers.workspace import directories
 
     _directory_picker_calls = 0
 
@@ -88,7 +88,7 @@ if os.environ.get("BROWSER_TEST_DIRECTORY"):
             return None
         return os.environ["BROWSER_TEST_DIRECTORY"]
 
-    workspace.select_directory = browser_directory_picker
+    directories.select_directory = browser_directory_picker
 
 
 # 标题只替换模型出口，HTTP/权限/第一轮读取/条件更新均使用真实服务。

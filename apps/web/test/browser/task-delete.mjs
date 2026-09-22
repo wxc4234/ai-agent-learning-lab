@@ -68,6 +68,31 @@ async function absent(page, task) {
     assert.equal((await page.request.get(`${base}${taskPath(task)}`)).status(), 404);
 }
 try {
+    await scenario('delete UI proposal application conflict', async page => {
+        const workspace = await project(page, '文件应用占用保护');
+        const task = await emptyTask(page, workspace, '保留应用中的任务');
+        await openTask(page, task);
+        await page.getByLabel('你的问题').fill('保留草稿');
+        let requests = 0;
+        await page.route(`**${taskPath(task)}`, async route => {
+            if (route.request().method() !== 'DELETE') return route.continue();
+            requests++;
+            return route.fulfill({ status: 409, json: { code: 'proposal_application_busy', message: 'PRIVATE' } });
+        });
+        await remove(page, task);
+        await deletion(page).getByText('存在执行中或结果未确认的文件应用，暂不能删除任务。请先核对应用结果。', { exact: true }).waitFor();
+        assert.equal(requests, 1);
+        assert.equal(await deletionDisabled(page, task), false);
+        assert.equal(new URL(page.url()).searchParams.get('task'), task.external_id);
+        assert.equal(await page.getByLabel('你的问题').inputValue(), '保留草稿');
+        assert.ok(!(await deletion(page).innerText()).includes('PRIVATE'));
+        assert.equal((await page.request.get(`${base}${taskPath(task)}`)).status(), 200);
+        for (const width of [1366, 1920]) {
+            await page.setViewportSize({ width, height: 900 });
+            assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+            await page.screenshot({ path: `${artifacts}/proposal-application-busy-${width}.png` });
+        }
+    });
     await scenario('delete UI execution conflict preserves task and allows manual retry', async page => {
         const workspace = await project(page, '执行占用删除验收');
         const task = await emptyTask(page, workspace, '保留执行中的任务');

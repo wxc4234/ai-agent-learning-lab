@@ -8,14 +8,14 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 from app.repositories.workspace.workspace_repository import (
     WorkspaceNotAccessibleError,
 )
-from app.services.workspace.workspace_directory import WorkspaceDirectoryError
-from app.services.workspace.workspace_find import (
+from app.services.workspace.directory.workspace_directory import WorkspaceDirectoryError
+from app.services.workspace.files.workspace_find import (
     MAX_FIND_PATH_CHARACTERS,
     MAX_FIND_QUERY_CHARACTERS,
     WorkspaceFindError,
     find_task_files,
 )
-from app.services.workspace.workspace_path import WorkspacePathError
+from app.services.workspace.directory.workspace_path import WorkspacePathError
 from app.tools.context import ToolExecutionContext
 from app.tools.errors import SafeToolExecutionError
 

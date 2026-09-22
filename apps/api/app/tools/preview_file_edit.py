@@ -7,16 +7,16 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 from app.repositories.workspace.workspace_repository import (
     WorkspaceNotAccessibleError,
 )
-from app.services.workspace.workspace_directory import WorkspaceDirectoryError
-from app.services.workspace.workspace_edit_preview import (
+from app.services.workspace.directory.workspace_directory import WorkspaceDirectoryError
+from app.services.workspace.edits.workspace_edit_preview import (
     MAX_EDIT_TEXT_BYTES,
     EditPreviewError,
 )
-from app.services.workspace.workspace_file import WorkspaceFileError
-from app.services.workspace.workspace_file_preview import (
+from app.services.workspace.files.workspace_file import WorkspaceFileError
+from app.services.workspace.edits.workspace_file_preview import (
     preview_task_file_replacement,
 )
-from app.services.workspace.workspace_path import WorkspacePathError
+from app.services.workspace.directory.workspace_path import WorkspacePathError
 from app.tools.context import ToolExecutionContext
 from app.tools.errors import SafeToolExecutionError
 

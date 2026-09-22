@@ -14,7 +14,7 @@ from starlette.exceptions import HTTPException
 from app import dependencies
 from app.main import app
 from app.models import LoginSession, Workspace
-from app.routers.workspace import workspace
+from app.routers.workspace import projects as workspace
 from app.schemas import LoginRequest, RegisterRequest
 from app.services.auth.login_session_service import issue_login_session
 from app.services.auth.registration_service import register_user

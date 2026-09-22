@@ -503,9 +503,26 @@ class FileEditProposal(Base):
     __tablename__ = "file_edit_proposals"
 
     __table_args__ = (
+        # 审批决定与应用生命周期分开；已领取记录永不回到idle。
         CheckConstraint(
-            "status = 'pending'",
+            "application_status IN ('idle', 'running', 'applied', 'not_applied', 'uncertain')",
+            name="ck_file_edit_proposals_application_status",
+        ),
+        CheckConstraint(
+            "(application_status = 'idle' AND application_token IS NULL) OR "
+            "(application_status != 'idle' AND status = 'approved' "
+            "AND application_token IS NOT NULL AND application_token ~ '^[0-9a-f]{32}$')",
+            name="ck_file_edit_proposals_application_token",
+        ),
+        # 状态集合由数据库兜底；合法转换由持锁事务服务控制。
+        CheckConstraint(
+            "status IN ('pending', 'approved', 'rejected')",
             name="ck_file_edit_proposals_status",
+        ),
+        # 截断内容不能获批，防止其他写入路径绕过服务检查。
+        CheckConstraint(
+            "status != 'approved' OR diff_truncated = false",
+            name="ck_file_edit_proposals_approval_diff",
         ),
         CheckConstraint(
             "char_length(bound_root) BETWEEN 1 AND 4096",
@@ -542,7 +559,7 @@ class FileEditProposal(Base):
     )
 
     # 归属沿Task→Workspace查询，不重复维护用户和项目字段。
-    # 本课提案只处于pending；任务删除时由数据库同时清理。
+    # 任务删除时由数据库同时清理提案，包括已有决策的提案。
     # 不添加ORM反向关系，避免ORM提前将外键置空。
     task_id: Mapped[int] = mapped_column(
         ForeignKey("tasks.id", ondelete="CASCADE"),
@@ -563,12 +580,18 @@ class FileEditProposal(Base):
     diff: Mapped[str] = mapped_column(Text, nullable=False)
     diff_truncated: Mapped[bool] = mapped_column(Boolean, nullable=False)
 
-    # 当前只有待审批状态；其他状态与转换在后续课程中实现。
+    # 创建时为pending；approved/rejected只记录决策，不表示文件已应用。
     status: Mapped[str] = mapped_column(
         String(20),
         server_default="pending",
         nullable=False,
     )
+    # 令牌仅供内部执行器完成登记，不暴露给浏览器或模型。
+    application_status: Mapped[str] = mapped_column(
+        String(20), server_default="idle", nullable=False,
+    )
+    application_token: Mapped[str | None] = mapped_column(String(32), nullable=True)
+
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),

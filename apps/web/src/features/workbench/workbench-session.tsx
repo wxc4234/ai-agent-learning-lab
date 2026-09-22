@@ -479,6 +479,16 @@ export function WorkbenchProvider({
                 return;
             }
 
+            if (response.status === 409 && code === "proposal_application_busy") {
+                // 服务在DELETE之前拒绝，不能误报为删除结果未确认。
+                updateDeletion({
+                    ...target,
+                    phase: "rejected",
+                    message: "存在执行中或结果未确认的文件应用，暂不能删除任务。请先核对应用结果。",
+                });
+                return;
+            }
+
             if (response.status === 409 && code === "task_run_unsettled") {
                 updateDeletion({
                     ...target,

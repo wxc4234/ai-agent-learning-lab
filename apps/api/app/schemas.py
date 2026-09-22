@@ -1,10 +1,17 @@
 """API 输入与输出契约：同时提供运行时校验和 Swagger 文档。"""
 
 import unicodedata
-from typing import Literal
 from datetime import datetime
+from typing import Literal, Self
 
-from pydantic import BaseModel, ConfigDict, Field, SecretStr, field_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    SecretStr,
+    field_validator,
+    model_validator,
+)
 
 
 def normalize_login_username(value: str) -> str:
@@ -341,8 +348,8 @@ class FileEditProposalDetailResponse(BaseModel):
         max_length=4096,
     )
 
-    # 当前数据库只支持pending，未来扩展状态时同步修改响应契约。
-    status: Literal["pending"]
+    # 返回查询时的真实状态；approved只表示批准，不表示文件已应用。
+    status: Literal["pending", "approved", "rejected"]
 
     baseline_sha256: str = Field(
         min_length=64,
@@ -362,6 +369,197 @@ class FileEditProposalDetailResponse(BaseModel):
     )
     diff_truncated: bool
     created_at: datetime
+
+class FileEditProposalDecisionRequest(BaseModel):
+    """客户端只能表达批准或拒绝，不能指定身份、正文或其他状态。"""
+
+    model_config = ConfigDict(
+        strict=True,
+        extra="forbid",
+    )
+
+    # pending是创建状态，不是用户能够提交的决策。
+    decision: Literal["approved", "rejected"]
+
+
+class FileEditProposalDecisionResponse(BaseModel):
+    """已提交的决策回执，不包含完整提案内容或内部主键。"""
+
+    model_config = ConfigDict(
+        strict=True,
+        extra="forbid",
+    )
+
+    # 返回三个公开标识，供调用方核对响应属于当前操作对象。
+    proposal_id: str = Field(
+        min_length=32,
+        max_length=32,
+        pattern=r"^[0-9a-f]{32}$",
+    )
+    workspace_id: str = Field(
+        min_length=32,
+        max_length=32,
+        pattern=r"^[0-9a-f]{32}$",
+    )
+    task_id: str = Field(
+        min_length=32,
+        max_length=32,
+        pattern=r"^[0-9a-f]{32}$",
+    )
+
+    # 批准只表示记录了决策，不表示项目文件已经应用修改。
+    status: Literal["approved", "rejected"]
+
+class FileEditProposalApplicationStatusResponse(BaseModel):
+    """应用记录的公开快照，不包含执行令牌或文件内容。"""
+
+    model_config = ConfigDict(
+        strict=True,
+        extra="forbid",
+    )
+
+    # 返回定位信息，供调用方核对响应属于当前查询对象。
+    proposal_id: str = Field(
+        min_length=32,
+        max_length=32,
+        pattern=r"^[0-9a-f]{32}$",
+    )
+    workspace_id: str = Field(
+        min_length=32,
+        max_length=32,
+        pattern=r"^[0-9a-f]{32}$",
+    )
+    task_id: str = Field(
+        min_length=32,
+        max_length=32,
+        pattern=r"^[0-9a-f]{32}$",
+    )
+
+    # unknown只是执行回执中的“无法确认”，不属于持久化状态。
+    # running不证明进程存活，applied不证明当前磁盘内容未变化。
+    application_status: Literal[
+        "idle",
+        "running",
+        "applied",
+        "not_applied",
+        "uncertain",
+    ]
+
+class FileEditProposalExecutionRequest(BaseModel):
+    """显式请求尝试应用已保存的提案，不携带文件内容或执行权限。"""
+
+    model_config = ConfigDict(
+        strict=True,
+        extra="forbid",
+        frozen=True,
+    )
+
+    # 必须明确提供动作，空正文不能默认触发文件操作。
+    # 这个字段只是请求意图，不证明用户身份、审批或执行范围。
+    action: Literal["apply"]
+
+
+class FileEditProposalExecutionResponse(BaseModel):
+    """本次执行的公开回执，不等同于应用状态查询结果。"""
+
+    model_config = ConfigDict(
+        strict=True,
+        extra="forbid",
+        frozen=True,
+    )
+
+    # 三个公开标识用于核对响应所属资源，不包含数据库内部主键。
+    proposal_id: str = Field(
+        min_length=32,
+        max_length=32,
+        pattern=r"^[0-9a-f]{32}$",
+    )
+    workspace_id: str = Field(
+        min_length=32,
+        max_length=32,
+        pattern=r"^[0-9a-f]{32}$",
+    )
+    task_id: str = Field(
+        min_length=32,
+        max_length=32,
+        pattern=r"^[0-9a-f]{32}$",
+    )
+
+    file_status: Literal[
+        "not_attempted",
+        "not_replaced",
+        "replaced",
+        "uncertain",
+    ]
+
+    # unknown 是回执的确认状态，不是数据库中的持久化状态。
+    application_status: Literal[
+        "applied",
+        "not_applied",
+        "uncertain",
+        "unknown",
+    ]
+
+    # 只接受执行器定义的公开错误码，不透传底层异常文字。
+    code: Literal[
+        "proposal_application_applied",
+        "proposal_application_not_applied",
+        "proposal_application_uncertain",
+        "proposal_application_claim_unconfirmed",
+        "proposal_application_registration_unconfirmed",
+    ]
+
+    # 字段必须存在；None 不能被自动补成清理成功。
+    cleanup_complete: bool | None
+
+    @model_validator(mode="after")
+    def validate_result_combination(self) -> Self:
+        """逐字段合法还不够，文件证据与登记结果也必须相容。"""
+
+        # 映射的是文件证据对应的应登记终态。
+        # 清理失败时，即使文件结果明确，也保留 uncertain。
+        expected_outcomes = {
+            ("not_attempted", None): "not_applied",
+            ("not_replaced", True): "not_applied",
+            ("not_replaced", False): "uncertain",
+            ("replaced", True): "applied",
+            ("replaced", False): "uncertain",
+            ("uncertain", None): "uncertain",
+            ("uncertain", True): "uncertain",
+            ("uncertain", False): "uncertain",
+        }
+
+        evidence = (self.file_status, self.cleanup_complete)
+        expected_outcome = expected_outcomes.get(evidence)
+
+        if expected_outcome is None:
+            raise ValueError("proposal_execution_response_invalid")
+
+        if self.application_status == "unknown":
+            if self.code == "proposal_application_claim_unconfirmed":
+                # 领取没有得到确认，调用方不能进入文件替换阶段。
+                if evidence != ("not_attempted", None):
+                    raise ValueError("proposal_execution_response_invalid")
+            elif self.code != "proposal_application_registration_unconfirmed":
+                raise ValueError("proposal_execution_response_invalid")
+
+            # 登记未确认时，保留文件证据，不能猜测数据库实际终态。
+            return self
+
+        expected_codes = {
+            "applied": "proposal_application_applied",
+            "not_applied": "proposal_application_not_applied",
+            "uncertain": "proposal_application_uncertain",
+        }
+
+        if (
+            self.application_status != expected_outcome
+            or self.code != expected_codes[expected_outcome]
+        ):
+            raise ValueError("proposal_execution_response_invalid")
+
+        return self
+
 
 class TaskRunItemResponse(BaseModel):
     """任务运行列表中的单条概要，不包含事件正文。"""
@@ -401,3 +599,14 @@ class TaskRunListResponse(BaseModel):
 
     # 取本页最后一条记录的 Run ID；没有下一页时明确返回 None。
     next_cursor: str | None
+
+
+class TaskSampleStatusResponse(BaseModel):
+    """登记状态快照，不包含目录/句柄，也不表示已取得执行权限。"""
+
+    model_config = ConfigDict(strict=True, extra="forbid", frozen=True)
+
+    # 固定长度同时拒绝末尾换行；标识只定位资源，归属仍由服务授权。
+    workspace_id: str = Field(min_length=32, max_length=32, pattern=r"^[0-9a-f]{32}$")
+    task_id: str = Field(min_length=32, max_length=32, pattern=r"^[0-9a-f]{32}$")
+    status: Literal["missing", "busy", "sealed", "ready"]

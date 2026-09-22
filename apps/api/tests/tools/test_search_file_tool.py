@@ -10,11 +10,11 @@ from pydantic import ValidationError
 from app.repositories.workspace.workspace_repository import WorkspaceNotAccessibleError
 from app.services.model.model_decision import DeepSeekDecisionMaker
 from app.services.runtime.agent.agent_runtime import ToolErrorObservation, ToolObservation, run_agent_loop
-from app.services.workspace.workspace_directory import WorkspaceDirectoryError
-from app.services.workspace.workspace_file import WorkspaceFileError
-from app.services.workspace.workspace_listing import WorkspaceDirectoryListing, WorkspaceDirectoryEntry
-from app.services.workspace.workspace_path import WorkspacePathError
-from app.services.workspace.workspace_search import WorkspaceSearchError, WorkspaceSearchMatch, WorkspaceSearchResult
+from app.services.workspace.directory.workspace_directory import WorkspaceDirectoryError
+from app.services.workspace.files.workspace_file import WorkspaceFileError
+from app.services.workspace.files.workspace_listing import WorkspaceDirectoryListing, WorkspaceDirectoryEntry
+from app.services.workspace.directory.workspace_path import WorkspacePathError
+from app.services.workspace.files.workspace_search import WorkspaceSearchError, WorkspaceSearchMatch, WorkspaceSearchResult
 from app.tools import search_file as adapter, list_directory
 from app.tools.errors import SafeToolExecutionError
 from app.tools.registry import TOOL_REGISTRY, model_tools_for_context

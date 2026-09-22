@@ -10,12 +10,12 @@ from sqlalchemy.orm import Session
 from app import dependencies
 from app.config import settings
 from app.models import Conversation, Task, TaskCreationRequest, User, Workspace
-from app.routers.workspace import workspace
+from app.routers.workspace import tasks as workspace
 from app.services.tasks import task_service
 import tests.tasks.test_task_api as task_api
 from tests.tasks.test_task_creation_idempotency import KEY, counts
 from tests.local.test_local_mode import HEADERS
-from tests.workspace.test_workspace_binding_api import safe
+from tests.workspace.directory.test_workspace_binding_api import safe
 
 local_client = task_api.local_client
 target = task_api.target

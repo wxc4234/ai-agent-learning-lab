@@ -102,6 +102,7 @@ test("malformed JSON never fetches", async (t) => {
 });
 
 const errors: [number, string][] = [
+    [409, "proposal_application_busy"],
     [400, "invalid_workspace_request"], [403, "local_mode_required"], [403, "local_access_rejected"],
     [403, "workspace_origin_rejected"], [404, "workspace_not_accessible"], [409, "workspace_already_bound"],
     [415, "unsupported_workspace_content_type"], [422, "invalid_workspace_input"], [422, "invalid_directory_path"],

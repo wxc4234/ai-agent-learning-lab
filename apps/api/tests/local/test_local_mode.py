@@ -14,7 +14,7 @@ from app.main import app
 from app import main
 from app.routers.chat import chat_execution
 from app.models import User, Workspace
-from app.routers.workspace import workspace
+from app.routers.workspace import directories, projects, tasks
 from app.services.auth.local_identity import LOCAL_USER_ID, resolve_local_identity
 
 TOKEN = "a" * 64
@@ -26,7 +26,8 @@ def local_client(engine, monkeypatch, account_mode_baseline):
     monkeypatch.setattr(settings, "app_mode", "local")
     monkeypatch.setattr(settings, "local_runtime_token", SecretStr(TOKEN))
     monkeypatch.setattr(dependencies, "SessionLocal", lambda: Session(engine))
-    monkeypatch.setattr(workspace, "SessionLocal", lambda: Session(engine))
+    for route_module in (directories, projects, tasks):
+        monkeypatch.setattr(route_module, "SessionLocal", lambda: Session(engine))
     from app.services.tasks import task_workspace
     from sqlalchemy.orm import sessionmaker
     monkeypatch.setattr(task_workspace, "SessionLocal", sessionmaker(bind=engine))

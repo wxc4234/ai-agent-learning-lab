@@ -24,25 +24,57 @@ function isTimestamp(value: unknown): value is string {
         && hour < 24 && minute < 60 && second < 60 && Number.isFinite(Date.parse(value));
 }
 
-export function parseFileEditProposal(toolName: string, raw: string): FileEditProposalView | null {
-    if (toolName !== "create_file_edit_proposal") return null;
+export function readFileEditProposalFields(
+    record: Record<string, unknown>,
+): FileEditProposalView | null {
+    // 回执和详情共享字段校验；各自的调用方负责检查不同的状态契约。
+    if (
+        !isHex(record.proposal_id, 32)
+        || typeof record.relative_path !== "string"
+        || record.relative_path.length === 0
+        || record.relative_path.length > 8192
+        || [...record.relative_path].length > 4096
+        || !isHex(record.baseline_sha256, 64)
+        || !isHex(record.proposed_sha256, 64)
+        || !isTimestamp(record.created_at)
+        || typeof record.diff_truncated !== "boolean"
+    ) {
+        return null;
+    }
+
+    // 只复制共有公开字段，不传播完整正文或内部目录。
+    return {
+        proposalId: record.proposal_id,
+        relativePath: record.relative_path,
+        baselineSha256: record.baseline_sha256,
+        proposedSha256: record.proposed_sha256,
+        createdAt: record.created_at,
+        diffTruncated: record.diff_truncated,
+    };
+}
+
+export function parseFileEditProposal(
+    toolName: string,
+    raw: string,
+): FileEditProposalView | null {
+    if (toolName !== "create_file_edit_proposal") {
+        return null;
+    }
+
     try {
         const value: unknown = JSON.parse(raw);
-        if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+        if (!value || typeof value !== "object" || Array.isArray(value)) {
+            return null;
+        }
+
         const record = value as Record<string, unknown>;
-        if (record.status !== "pending"
-            || !isHex(record.proposal_id, 32)
-            || typeof record.relative_path !== "string"
-            || record.relative_path.length === 0 || record.relative_path.length > 8192
-            || [...record.relative_path].length > 4096
-            || !isHex(record.baseline_sha256, 64) || !isHex(record.proposed_sha256, 64)
-            || !isTimestamp(record.created_at) || typeof record.diff_truncated !== "boolean") return null;
-        // 显式复制公开字段，不传播服务端私有字段或未来新增内容。
-        return {
-            proposalId: record.proposal_id, relativePath: record.relative_path,
-            baselineSha256: record.baseline_sha256, proposedSha256: record.proposed_sha256,
-            createdAt: record.created_at, diffTruncated: record.diff_truncated,
-        };
+
+        // 创建工具的历史回执仍然只能是pending，不能当成当前审批结果。
+        if (record.status !== "pending") {
+            return null;
+        }
+
+        return readFileEditProposalFields(record);
     } catch {
         return null;
     }

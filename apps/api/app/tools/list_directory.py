@@ -8,12 +8,12 @@ from pydantic import BaseModel, ConfigDict, Field
 from app.repositories.workspace.workspace_repository import (
     WorkspaceNotAccessibleError,
 )
-from app.services.workspace.workspace_directory import WorkspaceDirectoryError
-from app.services.workspace.workspace_listing import (
+from app.services.workspace.directory.workspace_directory import WorkspaceDirectoryError
+from app.services.workspace.files.workspace_listing import (
     WorkspaceListingError,
     list_task_directory,
 )
-from app.services.workspace.workspace_path import WorkspacePathError
+from app.services.workspace.directory.workspace_path import WorkspacePathError
 from app.tools.context import ToolExecutionContext
 from app.tools.errors import SafeToolExecutionError
 

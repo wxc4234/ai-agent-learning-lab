@@ -19,7 +19,7 @@ from app.services.chat import chat_service as service
 from app.services.runtime.agent import tool_execution_context
 from app.services.runtime.agent.agent_runtime import AgentLoopCompleted, AgentLoopResult
 from app.services.runtime.execution.execution_threads import ExecutionThreads
-from app.services.workspace import workspace_path
+from app.services.workspace.directory import workspace_path
 from app.tools.context import ToolExecutionContext
 from tests.model.test_model_decision import build_text_response, build_tool_response
 from tests.tasks import test_task_deletion_service as task_fixtures

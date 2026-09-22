@@ -1,11 +1,11 @@
-import { parseFileEditProposal } from "../chat/file-edit-proposal-view.ts";
+import { readFileEditProposalFields } from "../chat/file-edit-proposal-view.ts";
 
 export type FileEditProposalDetail = {
     proposal_id: string;
     workspace_id: string;
     task_id: string;
     relative_path: string;
-    status: "pending";
+    status: "pending" | "approved" | "rejected";
     baseline_sha256: string;
     proposed_sha256: string;
     diff: string;
@@ -24,11 +24,7 @@ export function readFileEditProposalDetail(
     taskId: string,
     proposalId: string,
 ): FileEditProposalDetail | null {
-    if (
-        !raw
-        || typeof raw !== "object"
-        || Array.isArray(raw)
-    ) {
+    if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
         return null;
     }
 
@@ -49,32 +45,38 @@ export function readFileEditProposalDetail(
         return null;
     }
 
-    try {
-        // 复用回执解析器对共有字段的校验，包括状态、路径、
-        // 双摘要和带时区日期；这里不会执行任何模型工具。
-        const receipt = parseFileEditProposal(
-            "create_file_edit_proposal",
-            JSON.stringify(raw),
-        );
+    const status = record.status;
 
-        if (receipt === null) {
-            return null;
-        }
-
-        // 显式构造公开响应，不能直接返回raw或展开整个record。
-        return {
-            proposal_id: receipt.proposalId,
-            workspace_id: workspaceId,
-            task_id: taskId,
-            relative_path: receipt.relativePath,
-            status: "pending",
-            baseline_sha256: receipt.baselineSha256,
-            proposed_sha256: receipt.proposedSha256,
-            diff: record.diff,
-            diff_truncated: receipt.diffTruncated,
-            created_at: receipt.createdAt,
-        };
-    } catch {
+    // 详情使用当前状态，未知状态不能默认为pending。
+    if (
+        status !== "pending"
+        && status !== "approved"
+        && status !== "rejected"
+    ) {
         return null;
     }
+
+    const fields = readFileEditProposalFields(record);
+    if (fields === null) {
+        return null;
+    }
+
+    // 与后端数据库约束一致，拒绝自相矛盾的上游响应。
+    if (status === "approved" && fields.diffTruncated) {
+        return null;
+    }
+
+    // 显式投影公开字段；不能直接转发原始上游对象。
+    return {
+        proposal_id: fields.proposalId,
+        workspace_id: workspaceId,
+        task_id: taskId,
+        relative_path: fields.relativePath,
+        status,
+        baseline_sha256: fields.baselineSha256,
+        proposed_sha256: fields.proposedSha256,
+        diff: record.diff,
+        diff_truncated: fields.diffTruncated,
+        created_at: fields.createdAt,
+    };
 }
