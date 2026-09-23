@@ -51,3 +51,21 @@ for (const [status, label] of [
         assert.ok(!/>批准<|>拒绝<|>应用</.test(html));
     });
 }
+
+test("loaded detail offers independent sample and application reads without fetching", (t) => {
+    const fetch = t.mock.method(globalThis, "fetch", () => { throw new Error("unexpected request"); });
+    const html = renderProposalDetailSnapshot({
+        proposal_id: "c".repeat(32), workspace_id: scope.workspaceId, task_id: scope.taskId,
+        status: "approved", relative_path: "file.txt", baseline_sha256: "a".repeat(64),
+        proposed_sha256: "b".repeat(64), created_at: "2026-09-21T00:00:00Z",
+        diff_truncated: false, diff: "-old\n+new",
+    });
+    assert.ok(html.includes('aria-label="样例与提案状态核对"'));
+    assert.ok(html.includes('aria-label="受限样例登记状态"'));
+    assert.ok(html.includes('aria-label="提案应用状态"'));
+    assert.ok(html.includes("查询登记状态"));
+    assert.ok(html.includes("查询应用状态"));
+    assert.ok(html.includes("两份结果来自独立查询"));
+    assert.ok(html.includes("不能据此执行提案"));
+    assert.equal(fetch.mock.callCount(), 0);
+});

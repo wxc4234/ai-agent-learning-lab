@@ -39,7 +39,12 @@ def test_fixed_private_sample_and_cleanup(parent, descriptors):
         assert (root / sample.relative_path).read_bytes() == b'old\n'
         assert stat.S_IMODE(root.stat().st_mode) == 0o700
         assert stat.S_IMODE((root / sample.relative_path).stat().st_mode) == 0o600
+        parent_info = parent.stat(follow_symlinks=False)
+        root_info = root.stat(follow_symlinks=False)
+        assert sample.parent_identity == (parent_info.st_dev, parent_info.st_ino)
+        assert sample.root_identity == (root_info.st_dev, root_info.st_ino)
         assert str(root) not in repr(sample)
+        assert str(sample.parent_identity) not in repr(sample)
         with pytest.raises(FrozenInstanceError):
             sample.relative_path = 'other'
     assert not root.exists() and list(parent.iterdir()) == []

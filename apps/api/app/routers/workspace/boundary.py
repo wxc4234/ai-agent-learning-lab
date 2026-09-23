@@ -23,6 +23,7 @@ from app.routers.workspace.request_kinds import (
     _is_proposal_application_status_request,
     _is_proposal_decision_request,
     _is_proposal_execution_request,
+    _is_sample_cleanup_preflight_request,
     _is_sample_status_request,
     _is_task_create_request,
     _is_task_delete_request,
@@ -32,7 +33,7 @@ from app.services.auth.login_session_resolver import InvalidLoginSessionError
 from app.services.runtime.execution.conversation_execution_service import (
     ConversationBusyError,
 )
-from app.services.tasks.task_deletion_service import TaskRunUnsettledError
+from app.services.tasks.task_deletion_service import TaskRunUnsettledError, TaskSampleBoundError
 from app.services.tasks.task_run_query import InvalidTaskRunQueryError
 from app.services.tasks.task_service import (
     InvalidTaskRequestKeyError,
@@ -134,6 +135,13 @@ class WorkspaceRoute(APIRoute):
                         message="样例登记查询不接受查询参数或正文",
                     )
 
+                if _is_sample_cleanup_preflight_request(request) and (request.query_params or await request.body()):
+                    return _error_response(
+                        422,
+                        code="invalid_sample_cleanup_preflight_input",
+                        message="样例清理诊断不接受查询参数或正文",
+                    )
+
                 # 原始 handler 会解析请求、执行 CurrentUser 依赖并调用接口。
                 response = await original_handler(request)
                 response.headers["Cache-Control"] = "no-store"
@@ -147,6 +155,12 @@ class WorkspaceRoute(APIRoute):
                 )
 
             except RequestValidationError:
+                if _is_sample_cleanup_preflight_request(request):
+                    return _error_response(
+                        422,
+                        code="invalid_sample_cleanup_preflight_input",
+                        message="样例清理诊断路径参数不符合要求",
+                    )
                 if _is_sample_status_request(request):
                     return _error_response(
                         422,
@@ -267,6 +281,14 @@ class WorkspaceRoute(APIRoute):
                     409,
                     code=TaskRunUnsettledError.code,
                     message="存在未确认结束的运行，暂不能删除",
+                )
+
+            except TaskSampleBoundError:
+                # 来源记录仍指向此Task；不能以删除绕过受控样例关闭。
+                return _error_response(
+                    409,
+                    code=TaskSampleBoundError.code,
+                    message="任务仍绑定受限样例，暂不能删除",
                 )
 
             except ProposalApplicationBusyError:

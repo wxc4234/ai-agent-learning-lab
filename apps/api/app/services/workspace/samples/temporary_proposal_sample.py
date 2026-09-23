@@ -24,9 +24,11 @@ class TemporarySampleError(ValueError):
 
 @dataclass(frozen=True)
 class TemporaryProposalSample:
-    # 路径仅供可信内部调用使用，不进入repr或公开响应。
+    # 路径仅供可信内部调用使用，不进入 repr 或公开响应。
     root: Path = field(repr=False)
+    # 两个身份在路径发布前均与持有的目录描述符核对。
     root_identity: tuple[int, int] = field(repr=False)
+    parent_identity: tuple[int, int] = field(repr=False)
     relative_path: str = SAMPLE_FILENAME
 
 
@@ -90,9 +92,16 @@ def temporary_proposal_sample() -> Generator[TemporaryProposalSample, None, None
         os.mkdir(name, mode=0o700, dir_fd=parent_fd)
         owned = True
         identity = _identity(os.stat(name, dir_fd=parent_fd, follow_symlinks=False))
-        root_fd = os.open(name, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=parent_fd)
-        if _identity(os.fstat(root_fd)) != identity:
+        root_fd = os.open(
+            name,
+            os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW,
+            dir_fd=parent_fd,
+        )
+        opened_identity = _identity(os.fstat(root_fd))
+        if opened_identity != identity:
             raise TemporarySampleError('sample_identity_changed')
+        # 发布的根目录身份以已核验的描述符为准。
+        identity = opened_identity
         os.fchmod(root_fd, 0o700)
         _check_root(parent_fd, name, root_fd, identity)
         descriptor = os.open(SAMPLE_FILENAME, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW,
@@ -109,10 +118,15 @@ def temporary_proposal_sample() -> Generator[TemporaryProposalSample, None, None
             os.close(descriptor)
         _check_root(parent_fd, name, root_fd, identity)
         # 路径发布前核对可见父目录仍对应持有的描述符。
-        if _identity(os.stat(parent, follow_symlinks=False)) != _identity(os.fstat(parent_fd)):
+        parent_info = os.fstat(parent_fd)
+        if _identity(os.stat(parent, follow_symlinks=False)) != _identity(parent_info):
             raise TemporarySampleError('sample_identity_changed')
         yielded = True
-        yield TemporaryProposalSample(root=parent / name, root_identity=identity)
+        yield TemporaryProposalSample(
+            root=parent / name,
+            root_identity=identity,
+            parent_identity=_identity(parent_info),
+        )
     except OSError as error:
         if yielded:
             active_error = error

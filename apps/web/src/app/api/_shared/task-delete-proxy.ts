@@ -13,6 +13,7 @@ const ERRORS: Record<number, Record<string, string>> = {
     404: { workspace_not_accessible: '工作空间不存在或不可访问' },
     409: {
         proposal_application_busy: '存在执行中或结果未确认的文件应用，暂不能变更资源',
+        task_sample_bound: '任务仍绑定受限样例，暂不能删除',
         task_run_unsettled: '存在未确认结束的运行，暂不能删除',
         conversation_busy: '该任务仍有执行占用，请等待执行及收尾完成后重试',
     },

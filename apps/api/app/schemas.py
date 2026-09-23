@@ -602,7 +602,7 @@ class TaskRunListResponse(BaseModel):
 
 
 class TaskSampleStatusResponse(BaseModel):
-    """登记状态快照，不包含目录/句柄，也不表示已取得执行权限。"""
+    """登记状态与脱敏封锁原因快照，不包含目录/句柄或执行权限。"""
 
     model_config = ConfigDict(strict=True, extra="forbid", frozen=True)
 
@@ -610,3 +610,31 @@ class TaskSampleStatusResponse(BaseModel):
     workspace_id: str = Field(min_length=32, max_length=32, pattern=r"^[0-9a-f]{32}$")
     task_id: str = Field(min_length=32, max_length=32, pattern=r"^[0-9a-f]{32}$")
     status: Literal["missing", "busy", "sealed", "ready"]
+    # 必须显式返回；非封锁状态用null，不能将清理待办混为普通可用状态。
+    sealed_reason: Literal["cleanup_pending", "unavailable"] | None
+
+    @model_validator(mode="after")
+    def validate_sealed_reason(self) -> Self:
+        if (self.status == "sealed") != (self.sealed_reason is not None):
+            raise ValueError("封锁状态与原因必须同时出现")
+        return self
+
+
+class TaskSampleCleanupPreflightResponse(BaseModel):
+    """来源 Task 的清理待办只读诊断快照；不授予文件操作权限。"""
+
+    model_config = ConfigDict(strict=True, extra="forbid", frozen=True)
+
+    # BFF 可据此匹配当前资源；路径归属仍由服务端重新授权。
+    workspace_id: str = Field(min_length=32, max_length=32, pattern=r"^[0-9a-f]{32}$")
+    task_id: str = Field(min_length=32, max_length=32, pattern=r"^[0-9a-f]{32}$")
+    # 固定分类只用于观察，不能解释为可清理、可恢复或可执行。
+    result: Literal[
+        "evidence_missing",
+        "not_pending",
+        "evidence_inconsistent",
+        "directory_missing",
+        "identity_unverifiable",
+        "identity_matches_record",
+        "inspection_unavailable",
+    ]

@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from app.repositories.workspace.workspace_repository import WorkspaceNotAccessibleError
 from app.repositories.workspace.proposal_application_guard import ProposalApplicationBusyError
 from app.config import settings
-from app.models import Conversation, FileEditProposal, Workspace
+from app.models import Conversation, FileEditProposal, Workspace, WorkspaceSampleOrigin
 from app.services.workspace.samples import task_sample_binding as m
 from app.services.workspace.samples import temporary_proposal_sample as lifecycle
 from tests.tasks.test_task_deletion_service import target
@@ -66,6 +66,24 @@ def test_real_binding_borrow_reauthorize_and_close(setup, engine, tmp_path):
     assert root(engine) is None and not path.exists()
     with pytest.raises(m.TaskSampleBindingError), service.borrow(**scope):
         pytest.fail('closed')
+
+
+def test_bind_persists_verified_directory_identities_with_source(setup, engine):
+    service, scope, _, _ = setup
+    service.bind(**scope)
+    path = Path(root(engine))
+    parent_info = path.parent.stat(follow_symlinks=False)
+    root_info = path.stat(follow_symlinks=False)
+
+    with service.borrow(**scope) as sample, Session(engine) as session:
+        origin = session.scalar(select(WorkspaceSampleOrigin))
+        assert origin.root_path == str(sample.root) == str(path)
+        assert (origin.parent_dev, origin.parent_ino) == sample.parent_identity
+        assert (origin.root_dev, origin.root_ino) == sample.root_identity
+        assert sample.parent_identity == (parent_info.st_dev, parent_info.st_ino)
+        assert sample.root_identity == (root_info.st_dev, root_info.st_ino)
+
+    service.close(**scope)
 
 
 @pytest.mark.parametrize('kind', ['foreign', 'wrong_task', 'conversation', 'already_bound'])
@@ -138,6 +156,13 @@ def test_uncertain_commit_retains_directory_and_seals(setup, engine, tmp_path, o
     assert len(directories) == 1 and directories[0].is_dir()
     expected_bound = (operation == 'bind' and timing == 'after_commit') or (operation == 'close' and timing == 'before_commit')
     assert (root(engine) is not None) is expected_bound
+    with Session(engine) as session:
+        origin = session.scalar(select(WorkspaceSampleOrigin))
+        expected_state = (
+            'cleanup_pending' if operation == 'close' and timing == 'after_commit'
+            else 'active' if expected_bound else None
+        )
+        assert (origin.lifecycle_state if origin is not None else None) == expected_state
     with pytest.raises(m.TaskSampleBindingError), service.borrow(**scope):
         pytest.fail('unknown commit')
     with pytest.raises(m.TaskSampleBindingError):
@@ -156,6 +181,8 @@ def test_precommit_flush_failure_releases_unpublished_sample(setup, engine, tmp_
         event.remove(tracked, 'before_flush', fail)
     assert root(engine) is None and list(tmp_path.iterdir()) == []
     assert service._bindings == {}
+    with Session(engine) as session:
+        assert session.scalar(select(WorkspaceSampleOrigin)) is None
 
 
 def test_second_authorization_rejects_concurrent_binding(setup, engine, tmp_path, monkeypatch):
@@ -192,6 +219,10 @@ def test_close_cleanup_failure_leaves_unbound_and_invalid(setup, engine):
     with pytest.raises(lifecycle.TemporarySampleError):
         service.close(**scope)
     assert root(engine) is None and path.exists()
+    with Session(engine) as session:
+        origin = session.scalar(select(WorkspaceSampleOrigin))
+        assert origin.lifecycle_state == 'cleanup_pending'
+        assert origin.root_path == str(path)
     with pytest.raises(m.TaskSampleBindingError), service.borrow(**scope):
         pytest.fail('cleanup failed')
 

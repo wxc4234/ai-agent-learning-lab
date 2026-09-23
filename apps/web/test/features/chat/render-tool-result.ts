@@ -1,4 +1,5 @@
 import { readProposalApplicationStatus } from "../../../src/features/workbench/proposal-application-status-data.ts";
+import { readTaskSampleStatus } from "../../../src/features/workbench/task-sample-status-data.ts";
 import { readFileEditProposalDecisionReceipt } from "../../../src/features/workbench/file-edit-proposal-decision-data.ts";
 import { parseFileEditProposal } from "../../../src/features/chat/file-edit-proposal-view.ts";
 // 编译真实TSX组件并使用React渲染，供工具卡片兼容测试共用。
@@ -40,8 +41,16 @@ const ProposalApplicationStatusPanel = compileComponent("proposal-application-st
         return createElement("button", props);
     },
 });
+const TaskSampleStatusPanel = compileComponent("../../workbench/components/task-sample-status-panel.tsx", "TaskSampleStatusPanel", {
+    useEffect, useRef, useState, isProposalIdentifier, readTaskSampleStatus,
+    Button: ({ variant, size, ...props }: Record<string, unknown>) => {
+        void variant;
+        void size;
+        return createElement("button", props);
+    },
+});
 const FileEditProposalDetailPanel = compileComponent("file-edit-proposal-detail.tsx", "FileEditProposalDetailPanel", {
-    useEffect, useRef, useState, isProposalIdentifier, readFileEditProposalDetail, FileEditProposalActions, ProposalApplicationStatusPanel,
+    useEffect, useRef, useState, isProposalIdentifier, readFileEditProposalDetail, FileEditProposalActions, ProposalApplicationStatusPanel, TaskSampleStatusPanel,
     // 只替换UI按钮外观，状态与详情组件使用真实React和TSX。
     Button: ({ variant, size, ...props }: Record<string, unknown>) => {
         void variant;
@@ -62,7 +71,7 @@ export function renderProposalDetailSnapshot(
     detail: NonNullable<ReturnType<typeof readFileEditProposalDetail>>,
 ): string {
     const Panel = compileComponent("file-edit-proposal-detail.tsx", "FileEditProposalDetailPanel", {
-        useEffect, useRef, isProposalIdentifier, readFileEditProposalDetail, FileEditProposalActions, ProposalApplicationStatusPanel,
+        useEffect, useRef, isProposalIdentifier, readFileEditProposalDetail, FileEditProposalActions, ProposalApplicationStatusPanel, TaskSampleStatusPanel,
         useState: () => [{ status: "ready", detail }, () => {}],
         Button: ({ variant, size, ...props }: Record<string, unknown>) => {
             void variant;

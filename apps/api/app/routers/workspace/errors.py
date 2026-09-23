@@ -11,6 +11,7 @@ from app.routers.workspace.request_kinds import (
     _is_proposal_application_status_request,
     _is_proposal_decision_request,
     _is_proposal_execution_request,
+    _is_sample_cleanup_preflight_request,
     _is_sample_status_request,
     _is_task_create_request,
     _is_task_delete_request,
@@ -23,7 +24,10 @@ logger = logging.getLogger(__name__)
 def _workspace_failure_response(request: Request) -> JSONResponse:
     """按操作返回安全错误，不暴露SQL、路径或原始异常。"""
 
-    if _is_sample_status_request(request):
+    if _is_sample_cleanup_preflight_request(request):
+        code = "sample_cleanup_preflight_read_failed"
+        message = "读取样例清理诊断失败，请稍后重新查询"
+    elif _is_sample_status_request(request):
         code = "sample_status_read_failed"
         message = "读取样例登记状态失败，请稍后重新查询"
     elif _is_proposal_execution_request(request):

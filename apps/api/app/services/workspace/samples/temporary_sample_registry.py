@@ -80,12 +80,23 @@ class TemporarySampleRegistry:
             token = secrets.token_hex(32)
             if token in self._entries:
                 raise SampleRegistryError('sample_registration_unavailable')
-            # 只有这条内部创建路径能进入登记表，不提供register(path/sample)。
+
+            # 只有这条内部创建路径能进入登记表，不提供 register(path/sample)。
             manager = temporary_proposal_sample()
             sample = manager.__enter__()
             try:
-                entry = _Entry(manager, sample, self._identity(sample.root),
-                               self._identity(sample.root.parent))
+                # 路径仅用于复核；登记基准必须来自创建时持有的描述符。
+                if (
+                    self._identity(sample.root) != sample.root_identity
+                    or self._identity(sample.root.parent) != sample.parent_identity
+                ):
+                    raise SampleRegistryError('sample_registration_unavailable')
+                entry = _Entry(
+                    manager=manager,
+                    sample=sample,
+                    root_identity=sample.root_identity,
+                    parent_identity=sample.parent_identity,
+                )
                 self._entries[token] = entry
             except BaseException as error:
                 manager.__exit__(type(error), error, error.__traceback__)

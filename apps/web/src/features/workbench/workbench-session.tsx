@@ -489,6 +489,16 @@ export function WorkbenchProvider({
                 return;
             }
 
+            if (response.status === 409 && code === "task_sample_bound") {
+                // 来源记录仍指向此任务；明确拒绝不能显示为提交结果未确认。
+                updateDeletion({
+                    ...target,
+                    phase: "rejected",
+                    message: "该任务仍绑定受限样例，暂不能删除。请先核对样例状态。",
+                });
+                return;
+            }
+
             if (response.status === 409 && code === "task_run_unsettled") {
                 updateDeletion({
                     ...target,

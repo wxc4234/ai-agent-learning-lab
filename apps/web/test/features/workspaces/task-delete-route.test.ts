@@ -76,7 +76,7 @@ for (const [workspace, task] of [['../x', taskId], [workspaceId, 'B'.repeat(32)]
         assert.equal(mock.mock.callCount(), 0);
     });
 }
-for (const [status, code] of [ [409, 'proposal_application_busy'],[403, 'local_mode_required'], [403, 'local_access_rejected'], [403, 'workspace_origin_rejected'], [404, 'workspace_not_accessible'], [409, 'task_run_unsettled'], [409, 'conversation_busy'], [422, 'invalid_task_input'], [500, 'task_deletion_uncertain']] as const) {
+for (const [status, code] of [ [409, 'proposal_application_busy'], [409, 'task_sample_bound'], [403, 'local_mode_required'], [403, 'local_access_rejected'], [403, 'workspace_origin_rejected'], [404, 'workspace_not_accessible'], [409, 'task_run_unsettled'], [409, 'conversation_busy'], [422, 'invalid_task_input'], [500, 'task_deletion_uncertain']] as const) {
     test(`safe mapping ${status}/${code}`, async (t) => {
         t.mock.method(globalThis, 'fetch', async () => Response.json({ code, message: 'PRIVATE', internal: 'PRIVATE' }, { status, headers: { 'Set-Cookie': 'PRIVATE' } }));
         await failure(await route(), status, code);

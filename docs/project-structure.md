@@ -114,7 +114,8 @@ from tests.local.test_local_mode import HEADERS
 
 - `LEARNING_HANDOFF.md`：当前事实、下一课和未解决问题，保持精简。
 - `LEARNING_CURRICULUM.md`：课程学习内容、阶段完成情况与待完成能力。
-- `ENVIRONMENT.md`：环境变化、运行命令和真实验收记录。
+- `ENVIRONMENT.md`：当前环境安装、配置、运行与隔离测试方法，不追加逐课验收。
+- `docs/history/`：2026-09-23 文档精简时保留的冻结学习/验收记录，按主题检索，不继续追加。
 - `week-learning/`：已结束周次的练习与复盘。
 - `interview-questions/`：重要问题、参考答案和项目证据。
 
@@ -231,6 +232,10 @@ from tests.local.test_local_mode import HEADERS
 
 真实样例应用端到端夹具：`apps/web/test/browser/execution-e2e/`，API启动内部登记自有样例，临时Next复制真实BFF/组件，Chrome真实提交，独立查询文件/数据库并验证重复保护与测试收尾。无生产测试入口；输出在`apps/web/output/playwright/execution-e2e/`。
 
-样例登记状态：`services/workspace/samples/task_sample_binding.py`的`read_status`返回冻结TaskSampleStatus，先重新授权再投影missing/busy/sealed/ready，不读文件或恢复登记；测试`tests/workspace/samples/test_task_sample_status.py`。目前仅内部服务，HTTP待下一课。
+样例登记状态：`services/workspace/samples/task_sample_binding.py`的`read_status`返回冻结TaskSampleStatus，先重新授权再投影missing/busy/sealed/ready及脱敏sealed_reason；仅来源Task的持久cleanup_pending公开待办原因，其他封锁为unavailable，非封锁原因null。不读文件或恢复登记；测试`tests/workspace/samples/test_task_sample_status.py`。HTTP、BFF与工作台只读展示已接通。
 
-登记查询HTTP：`routers/workspace/samples.py`提供Task下GET sample-status，公开Schema位于schemas.py；request_kinds/boundary/errors复用统一安全边界。专项`tests/workspace/samples/test_task_sample_status_api.py`；无样例创建/恢复接口，BFF待下一课。
+登记查询HTTP：`routers/workspace/samples.py`提供Task下GET sample-status，公开Schema位于schemas.py，强制状态与原因组合；request_kinds/boundary/errors复用统一安全边界。专项`tests/workspace/samples/test_task_sample_status_api.py`；同源代理位于`apps/web/src/app/api/_shared/task-sample-status-proxy.ts`，工作台只读面板位于`apps/web/src/features/workbench/components/task-sample-status-panel.tsx`，两端再次校验并显式投影公开字段。无样例创建/恢复接口。
+
+样例持久来源：`app/models.py`的WorkspaceSampleOrigin及`migrations/versions/71c43e9a8f02_add_workspace_sample_origins.py`登记服务端临时样例的Workspace、来源Task和创建时目录；`82d14f5b09ad_add_sample_cleanup_pending.py`增加active/cleanup_pending状态。`task_sample_binding.py`在关闭时先同事务解绑并保留待办，文件安全清理确认后再删除来源；待办阻止普通目录及样例重新绑定。`tests/workspace/samples/test_sample_cleanup_pending.py`和`tests/migrations/test_sample_cleanup_pending_migration.py`验证两次提交、故障保留及迁移。无内存登记而有来源时，状态查询保守sealed；记录不能恢复进程句柄。真实浏览器状态链路夹具位于`apps/web/test/browser/sample-status-e2e/`。
+
+清理待办内部预检：`services/workspace/samples/task_sample_binding.py`的`read_cleanup_preflight`重新授权来源Task并核对持久待办；`services/workspace/samples/cleanup_preflight.py`只在当前服务端临时父目录下用fd和无跟随stat观察规范候选名字，返回固定分类而非路径或清理权限。创建时dev/ino未持久化，候选目录身份无法确认；旧临时父目录不可安全定位时只报告检查不可用。专项`tests/workspace/samples/test_cleanup_preflight.py`，无HTTP/BFF/UI入口。

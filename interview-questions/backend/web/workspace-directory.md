@@ -270,10 +270,10 @@ attach分帧补充：网络read边界不是消息边界。非TTY Docker原始流
 
 失败场景与取舍：先读pending再加锁会让竞争请求使用旧判断；加锁后重新读取避免覆盖。统一锁序与删除流程兼容；目前项目级锁也会串行化同项目其他提案，优先保证边界清晰，尚未优化锁粒度。状态列没有审批人/时间或变更历史，不能声称完整审计。降级只允许全部pending；存在决策时拒绝，不能静默抹掉用户决策。
 
-项目证据：tests/workspace/proposals/test_file_edit_proposal_decision.py中的6组真实双线程竞争，通过pg_blocking_pids确认阻塞，再验证持锁者提交/回滚后的结果；独立连接确认最终状态。迁移专项8条验证保留历史数据、约束及拒绝有损降级。后端直接相关208条、前端172条分批通过，完整命令与证据边界见ENVIRONMENT.md本课章节。
+项目证据：tests/workspace/proposals/test_file_edit_proposal_decision.py中的6组真实双线程竞争，通过pg_blocking_pids确认阻塞，再验证持锁者提交/回滚后的结果；独立连接确认最终状态。迁移专项8条验证保留历史数据、约束及拒绝有损降级。后端直接相关208条、前端172条分批通过，完整命令与证据边界见[历史验收记录](../../../docs/history/verification-through-2026-09-23.md)本课章节。
 
 
-审批HTTP补充（2026-09-22，优先级高，参考答案已整理、尚未模拟）：HTTP 500为什么不能说明决策未提交？服务事务提交和HTTP响应生成是两个阶段；提交后代码异常、Pydantic公开响应校验失败、FastAPI响应校验失败都可能使已提交决策最终返回500。因此依靠覆盖依赖/路由/响应阶段的WorkspaceRoute统一返回proposal_decision_uncertain，不反射异常，不自动重试，保留GET详情核对持久化事实。一次查询pending也不能证明仍在运行的原请求已停止。新增HTTP专项以真实SQL失败、提交前失败、提交后异常及两级响应校验故障验证同一500可对应pending或approved；60条新增及11条受影响既有用例通过，范围与命令见ENVIRONMENT.md。
+审批HTTP补充（2026-09-22，优先级高，参考答案已整理、尚未模拟）：HTTP 500为什么不能说明决策未提交？服务事务提交和HTTP响应生成是两个阶段；提交后代码异常、Pydantic公开响应校验失败、FastAPI响应校验失败都可能使已提交决策最终返回500。因此依靠覆盖依赖/路由/响应阶段的WorkspaceRoute统一返回proposal_decision_uncertain，不反射异常，不自动重试，保留GET详情核对持久化事实。一次查询pending也不能证明仍在运行的原请求已停止。新增HTTP专项以真实SQL失败、提交前失败、提交后异常及两级响应校验故障验证同一500可对应pending或approved；60条新增及11条受影响既有用例通过，范围与命令见[历史验收记录](../../../docs/history/verification-through-2026-09-23.md)。
 
 
 审批BFF补充（2026-09-22，优先级高，参考答案已整理、尚未模拟）：代理错误语义必须保留“是否已经开始转发”的边界。调用fetch前取消可以确认本次请求未转发；调用后无论499取消、504超时、502响应错误或后端500，都不能推断数据库未提交，禁止自动重试。BFF只使用服务端凭证并转发已验证Origin，200回执核对三标识和本次决定，错误按HTTP状态与错误码共同白名单重建，不透传上游文案。新增93条测试验证12组转发后取消/超时阶段与4组转发前取消、公开投影及错误配对；上游受控，无真实网络中止或数据库证据。后续UI查询到pending也不能证明原请求已停止。
@@ -368,3 +368,15 @@ xattr复制探测补充（2026-09-22，优先级高，参考答案已整理、�
 真实样例端到端证据（2026-09-22，高优先级，参考答案已整理、尚未模拟）：HTTP200为何不等于一次新执行成功？重复领取在本项目返回合法claim_unconfirmed回执，file_status=not_attempted/application_status=unknown，并封锁内存登记；实际文件内容/inode/mtime不变。首次调用以独立文件读取和数据库applied交叉验证，不能仅凭UI截图判断写入成功。生产close拒绝封锁登记，隔离测试通过确认状态后的专用收尾清理，不代表产品具有自动恢复能力。项目证据：apps/web/test/browser/execution-e2e及本地evidence.json。
 
 样例状态查询补充（2026-09-22，高优先级，参考答案已整理、尚未模拟）：为什么ready快照不能作为执行权限？归属、绑定和文件在查询后均可能改变，查询既不借用登记也不预留执行权；执行仍须重新授权。即使内存没有登记也先检查归属，防止越权被误当合法missing；查询发现绑定不符仅报告sealed，不隐式修复或封锁原对象。按既有进程锁→数据库锁顺序读取，避免反向锁序死锁。证据：test_task_sample_status.py新增18条，包括真实跨线程busy与查询不恢复封锁。
+
+样例来源持久化补充（2026-09-23，高优先级，参考答案已整理、尚未模拟）：为什么数据库中保存了样例来源，重启后仍不能据此执行或删除目录？来源记录只证明服务端曾把Workspace、来源Task与创建时根目录一同登记，进程内句柄、目录描述符和独占生命周期无法从字符串路径安全恢复。绑定时来源与Workspace.root_path同事务写入，关闭时先同事务解绑并置cleanup_pending，清理确认后才删除来源；借用仍要重新核对归属；有来源时来源Task不能直接删除。旧普通目录不回填，迁移回退不能丢弃非空来源。提交回执丢失或清理失败仍可能留下现场，不能自动恢复或递归清理。证据：test_sample_origin.py、test_workspace_sample_origin_migration.py及Task删除API/BFF专项。只读诊断现已完成：重启后无内存登记但Workspace仍有来源时sealed，同Workspace来源Task错配也不降级missing；真正无来源的普通Workspace仍missing。真实浏览器→BFF→API和隔离PostgreSQL验证查询无文件/提案写入；来源读取失败直接失败。
+
+样例清理待办补充（2026-09-23，高优先级，参考答案已整理、尚未模拟）：为什么关闭时不能在解绑提交中直接删除来源？PostgreSQL与文件系统没有共同事务；解绑后文件清理若失败，来源一并删除就会失去可诊断的根目录快照。现在先原子解绑并写cleanup_pending，确认提交后才通过原有独占句柄安全清理；清理确认后再删来源。第一提交回执未知不碰文件；清理失败、中断或延期时保留待办、封锁登记，并拒绝来源Task删除及普通目录/样例重新绑定。第二提交若回执丢失，来源可能已删，但文件已安全清理，不能推断记录仍在。待办不是自动重试许可，也不证明目录当前仍存在。证据：test_sample_cleanup_pending.py、test_sample_cleanup_pending_migration.py及状态/目录绑定HTTP专项。
+
+公开原因补充（2026-09-23，高优先级，参考答案已整理、尚未模拟）：为什么已授权的同Workspace兄弟Task不能直接看到cleanup_pending？查询身份与来源归属不同：先重新授权请求Task，仍须核对其为持久来源Task，才把清理待办投影为公开原因；其他sealed只返回unavailable，避免透露兄弟Task的生命周期。HTTP/BFF/浏览器均拒绝状态与原因错配，并只投影标识、状态和原因。原因取自持久记录而非文件是否存在：安全清理已完成但最终删除记录的提交失败时，仍可能显示cleanup_pending；回执丢失且记录已删时只显示unavailable。任何公开原因都不是再次执行、清理或重试的许可。证据：test_task_sample_status_api.py、test_sample_cleanup_pending.py及sample-status浏览器专项。
+
+只读处置预检补充（2026-09-23，高优先级，参考答案已整理、尚未模拟）：为什么目录同名、属主正确且权限0700仍不能安全清理？旧来源只有路径，创建时的父/子目录身份并未持久化；现在新建样例把描述符核验过的父/子目录dev/ino与Workspace绑定及来源同事务写入四个可空字段，旧行仍全NULL，不从现存路径伪造回填。内部预检先重新授权来源Task并核对cleanup_pending，再在事务外限定当前临时父目录和规范样例名：从可信父fd无跟随读取目录项，以O_DIRECTORY/O_NOFOLLOW打开候选fd，交叉核对打开前目录项、fd和退出前目录项的身份/属主/0700形态，并复核父目录；候选fd先于父fd关闭。旧记录即使本轮描述符一致仍报identity_unverifiable，新记录稳定数值相符才报identity_matches_record，稳定持久错配报evidence_inconsistent；首次缺失只是观察时刻，观察中替换/消失或I/O/关闭故障报inspection_unavailable。即使三次读数相符，inode仍可能重用，数据库与文件系统不是共同快照，检查完成后也可替换，不能恢复旧fd、执行或清理。检查不调用registry.borrow/close，也不删除文件。证据：test_cleanup_preflight.py及test_sample_directory_identity_migration.py的隔离PostgreSQL/真实临时目录专项。
+
+只读预检HTTP投影补充（2026-09-23，高优先级，参考答案已整理、尚未模拟）：为什么内部诊断分类不能直接作为清理授权公开？GET /workspaces/{workspace_id}/tasks/{task_id}/sample-cleanup-preflight在local模式下重新授权来源Task后，只公开workspace_id、task_id和七种固定result之一；同Workspace兄弟Task与未知/越权资源同为404 workspace_not_accessible，避免透露来源归属。路径、查询和正文形态错误为422 invalid_sample_cleanup_preflight_input；服务读取或响应失败为500 sample_cleanup_preflight_read_failed，不伪装成directory_missing或identity_matches_record。响应no-store且不带路径、dev/ino或句柄；诊断是查询时刻的快照，不能凭identity_matches_record自动清理或重试。新增HTTP专项32条及直接受影响回归13条通过，实际链路与隔离证据见[历史验收记录](../../../docs/history/verification-through-2026-09-23.md)。
+
+只读预检BFF补充（2026-09-23，高优先级，参考答案已整理、尚未模拟）：为何FastAPI已有严格响应模型，Next.js仍要重新解析？浏览器只能调用同源BFF，不能取得服务端本机凭证；BFF必须校验上游200的资源标识和七种分类并重新构建三个公开字段，避免错Task响应和内部字段/Set-Cookie穿透。上游故障、非法分类、取消或超时是查询失败，不得猜成目录缺失或身份匹配，也不能自动重试清理。工作台只在用户触发后查询，取消、收起、Task切换先使旧请求失效；前端再次核对资源和分类，失败保留未知，展示中的identity_matches_record也不提供清理按钮。证据：task-sample-cleanup-preflight-route.test.ts新增51条、Chrome组件专项、直接受影响的真实工作台专项，以及隔离PostgreSQL/自有待办样例的Chrome→Next BFF→FastAPI只读链路；查询前后文件与来源记录不变，详情见[历史验收记录](../../../docs/history/verification-through-2026-09-23.md)。

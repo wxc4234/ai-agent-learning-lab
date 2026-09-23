@@ -87,3 +87,10 @@ def _is_sample_status_request(request: Request) -> bool:
     return request.method == "GET" and getattr(request.scope.get("route"), "path", None) == (
         "/workspaces/{workspace_id}/tasks/{task_id}/sample-status"
     )
+
+
+def _is_sample_cleanup_preflight_request(request: Request) -> bool:
+    """按匹配后的模板识别清理诊断，不信任用户填写的 URL 后缀。"""
+    return request.method == "GET" and getattr(request.scope.get("route"), "path", None) == (
+        "/workspaces/{workspace_id}/tasks/{task_id}/sample-cleanup-preflight"
+    )

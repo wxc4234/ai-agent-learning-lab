@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.repositories.workspace.proposal_application_guard import require_no_active_proposal_application
 
-from app.models import AgentRun, AgentRunEvent, Conversation, ConversationExecutionSlot, Message, Task
+from app.models import AgentRun, AgentRunEvent, Conversation, ConversationExecutionSlot, Message, Task, WorkspaceSampleOrigin
 from app.repositories.workspace.workspace_repository import (
     WorkspaceNotAccessibleError,
     require_owned_workspace_for_update,
@@ -22,6 +22,15 @@ class TaskRunUnsettledError(Exception):
 
     def __init__(self) -> None:
         super().__init__("存在未确认结束的运行，暂不能删除")
+
+
+class TaskSampleBoundError(Exception):
+    """仍有持久样例来源记录，删除任务会丢失受控关闭的归属。"""
+
+    code = "task_sample_bound"
+
+    def __init__(self) -> None:
+        super().__init__("任务仍绑定受限样例，暂不能删除")
 
 
 @dataclass(frozen=True)
@@ -83,6 +92,11 @@ def delete_workspace_task(
             # 正常创建事务会同时创建会话。
             # 缺失会话或归属错配时拒绝，不借删除服务修复异常数据。
             raise WorkspaceNotAccessibleError()
+
+        # 样例来源以Task外键持久保存；在任何DELETE前明确拒绝删除来源任务。
+        origin = session.get(WorkspaceSampleOrigin, workspace.id)
+        if origin is not None and origin.task_id == task.id:
+            raise TaskSampleBoundError()
 
         # 与应用领取串行；在任何DELETE之前拒绝未结束的文件副作用。
         require_no_active_proposal_application(session, workspace_id=workspace.id, task_id=task.id)

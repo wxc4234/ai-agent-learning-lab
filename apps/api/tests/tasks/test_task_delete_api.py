@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from app import dependencies
 from app.config import settings
-from app.models import AgentRun, AgentRunEvent, Conversation, ConversationExecutionSlot, Message, Task, User, Workspace
+from app.models import AgentRun, AgentRunEvent, Conversation, ConversationExecutionSlot, Message, Task, User, Workspace, WorkspaceSampleOrigin
 from app.routers.workspace import tasks as workspace
 from tests.local.test_local_mode import HEADERS
 from tests.tasks.test_task_workspace import task
@@ -40,6 +40,23 @@ def test_empty_request_returns_empty_204_and_preserves_project(local_client, tar
     assert binding.stored(engine, target[0]) == target[1]
     binding.safe(local_client.get(path, headers=HEADERS), 404, 'workspace_not_accessible')
     binding.safe(local_client.delete(path, headers=HEADERS), 404, 'workspace_not_accessible')
+
+
+def test_sample_source_task_returns_explicit_conflict(local_client, target, engine):
+    created, path = task(local_client, target)
+    with Session(engine) as session, session.begin():
+        workspace = session.scalar(select(Workspace).where(Workspace.external_id == target[0]))
+        owner_task = session.scalar(select(Task).where(Task.external_id == created['external_id']))
+        workspace.root_path = '/isolated-sample'
+        session.add(WorkspaceSampleOrigin(
+            workspace_id=workspace.id,
+            task_id=owner_task.id,
+            root_path=workspace.root_path,
+        ))
+    binding.safe(local_client.delete(path, headers=HEADERS), 409, 'task_sample_bound')
+    assert_stored(engine, created)
+    with Session(engine) as session:
+        assert session.scalar(select(WorkspaceSampleOrigin.root_path)) == '/isolated-sample'
 
 
 @pytest.mark.parametrize('body', [b'{}', b'null', b' ', b'\n', b'{PRIVATE', b'{"user_id":1}'])

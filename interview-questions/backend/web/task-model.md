@@ -170,7 +170,7 @@ Task 删除通过 ON DELETE SET NULL 保留请求记录。若连键一起删除�
 
 项目 → 任务 → 会话的锁顺序与空任务删除一致：删除先提交时旧键拒绝重建；删除回滚时重放原结果。请求记录写入失败会连同已经 flush 的任务和会话一起回滚。若数据库已成功提交，但确认返回时异常，rollback 不能撤销该事实；同键重试读取已提交记录，不再创建第二份任务。这是本地数据库创建事务的防重保证，不代表外部工具副作用也只执行一次。
 
-项目证据：apps/api/tests/tasks/test_task_creation_idempotency.py 使用独立连接读取提交结果，并用 pg_blocking_pids 观察真实锁等待后才放行首个事务；包含并发同键同内容/不同内容、首事务回滚、删除竞争、提交确认丢失和旧 Session 缓存场景。真实验证计数见 ENVIRONMENT.md。
+项目证据：apps/api/tests/tasks/test_task_creation_idempotency.py 使用独立连接读取提交结果，并用 pg_blocking_pids 观察真实锁等待后才放行首个事务；包含并发同键同内容/不同内容、首事务回滚、删除竞争、提交确认丢失和旧 Session 缓存场景。真实验证计数见 [历史验收记录](../../../docs/history/verification-through-2026-09-23.md)。
 
 
 HTTP 接入补充（2026-09-17）：Pydantic 严格校验可选 request_key，缺省/null 为旧行为；非法正文返回 422 invalid_task_input，服务层非法键返回 422 invalid_task_request_key。同键内容冲突与原结果已删除分别为两种固定文案的 409。成功新建与重放均沿用 201，不依据状态码判断新增；响应仅含公开 Task 资料，始终 no-store。身份来自本地依赖，不采用客户端身份或指纹。

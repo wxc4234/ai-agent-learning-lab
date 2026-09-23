@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 
 from app import dependencies
 from app.config import settings
-from app.models import User, Workspace
+from app.models import Task, User, Workspace, WorkspaceSampleOrigin
 from app.routers.workspace import directories as workspace
 from app.services.workspace.directory import workspace_binding
 from app.services.workspace.directory.workspace_directory import WorkspaceDirectoryError
@@ -63,6 +63,22 @@ def test_conflict_preserves_first_binding(local_client, target, tmp_path, engine
     other.mkdir()
     safe(put(local_client, (target[0], str(other))), 409, 'workspace_already_bound')
     assert stored(engine, target[0]) == target[1]
+
+
+def test_cleanup_pending_rejects_directory_bind_over_http(local_client, target, engine):
+    with Session(engine) as session, session.begin():
+        workspace = session.scalar(select(Workspace).where(Workspace.external_id == target[0]))
+        task = Task(external_id=uuid4().hex, title='来源任务', workspace_id=workspace.id)
+        session.add(task)
+        session.flush()
+        session.add(WorkspaceSampleOrigin(
+            workspace_id=workspace.id,
+            task_id=task.id,
+            root_path='/previous-sample',
+            lifecycle_state='cleanup_pending',
+        ))
+    safe(put(local_client, target), 409, 'workspace_already_bound')
+    assert stored(engine, target[0]) is None
 
 
 @pytest.mark.parametrize('payload', [{}, {'root_path': ''}, {'root_path': None}, {'root_path': 1}, {'root_path': []}, {'root_path': 'PRIVATE', 'user_id': 1}])

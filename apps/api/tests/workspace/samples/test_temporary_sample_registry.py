@@ -19,6 +19,9 @@ def registry(tmp_path, monkeypatch):
 def test_create_borrow_close_and_stale_handle(registry, tmp_path):
     handle = registry.create()
     assert handle.token not in repr(handle)
+    entry = registry._entries[handle.token]
+    assert entry.parent_identity == entry.sample.parent_identity
+    assert entry.root_identity == entry.sample.root_identity
     with registry.borrow(handle) as sample:
         root = sample.root
         assert (root / sample.relative_path).read_bytes() == b'old\n'
@@ -182,6 +185,24 @@ def test_identity_capture_failure_cleans_unpublished_sample(registry, tmp_path, 
     with pytest.raises(OSError):
         registry.create()
     assert registry._entries == {} and list(tmp_path.iterdir()) == []
+
+
+@pytest.mark.parametrize('changed', ['root', 'parent'])
+def test_identity_mismatch_rejects_registration_and_cleans_unpublished_sample(
+    registry, tmp_path, monkeypatch, changed,
+):
+    def mismatched_identity(path):
+        info = path.stat(follow_symlinks=False)
+        identity = (info.st_dev, info.st_ino)
+        if (path == tmp_path) == (changed == 'parent'):
+            return identity[0], identity[1] + 1
+        return identity
+
+    monkeypatch.setattr(registry, '_identity', mismatched_identity)
+    with pytest.raises(m.SampleRegistryError, match='sample_registration_unavailable'):
+        registry.create()
+    assert registry._entries == {}
+    assert list(tmp_path.iterdir()) == []
 
 
 def test_missing_root_invalidates_registration(registry):

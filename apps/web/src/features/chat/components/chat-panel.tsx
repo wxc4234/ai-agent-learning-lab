@@ -26,6 +26,8 @@ import ConversationExecutionPanel from '@/features/workbench/components/conversa
 import ToolResult from "./tool-result";
 import RunSummaryCard from "./run-summary-card";
 import MarkdownMessage from "./markdown-message";
+import TaskSampleStatusPanel from "@/features/workbench/components/task-sample-status-panel";
+import TaskSampleCleanupPreflightPanel from "@/features/workbench/components/task-sample-cleanup-preflight-panel";
 
 import {
     WorkbenchProvider,
@@ -685,13 +687,32 @@ function TaskChat() {
                         workbench.rightOpen &&
                         workbench.selection?.task && (
                             <>
+                                <TaskSampleStatusPanel
+                                    workspaceId={
+                                        workbench.selection.workspace.external_id
+                                    }
+                                    taskId={
+                                        workbench.selection.task.external_id
+                                    }
+                                />
+                                <TaskSampleCleanupPreflightPanel
+                                    workspaceId={
+                                        workbench.selection.workspace.external_id
+                                    }
+                                    taskId={
+                                        workbench.selection.task.external_id
+                                    }
+                                />
                                 <ConversationExecutionPanel
                                     sessionId={
                                         workbench.selection.task.conversation_id
                                     }
                                 />
                                 <TaskRunPanel
-                                    key={`${workbench.selection.workspace.external_id}:${workbench.selection.task.external_id}`}
+                                    key={
+                                        `${workbench.selection.workspace.external_id}:`
+                                        + workbench.selection.task.external_id
+                                    }
                                     workspaceId={
                                         workbench.selection.workspace.external_id
                                     }

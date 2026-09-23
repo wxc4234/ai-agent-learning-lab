@@ -93,6 +93,26 @@ try {
             await page.screenshot({ path: `${artifacts}/proposal-application-busy-${width}.png` });
         }
     });
+    await scenario('delete UI sample-bound conflict', async page => {
+        const workspace = await project(page, '受限样例删除保护');
+        const task = await emptyTask(page, workspace, '保留样例来源任务');
+        await openTask(page, task);
+        await page.getByLabel('你的问题').fill('保留未发送草稿');
+        let requests = 0;
+        await page.route(`**${taskPath(task)}`, async route => {
+            if (route.request().method() !== 'DELETE') return route.continue();
+            requests++;
+            return route.fulfill({ status: 409, json: { code: 'task_sample_bound', message: 'PRIVATE' } });
+        });
+        await remove(page, task);
+        await deletion(page).getByText('该任务仍绑定受限样例，暂不能删除。请先核对样例状态。', { exact: true }).waitFor();
+        assert.equal(requests, 1);
+        assert.equal(await deletionDisabled(page, task), false);
+        assert.equal(new URL(page.url()).searchParams.get('task'), task.external_id);
+        assert.equal(await page.getByLabel('你的问题').inputValue(), '保留未发送草稿');
+        assert.ok(!(await deletion(page).innerText()).includes('PRIVATE'));
+        assert.equal((await page.request.get(`${base}${taskPath(task)}`)).status(), 200);
+    });
     await scenario('delete UI execution conflict preserves task and allows manual retry', async page => {
         const workspace = await project(page, '执行占用删除验收');
         const task = await emptyTask(page, workspace, '保留执行中的任务');

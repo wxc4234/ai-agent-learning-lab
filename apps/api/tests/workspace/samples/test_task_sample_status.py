@@ -8,7 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.config import settings
-from app.models import Conversation, Workspace
+from app.models import Conversation, Workspace, WorkspaceSampleOrigin
 from app.repositories.workspace.workspace_repository import WorkspaceNotAccessibleError
 from app.services.workspace.samples import task_sample_binding as module
 from tests.workspace.samples.test_task_sample_binding import setup, target
@@ -18,19 +18,21 @@ __all__ = ['setup', 'target']
 
 def test_missing_ready_busy_and_closed(setup):
     service, scope, _, sessions = setup
-    assert service.read_status(**scope).status == 'missing'
+    assert asdict(service.read_status(**scope)) == {'status': 'missing', 'sealed_reason': None}
     service.bind(**scope)
     snapshot = service.read_status(**scope)
-    assert asdict(snapshot) == {'status': 'ready'}
+    assert asdict(snapshot) == {'status': 'ready', 'sealed_reason': None}
     with pytest.raises(FrozenInstanceError):
         snapshot.status = 'missing'
     # 在另一线程查询，验证busy是活动借用状态，而非同线程锁重入假象。
     with service.borrow(**scope), ThreadPoolExecutor(max_workers=1) as pool:
-        assert pool.submit(service.read_status, **scope).result(timeout=3).status == 'busy'
+        assert asdict(pool.submit(service.read_status, **scope).result(timeout=3)) == {
+            'status': 'busy', 'sealed_reason': None,
+        }
     assert service.read_status(**scope).status == 'ready'
     assert all(s.closed and not s.in_transaction() for s in sessions)
     service.close(**scope)
-    assert service.read_status(**scope).status == 'missing'
+    assert asdict(service.read_status(**scope)) == {'status': 'missing', 'sealed_reason': None}
     assert snapshot.status == 'ready'
 
 
@@ -61,7 +63,10 @@ def test_internal_states_never_expose_private_fields(setup, state):
     binding = next(iter(service._bindings.values()))
     binding.state = state
     before = (binding.state, binding.busy, binding.handle, binding.root)
-    assert asdict(service.read_status(**scope)) == {'status': 'busy' if state == 'preparing' else 'sealed'}
+    assert asdict(service.read_status(**scope)) == {
+        'status': 'busy' if state == 'preparing' else 'sealed',
+        'sealed_reason': None if state == 'preparing' else 'unavailable',
+    }
     assert (binding.state, binding.busy, binding.handle, binding.root) == before
 
 
@@ -71,7 +76,7 @@ def test_root_mismatch_reports_sealed_without_mutating_binding(setup, engine):
     binding = next(iter(service._bindings.values()))
     with Session(engine) as session, session.begin():
         session.scalar(select(Workspace)).root_path = '/changed'
-    assert service.read_status(**scope).status == 'sealed'
+    assert asdict(service.read_status(**scope)) == {'status': 'sealed', 'sealed_reason': 'unavailable'}
     assert binding.state == 'ready'
     with Session(engine) as session:
         assert session.scalar(select(Workspace.root_path)) == '/changed'
@@ -88,7 +93,9 @@ def test_no_registry_operations_or_database_commit(setup, monkeypatch):
             patch.setattr(service._registry, name, forbidden)
         patch.setattr(tracked, 'commit', forbidden)
         assert service.read_status(**scope).status == 'ready'
-        assert module.TaskSampleBindings().read_status(**scope).status == 'missing'
+        assert asdict(module.TaskSampleBindings().read_status(**scope)) == {
+            'status': 'sealed', 'sealed_reason': 'unavailable',
+        }
 
 
 @pytest.mark.parametrize('kind', ['mode', 'pid'])
@@ -112,11 +119,26 @@ def test_database_failure_is_not_missing(setup, monkeypatch):
         service.read_status(**scope)
 
 
+def test_origin_read_failure_is_not_missing(setup, monkeypatch):
+    service, scope, tracked, sessions = setup
+    original_get = tracked.get
+
+    def fail_origin(self, entity, ident, *args, **kwargs):
+        if entity is WorkspaceSampleOrigin:
+            raise RuntimeError('origin read unavailable')
+        return original_get(self, entity, ident, *args, **kwargs)
+
+    monkeypatch.setattr(tracked, 'get', fail_origin)
+    with pytest.raises(RuntimeError, match='origin read unavailable'):
+        service.read_status(**scope)
+    assert all(session.closed and not session.in_transaction() for session in sessions)
+
+
 def test_borrow_failure_stays_sealed_after_query(setup):
     service, scope, _, _ = setup
     service.bind(**scope)
     with pytest.raises(RuntimeError), service.borrow(**scope):
         raise RuntimeError('execution outcome unknown')
-    assert service.read_status(**scope).status == 'sealed'
+    assert asdict(service.read_status(**scope)) == {'status': 'sealed', 'sealed_reason': 'unavailable'}
     with pytest.raises(module.TaskSampleBindingError), service.borrow(**scope):
         pytest.fail('query must not restore access')

@@ -11,7 +11,8 @@ from sqlalchemy import (
     Text,
     UniqueConstraint,
     func,
-    Boolean
+    Boolean,
+    BigInteger,
 )
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -179,6 +180,69 @@ class Task(Base):
     conversation: Mapped["Conversation | None"] = relationship(
         back_populates="task",
     )
+
+
+class WorkspaceSampleOrigin(Base):
+    """临时样例的持久来源证据；不凭此记录恢复进程内执行权限。"""
+
+    __tablename__ = "workspace_sample_origins"
+    __table_args__ = (
+        UniqueConstraint("task_id", name="uq_workspace_sample_origins_task_id"),
+        CheckConstraint(
+            "char_length(root_path) > 0",
+            name="ck_workspace_sample_origins_root_path_not_empty",
+        ),
+        CheckConstraint(
+            "lifecycle_state IN ('active', 'cleanup_pending')",
+            name="ck_workspace_sample_origins_lifecycle_state",
+        ),
+        # 旧来源四列全空；新来源必须同时保存两个目录的完整身份。
+        CheckConstraint(
+            "(parent_dev IS NULL AND parent_ino IS NULL "
+            "AND root_dev IS NULL AND root_ino IS NULL) OR "
+            "(parent_dev IS NOT NULL AND parent_ino IS NOT NULL "
+            "AND root_dev IS NOT NULL AND root_ino IS NOT NULL "
+            "AND parent_dev >= 0 AND parent_ino > 0 "
+            "AND root_dev >= 0 AND root_ino > 0)",
+            name="ck_workspace_sample_origins_directory_identity",
+        ),
+    )
+
+    # 每个工作空间至多有一个受限样例；普通项目目录没有此记录。
+    workspace_id: Mapped[int] = mapped_column(
+        ForeignKey("workspaces.id"),
+        primary_key=True,
+    )
+
+    # 来源任务必须存在，且不能同时成为多个工作空间的样例来源。
+    task_id: Mapped[int] = mapped_column(
+        ForeignKey("tasks.id"),
+        nullable=False,
+    )
+
+    # 保存创建时的目录路径快照；路径本身不证明对象身份。
+    root_path: Mapped[str] = mapped_column(Text, nullable=False)
+
+    # 来自创建时核验过的父目录描述符；旧来源保持身份未知。
+    parent_dev: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
+    parent_ino: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
+
+    # 来自创建时核验过的样例目录描述符；不能据此恢复清理权限。
+    root_dev: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
+    root_ino: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
+
+    # 解绑后保留清理待办；文件安全清理确认前不得删除来源或重新绑定。
+    lifecycle_state: Mapped[str] = mapped_column(
+        String(32),
+        nullable=False,
+        server_default="active",
+    )
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+    )
+
 
 class TaskCreationRequest(Base):
     """保存一次任务创建操作，重试时找回结果，删除后保留请求键。"""

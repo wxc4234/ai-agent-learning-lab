@@ -4,6 +4,7 @@ from dataclasses import dataclass
 
 from sqlalchemy.orm import Session
 
+from app.models import WorkspaceSampleOrigin
 from app.repositories.workspace.proposal_application_guard import require_no_active_proposal_application
 
 from app.repositories.workspace.workspace_repository import (
@@ -51,6 +52,11 @@ def bind_workspace_directory(
             user_id=user_id,
             workspace_id=workspace_id,
         )
+
+        # 样例文件清理未确认时不允许普通目录重新占用该Workspace。
+        origin = session.get(WorkspaceSampleOrigin, workspace.id)
+        if origin is not None and origin.lifecycle_state == 'cleanup_pending':
+            raise WorkspaceAlreadyBoundError()
 
         # 复用上一课的目录规则，只保存解析后的真实绝对路径。
         # 这里不创建目录，也不授予后续文件工具访问权限。

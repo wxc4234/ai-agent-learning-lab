@@ -1,16 +1,19 @@
 """真实local GET与隔离PostgreSQL验证样例登记查询HTTP边界。"""
 
+from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.config import settings
 from app.main import app
-from app.models import User
+from app.models import User, Workspace
 from app.services.auth.local_identity import LOCAL_USER_ID
 from app.services.workspace.samples.sample_execution_runtime import get_sample_bindings
 from app.services.workspace.samples.task_sample_binding import TaskSampleBindingError
+from app.services.workspace.samples.temporary_proposal_sample import TemporarySampleError
 from tests.local.test_local_mode import HEADERS, local_client
 from tests.workspace.samples.test_task_sample_binding import setup, target
 
@@ -58,7 +61,77 @@ def test_real_states_only_return_public_fields(endpoint, setup, state):
     else:
         response = read(endpoint)
     safe(response, 200)
-    assert response.json() == {key: scope[key] for key in ('workspace_id', 'task_id')} | {'status': state}
+    assert response.json() == {key: scope[key] for key in ('workspace_id', 'task_id')} | {
+        'status': state, 'sealed_reason': 'unavailable' if state == 'sealed' else None,
+    }
+
+
+def test_lost_process_registration_reports_sealed_over_http(endpoint, setup):
+    bindings, scope, _, _ = setup
+    bindings.bind(**scope)
+    # 模拟重启后新的进程登记：数据库来源仍在，但可信句柄只在旧实例中。
+    app.dependency_overrides[get_sample_bindings] = lambda: type(bindings)()
+    response = read(endpoint)
+    safe(response, 200)
+    assert response.json() == {
+        'workspace_id': scope['workspace_id'],
+        'task_id': scope['task_id'],
+        'status': 'sealed',
+        'sealed_reason': 'unavailable',
+    }
+
+
+def test_cleanup_pending_reports_sealed_over_http(endpoint, setup, engine):
+    bindings, scope, _, _ = setup
+    bindings.bind(**scope)
+    with Session(engine) as session:
+        path = Path(session.scalar(select(Workspace.root_path)))
+    (path / 'unknown').write_bytes(b'keep')
+    with pytest.raises(TemporarySampleError):
+        bindings.close(**scope)
+    response = read(endpoint)
+    safe(response, 200)
+    assert response.json() == {
+        'workspace_id': scope['workspace_id'],
+        'task_id': scope['task_id'],
+        'status': 'sealed',
+        'sealed_reason': 'cleanup_pending',
+    }
+
+
+def test_pending_reason_is_hidden_from_sibling_task(endpoint, setup, engine):
+    bindings, scope, _, _ = setup
+    bindings.bind(**scope)
+    with Session(engine) as session:
+        path = Path(session.scalar(select(Workspace.root_path)))
+    (path / 'unknown').write_bytes(b'keep')
+    with pytest.raises(TemporarySampleError):
+        bindings.close(**scope)
+
+    client, url = endpoint
+    sibling_url = url.replace(scope['task_id'], 'd' * 32)
+    response = client.get(sibling_url, headers=HEADERS)
+    safe(response, 200)
+    assert response.json() == {
+        'workspace_id': scope['workspace_id'],
+        'task_id': 'd' * 32,
+        'status': 'sealed',
+        'sealed_reason': 'unavailable',
+    }
+
+
+@pytest.mark.parametrize(('status', 'reason'), [
+    ('sealed', None), ('ready', 'cleanup_pending'), ('missing', 'unavailable'),
+    ('sealed', 'PRIVATE'),
+])
+def test_invalid_internal_reason_combinations_fail_closed(endpoint, setup, monkeypatch, status, reason):
+    monkeypatch.setattr(
+        setup[0], 'read_status',
+        lambda **kw: SimpleNamespace(status=status, sealed_reason=reason, root_path='PRIVATE'),
+    )
+    response = read(endpoint)
+    safe(response, 500, 'sample_status_read_failed')
+    assert set(response.json()) == {'code', 'message'}
 
 
 @pytest.mark.parametrize('kind', ['workspace', 'task', 'foreign'])

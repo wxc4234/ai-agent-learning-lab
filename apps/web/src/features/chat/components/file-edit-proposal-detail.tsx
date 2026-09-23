@@ -9,6 +9,7 @@ import {
 import { Button } from "@/components/ui/button";
 import FileEditProposalActions from "./file-edit-proposal-actions";
 import ProposalApplicationStatusPanel from "./proposal-application-status";
+import TaskSampleStatusPanel from "../../workbench/components/task-sample-status-panel";
 
 type DetailState =
     | { status: "idle" }
@@ -253,11 +254,33 @@ export default function FileEditProposalDetailPanel({
                         读取详情不会改变审批状态；批准也不会直接写入文件。
                     </p>
 
-                    <ProposalApplicationStatusPanel
-                        workspaceId={state.detail.workspace_id}
-                        taskId={state.detail.task_id}
-                        proposalId={state.detail.proposal_id}
-                    />
+                    <section
+                        aria-label="样例与提案状态核对"
+                        className="space-y-3"
+                    >
+                        <p className="font-medium">状态核对</p>
+                        <p className="text-muted-foreground">
+                            分别查询任务的样例登记和这份提案的应用记录。
+                            一项查询失败时，另一项结果仍可单独查看。
+                        </p>
+
+                        <TaskSampleStatusPanel
+                            workspaceId={state.detail.workspace_id}
+                            taskId={state.detail.task_id}
+                        />
+
+                        <ProposalApplicationStatusPanel
+                            workspaceId={state.detail.workspace_id}
+                            taskId={state.detail.task_id}
+                            proposalId={state.detail.proposal_id}
+                        />
+
+                        <p className="text-muted-foreground">
+                            两份结果来自独立查询，可能反映不同时刻。
+                            即使登记显示 ready、应用记录显示 idle，也不能据此执行提案、
+                            恢复登记或清除本标签页的防重复提交记录。
+                        </p>
+                    </section>
 
                     <FileEditProposalActions
                         key={

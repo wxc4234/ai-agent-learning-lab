@@ -51,7 +51,7 @@ duration：花了多久
 
 前端取消 BFF 验证 Origin/JSON，只转发唯一合法 Cookie，并保留取消信号和 no-store；错误正文使用安全映射。页面区分 401、404、服务故障与请求中断，最终停止本地接收。AbortController.abort() 不能证明服务端已取消，因此失败提示说明“未确认服务端取消”；晚返回的取消响应通过请求版本号避免污染新一轮页面状态。
 
-项目证据：app/repositories/runtime/run_repository.py、app/routers/runtime/runs.py、run_boundary.py；test_run_ownership.py 使用真实 Cookie 和独立 PostgreSQL，覆盖双用户、匿名旧数据、终态拒绝、回滚、行锁等待、双取消竞争与 Redis 故障。前端 cancel-run-route.test.ts、run-terminal.test.ts 与隔离浏览器取消场景覆盖真实生产函数和同源 BFF。具体验收结果见 ENVIRONMENT.md 的本课记录。
+项目证据：app/repositories/runtime/run_repository.py、app/routers/runtime/runs.py、run_boundary.py；test_run_ownership.py 使用真实 Cookie 和独立 PostgreSQL，覆盖双用户、匿名旧数据、终态拒绝、回滚、行锁等待、双取消竞争与 Redis 故障。前端 cancel-run-route.test.ts、run-terminal.test.ts 与隔离浏览器取消场景覆盖真实生产函数和同源 BFF。具体验收结果见 [历史验收记录](../../../docs/history/verification-through-2026-09-23.md) 的本课记录。
 
 追问：只在取消函数加行锁是否足够？为什么重复取消不应新增事件？提交后 Redis 失败，客户端应该如何描述结果？用户在另一个页面登出后，本页停止按钮会发生什么？
 
@@ -111,7 +111,7 @@ Runtime 显式接收调用方的 ExecutionThreads，run_agent_loop 与 stream_ag
 
 StreamingResponse 返回对象时响应体可能还未执行，路由函数内的 async with 会过早释放资源。本项目使用请求级 yield 依赖，在模型/Run 创建前取得占用，响应发送结束或中断后再关闭生成器和取消监听器、等待后台线程、补齐仍 running 的终态并释放。流未开始时生成器 finally 不一定执行，因而请求对象保存 Run 创建任务和生成器引用，提供外部兜底清理。取消期间数据库可能完成提交，缓存必须失效，下次以数据库历史恢复，不能只回滚内存后直接复用。
 
-证据：test_chat_execution_lifecycle.py 12 条真实 ASGI/PostgreSQL 验证，后端全量1300条通过；覆盖两个入口交叉竞争、不同会话独立、ASGI 两种协议分支、发送失败、Run/消息提交阶段取消及工具线程断线收尾。HTTP 409 经 BFF 和聊天状态映射传递安全提示，不暴露持有者 token。PC 证据见 ENVIRONMENT.md 本课记录。请求级清理可能发生在响应已经发送之后，因此清理失败无法追改此前 HTTP 状态；恢复和诊断仍需独立机制。
+证据：test_chat_execution_lifecycle.py 12 条真实 ASGI/PostgreSQL 验证，后端全量1300条通过；覆盖两个入口交叉竞争、不同会话独立、ASGI 两种协议分支、发送失败、Run/消息提交阶段取消及工具线程断线收尾。HTTP 409 经 BFF 和聊天状态映射传递安全提示，不暴露持有者 token。PC 证据见 [历史验收记录](../../../docs/history/verification-through-2026-09-23.md) 本课记录。请求级清理可能发生在响应已经发送之后，因此清理失败无法追改此前 HTTP 状态；恢复和诊断仍需独立机制。
 
 
 ### 查询到空闲，为什么仍须原子获取执行占用？
