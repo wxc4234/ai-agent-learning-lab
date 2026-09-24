@@ -348,3 +348,44 @@ def test_decision_maker_rejects_response_without_choices():
 
     with pytest.raises(ModelDecisionError, match="没有可用的 choice"):
         asyncio.run(decision_maker(()))
+
+
+@pytest.mark.parametrize('content', [None, '', '   \n'])
+def test_empty_response_has_safe_reason_without_mutating_history(content):
+    maker, request, requests = build_decision_maker(build_text_response(content))
+    before = deepcopy(maker._messages)
+    with pytest.raises(ModelDecisionError) as error:
+        asyncio.run(maker(()))
+    assert error.value.reason == 'empty_response'
+    assert maker._messages == before
+    assert request.await_count == 1
+    assert requests[0]['parallel_tool_calls'] is False
+
+
+@pytest.mark.parametrize('finish_reason', ['length', 'content_filter'])
+@pytest.mark.parametrize('tool', [False, True])
+def test_incomplete_response_never_becomes_answer_or_action(finish_reason, tool):
+    response = (build_tool_response(('call', 'read_file', '{}')) if tool
+                else build_text_response('PRIVATE partial answer'))
+    response.choices[0].finish_reason = finish_reason
+    maker, request, _ = build_decision_maker(response)
+    before = deepcopy(maker._messages)
+    with pytest.raises(ModelDecisionError) as error:
+        asyncio.run(maker(()))
+    assert error.value.reason == 'incomplete_response'
+    assert 'PRIVATE' not in error.value.public_message
+    assert maker._messages == before
+    assert request.await_count == 1
+
+
+def test_provider_ignoring_single_tool_request_is_rejected_without_retry():
+    maker, request, requests = build_decision_maker(build_tool_response(
+        ('one', 'read_file', '{}'), ('two', 'read_file', '{}'),
+    ))
+    before = deepcopy(maker._messages)
+    with pytest.raises(ModelDecisionError) as error:
+        asyncio.run(maker(()))
+    assert error.value.reason == 'multiple_tool_calls'
+    assert maker._messages == before
+    assert requests[0]['parallel_tool_calls'] is False
+    assert request.await_count == 1

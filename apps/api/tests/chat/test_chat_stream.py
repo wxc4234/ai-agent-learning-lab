@@ -205,7 +205,7 @@ def test_redis_cancellation_signal_aborts_stream(monkeypatch):
     async def fake_prepare_messages(*, user_id, session_id, prompt, execution_threads):
         return history, list(history)
 
-    async def blocked_agent_loop(decide, *, max_steps, max_total_tokens, execution_threads, tool_context):
+    async def blocked_agent_loop(decide, *, max_steps, max_total_tokens, execution_threads, tool_context, tool_definitions):
         yield ToolCallStarted(
             action=ToolAction(
                 tool_call_id="call-blocked",
@@ -284,7 +284,7 @@ def test_cancelled_stream_rolls_back_pending_user_message(monkeypatch):
     async def fake_prepare_messages(*, user_id, session_id, prompt, execution_threads):
         return history, list(history)
 
-    async def blocked_agent_loop(decide, *, max_steps, max_total_tokens, execution_threads, tool_context):
+    async def blocked_agent_loop(decide, *, max_steps, max_total_tokens, execution_threads, tool_context, tool_definitions):
         yield ToolCallStarted(
             action=ToolAction(
                 tool_call_id="call-cancelled",
@@ -389,7 +389,7 @@ def test_completed_stream_records_chunks_and_finished_status(monkeypatch):
     async def fake_prepare_messages(*, user_id, session_id, prompt, execution_threads):
         return history, list(history)
 
-    async def fake_agent_loop(decide, *, max_steps, max_total_tokens, execution_threads, tool_context):
+    async def fake_agent_loop(decide, *, max_steps, max_total_tokens, execution_threads, tool_context, tool_definitions):
         assert max_steps == 5
         assert max_total_tokens == chat_service.settings.agent_max_total_tokens
         yield ToolCallStarted(
@@ -518,7 +518,7 @@ def test_model_error_finishes_run_as_error_and_rolls_back_user_message(monkeypat
     async def fake_prepare_messages(*, user_id, session_id, prompt, execution_threads):
         return history, list(history)
 
-    async def failing_agent_loop(decide, *, max_steps, max_total_tokens, execution_threads, tool_context):
+    async def failing_agent_loop(decide, *, max_steps, max_total_tokens, execution_threads, tool_context, tool_definitions):
         raise OpenAIError("不应暴露的模型错误")
         yield
 
@@ -583,7 +583,7 @@ def test_timed_out_stream_finishes_as_error(monkeypatch):
     async def fake_prepare_messages(*, user_id, session_id, prompt, execution_threads):
         return history, list(history)
 
-    async def blocked_agent_loop(decide, *, max_steps, max_total_tokens, execution_threads, tool_context):
+    async def blocked_agent_loop(decide, *, max_steps, max_total_tokens, execution_threads, tool_context, tool_definitions):
         yield ToolCallStarted(
             action=ToolAction(
                 tool_call_id="call-timeout",
@@ -669,7 +669,7 @@ def test_tool_error_is_emitted_and_model_can_still_finish(monkeypatch):
     async def fake_prepare_messages(*, user_id, session_id, prompt, execution_threads):
         return history, list(history)
 
-    async def fake_agent_loop(decide, *, max_steps, max_total_tokens, execution_threads, tool_context):
+    async def fake_agent_loop(decide, *, max_steps, max_total_tokens, execution_threads, tool_context, tool_definitions):
         yield ToolCallStarted(
             action=ToolAction(
                 tool_call_id="call-unknown",
@@ -785,7 +785,7 @@ def test_non_completed_loop_emits_run_error_and_rolls_back_turn(
     async def fake_prepare_messages(*, user_id, session_id, prompt, execution_threads):
         return history, list(history)
 
-    async def fake_agent_loop(decide, *, max_steps, max_total_tokens, execution_threads, tool_context):
+    async def fake_agent_loop(decide, *, max_steps, max_total_tokens, execution_threads, tool_context, tool_definitions):
         assert max_total_tokens == chat_service.settings.agent_max_total_tokens
         yield AgentLoopCompleted(result=loop_result)
 

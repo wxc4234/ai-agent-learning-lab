@@ -2,7 +2,7 @@
 
 import asyncio
 import logging
-from collections.abc import AsyncGenerator
+from collections.abc import AsyncGenerator, Callable
 from dataclasses import dataclass, field
 from typing import Annotated
 
@@ -34,6 +34,19 @@ from app.services.runtime.sandbox.command_recovery_journal import (
 from app.tools.run_command import CommandToolExecutionError, run_command
 
 
+from app.services.runtime.agent.tool_execution_context import load_tool_execution_context
+from app.services.runtime.execution.task_sample_recovery_store import TaskSampleRecoveryScope, TaskSampleRecoveryStore
+from app.services.workspace.samples.task_sample_binding import TaskSampleBindings
+from app.services.workspace.samples.sample_execution_runtime import get_sample_bindings
+from app.tools.context import ToolExecutionContext
+from app.tools.registry import CommandToolBinding, GitStatusExecutor
+from app.tools.git_sample_status import make_git_sample_status_executor
+from app.services.workspace.git.application_samples import get_git_samples
+from app.services.workspace.git.task_git_samples import TaskGitSamples
+from app.tools.task_sample_command import TaskSampleCommandToolContext, run_task_sample_command_tool
+from app.tools.errors import SafeToolExecutionError
+
+
 logger = logging.getLogger(__name__)
 
 
@@ -58,6 +71,100 @@ class ChatExecution:
         init=False,
     )
     _command_closed: bool = field(default=False, init=False)
+    task_sample_recovery_store: TaskSampleRecoveryStore | None = None
+    sample_bindings: TaskSampleBindings | None = None
+    sample_scope: TaskSampleRecoveryScope | None = field(default=None, init=False)
+
+    # 延迟读取当前应用所有者：普通无Task聊天不需要Git能力，也不临时创建manager。
+    git_samples_provider: Callable[[], TaskGitSamples] | None = None
+
+    def bind_git_status_tool(self, context: ToolExecutionContext) -> GitStatusExecutor:
+        if (
+            self._command_closed or not isinstance(context, ToolExecutionContext)
+            or context.user_id != self.user_id or context.conversation_id != self.body.session_id
+            or self.git_samples_provider is None
+        ):
+            raise SafeToolExecutionError('task_git_sample_unavailable')
+        try:
+            manager = self.git_samples_provider()
+            adapter = make_git_sample_status_executor(manager)
+        except Exception:  # noqa: BLE001 -- 缺失/关闭应用资源不能降级或公开内部异常。
+            raise SafeToolExecutionError('task_git_sample_unavailable') from None
+        expected_context = context
+
+        def execute(*, context: ToolExecutionContext) -> str:
+            if self._command_closed or context is not expected_context:
+                raise SafeToolExecutionError('task_git_sample_unavailable')
+            # Runtime在线程中调用；短授权事务结束后才进入Git采集。
+            try:
+                current = load_tool_execution_context(
+                    user_id=self.user_id, conversation_id=self.body.session_id,
+                )
+            except Exception:  # noqa: BLE001 -- 会话授权失败只公开固定错误。
+                raise SafeToolExecutionError('workspace_not_accessible') from None
+            if current != expected_context or self._command_closed:
+                raise SafeToolExecutionError('workspace_not_accessible')
+            return adapter(context=context)
+
+        return execute
+
+    async def bind_command_tool(self, context: ToolExecutionContext) -> CommandToolBinding | None:
+        """查询只决定请求能力快照；实际执行仍重新授权并借用，不缓存 ready 为许可。"""
+        if (
+            self._command_closed or not isinstance(context, ToolExecutionContext)
+            or context.user_id != self.user_id or context.conversation_id != self.body.session_id
+            or not isinstance(self.sample_bindings, TaskSampleBindings)
+        ):
+            raise SafeToolExecutionError('command_recovery_unavailable')
+        status = await self.threads.run(
+            self.sample_bindings.read_status, user_id=context.user_id,
+            workspace_id=context.workspace_id, task_id=context.task_id,
+        )
+        if self._command_closed:
+            raise SafeToolExecutionError('command_recovery_unavailable')
+        if status.status == 'missing':
+            return CommandToolBinding(self.execute_command)
+        if status.status != 'ready':
+            return None
+
+        async def execute(*, argv: list[str], working_directory: str = '.') -> str:
+            return await self.execute_task_command(
+                context=context, argv=argv, working_directory=working_directory,
+            )
+        return CommandToolBinding(execute, sample_snapshot=True)
+
+    async def execute_task_command(
+        self, *, context: ToolExecutionContext, argv: list[str], working_directory: str = '.',
+    ) -> str:
+        if (
+            self._command_closed or not isinstance(self.task_sample_recovery_store, TaskSampleRecoveryStore)
+            or self.creation is None or not self.creation.done() or self.creation.cancelled()
+        ):
+            raise SafeToolExecutionError('command_recovery_unavailable')
+        # 先拒绝请求能力建立后可观察的会话迁移；借用内部还会再授权及核对绑定。
+        try:
+            current = await self.threads.run(
+                load_tool_execution_context, user_id=self.user_id, conversation_id=self.body.session_id,
+            )
+        except Exception:  # noqa: BLE001 -- 授权读取失败不能降级到普通命令。
+            raise SafeToolExecutionError('task_command_preparation_unconfirmed') from None
+        if current != context or self._command_closed:
+            raise SafeToolExecutionError('task_command_preparation_unconfirmed')
+        try:
+            run_id = self.creation.result()
+            scope = self.task_sample_recovery_store.acquire(
+                user_id=self.user_id, conversation_id=self.body.session_id, run_id=run_id,
+            )
+        except Exception:  # noqa: BLE001 -- Run 和存储失败仅公开固定错误。
+            raise SafeToolExecutionError('command_recovery_unavailable') from None
+        self.sample_scope = scope
+        return await run_task_sample_command_tool(
+            argv=argv, working_directory=working_directory,
+            context=TaskSampleCommandToolContext(
+                self.user_id, self.body.session_id, run_id,
+                self.task_sample_recovery_store, self.sample_bindings, expected_context=context,
+            ),
+        )
 
     async def start_run(self) -> int:
         if self.creation is not None:
@@ -122,6 +229,8 @@ class ChatExecution:
         """停止新命令，关闭异步资源，再排空线程并整理恢复记录。"""
 
         self._command_closed = True
+        if self.sample_scope is not None:
+            self.sample_scope.journal.close()
         if self.command_scope is not None:
             # 关闭登记不阻止在途命令补齐异常或取消证据。
             self.command_scope.journal.close()
@@ -164,6 +273,9 @@ class ChatExecution:
                     (self.user_id, self.body.session_id),
                     None,
                 )
+
+                if self.sample_scope is not None and self.task_sample_recovery_store is not None:
+                    self.task_sample_recovery_store.close_scope(self.sample_scope)
 
                 # 未确认、取消或仍pending的记录继续由应用存储持有。
                 # 即使请求对象随后回收，恢复身份也不会随之丢失。
@@ -250,6 +362,9 @@ async def require_chat_execution(
                 body=body,
                 threads=threads,
                 command_recovery_store=recovery_store,
+                task_sample_recovery_store=getattr(request.app.state, 'task_sample_recovery_store', None),
+                sample_bindings=get_sample_bindings(),
+                git_samples_provider=lambda: get_git_samples(request),
             )
 
             try:

@@ -250,3 +250,19 @@ def read_owned_proposal_application_status(
         raise WorkspaceNotAccessibleError()
 
     return row
+
+
+def list_owned_file_edit_proposals(session, *, user_id, workspace_id, task_id, before=None):
+    """只投影列表字段；每页查询再次携带项目/任务/会话归属条件。"""
+    query = select(
+        FileEditProposal.id, FileEditProposal.external_id, FileEditProposal.relative_path,
+        FileEditProposal.status, FileEditProposal.application_status, FileEditProposal.diff_truncated,
+    ).join(Task, FileEditProposal.task_id == Task.id).join(Workspace, Task.workspace_id == Workspace.id).join(
+        Conversation, Conversation.task_id == Task.id,
+    ).where(
+        Workspace.user_id == user_id, Workspace.external_id == workspace_id,
+        Task.external_id == task_id, Conversation.user_id == user_id,
+    )
+    if before is not None:
+        query = query.where(FileEditProposal.id < before)
+    return session.execute(query.order_by(FileEditProposal.id.desc()).limit(51)).all()

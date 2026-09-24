@@ -28,7 +28,7 @@ function readPayload(type: string, payload: Record<string, unknown>): Record<str
     }
     // 取消写入的 RUN_ERROR 仅含 reason，不是流协议中的 code/message 分支。
     if (type === 'RUN_CANCELLATION_REQUESTED' || type === 'RUN_ABORTED' ||
-        (type === 'RUN_ERROR' && payload.reason !== undefined)) {
+        (type === 'RUN_ERROR' && payload.reason !== undefined && payload.code === undefined)) {
         if (!['user', 'timeout', 'unknown'].includes(String(payload.reason)) || typeof payload.reason !== 'string') return null;
         return { reason: payload.reason };
     }

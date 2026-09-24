@@ -8,6 +8,11 @@ from app.services.runtime.sandbox.sandbox_execution_policy import (
     confirm_sandbox_execution_policy,
 )
 from app.services.runtime.sandbox.sandbox_identity import SandboxContainerIdentity
+from app.services.runtime.sandbox.sandbox_sample import (
+    SAMPLE_DESTINATION,
+    SandboxSample,
+    confirm_sandbox_sample_source,
+)
 
 
 # 与当前创建规格保持一致。
@@ -58,34 +63,116 @@ def _require_empty_list(
         raise SandboxIsolationPolicyError()
 
 
-def _check_reported_mounts(value: object) -> None:
-    """拒绝挂载摘要中的 bind、volume 和额外目标。"""
+def _check_host_mounts(
+    host: dict,
+    *,
+    sample_source: str | None,
+) -> None:
+    """只接受无挂载，或唯一的样例只读 bind 配置。"""
+
+    if sample_source is None:
+        _require_empty_list(host, "Mounts")
+        return
+
+    mounts = host.get("Mounts")
+    if (
+        not isinstance(mounts, list)
+        or len(mounts) != 1
+        or not isinstance(mounts[0], dict)
+    ):
+        raise SandboxIsolationPolicyError()
+
+    mount = mounts[0]
+
+    # 保守拒绝未审核的额外挂载配置字段。
+    if set(mount) != {
+        "Type",
+        "Source",
+        "Target",
+        "ReadOnly",
+        "BindOptions",
+    }:
+        raise SandboxIsolationPolicyError()
+
+    _require_exact(mount, "Type", "bind")
+    _require_exact(mount, "Source", sample_source)
+    _require_exact(mount, "Target", SAMPLE_DESTINATION)
+    _require_exact(mount, "ReadOnly", True)
+
+    options = mount.get("BindOptions")
+    if not isinstance(options, dict):
+        raise SandboxIsolationPolicyError()
+
+    # 某些版本会显式输出两个默认 False 字段。
+    # 允许缺省或严格 False，不接受其他未知配置。
+    if set(options) - {
+        "Propagation",
+        "NonRecursive",
+        "ReadOnlyNonRecursive",
+        "ReadOnlyForceRecursive",
+    }:
+        raise SandboxIsolationPolicyError()
+
+    _require_exact(options, "Propagation", "rprivate")
+    _require_exact(options, "NonRecursive", True)
+
+    for field in ("ReadOnlyNonRecursive", "ReadOnlyForceRecursive"):
+        if field in options:
+            _require_exact(options, field, False)
+
+
+def _check_reported_mounts(
+    value: object,
+    *,
+    sample_source: str | None = None,
+) -> None:
+    """核对 Docker 报告的来源、目标、权限，并拒绝额外挂载。"""
 
     if not isinstance(value, list):
         raise SandboxIsolationPolicyError()
 
     destinations: set[str] = set()
+    sample_seen = False
 
     for mount in value:
         if not isinstance(mount, dict):
             raise SandboxIsolationPolicyError()
 
         destination = mount.get("Destination")
-
-        # 先收窄类型，再用于集合操作，避免非字符串或缺失值混入。
         if (
             not isinstance(destination, str)
-            or destination not in EXPECTED_TMPFS
             or destination in destinations
-            or mount.get("Type") != "tmpfs"
-            or mount.get("RW") is not True
         ):
             raise SandboxIsolationPolicyError()
 
         destinations.add(destination)
 
-    # created 阶段不能只靠挂载摘要证明 tmpfs 已实际挂载。
-    # 必须同时检查 HostConfig.Tmpfs；摘要中若有条目，只允许指定目标。
+        if destination in EXPECTED_TMPFS:
+            if (
+                mount.get("Type") != "tmpfs"
+                or mount.get("RW") is not True
+            ):
+                raise SandboxIsolationPolicyError()
+            continue
+
+        if sample_source is None or destination != SAMPLE_DESTINATION:
+            raise SandboxIsolationPolicyError()
+
+        if (
+            mount.get("Type") != "bind"
+            or mount.get("Source") != sample_source
+            or mount.get("RW") is not False
+            or mount.get("Propagation") != "rprivate"
+        ):
+            raise SandboxIsolationPolicyError()
+
+        sample_seen = True
+
+    if sample_source is not None and not sample_seen:
+        raise SandboxIsolationPolicyError()
+
+    # created 阶段的 tmpfs 摘要可能尚未完整出现。
+    # 仍由 HostConfig.Tmpfs 精确核对两个固定 tmpfs 配置。
 
 
 def confirm_sandbox_isolation_policy(
@@ -94,8 +181,17 @@ def confirm_sandbox_isolation_policy(
     execution_token: str,
     container_id: str,
     inspect_stdout: str,
+    sample: SandboxSample | None = None,
 ) -> SandboxContainerIdentity:
-    """对同一份响应完成执行配置、隔离和资源配置复核。"""
+    """核对执行、隔离与挂载策略；默认仍禁止任何 bind 挂载。"""
+
+    # 期望来源由服务端持有的样例决定，不能从 inspect 反向采信。
+    # 这也是创建后再次核对宿主目录身份的位置。
+    sample_source = (
+        None
+        if sample is None
+        else confirm_sandbox_sample_source(sample)
+    )
 
     try:
         # 复用严格 JSON、身份、created 状态和执行配置检查。
@@ -142,8 +238,8 @@ def confirm_sandbox_isolation_policy(
         ["no-new-privileges:true"],
     )
 
-    # 禁止额外能力、设备、补充组和其他挂载入口。
-    # Docker 可选列表可能表现为 null 或 []，二者均表示未配置。
+    # Binds 等替代入口继续禁止。
+    # Mounts 单独按“默认无挂载 / 唯一样例挂载”核对。
     for field in (
         "CapAdd",
         "Devices",
@@ -151,10 +247,14 @@ def confirm_sandbox_isolation_policy(
         "DeviceCgroupRules",
         "GroupAdd",
         "Binds",
-        "Mounts",
         "VolumesFrom",
     ):
         _require_empty_list(host, field)
+
+    _check_host_mounts(
+        host,
+        sample_source=sample_source,
+    )
 
     port_bindings = host.get("PortBindings")
     if port_bindings is not None and (
@@ -188,8 +288,10 @@ def confirm_sandbox_isolation_policy(
     # 只读根之外，仅允许当前规格声明的两个 tmpfs 目标。
     # 字典相等还会拒绝额外目标、缺失目标及任意选项变化。
     _require_exact(host, "Tmpfs", EXPECTED_TMPFS)
-    _check_reported_mounts(item.get("Mounts"))
-
+    _check_reported_mounts(
+        item.get("Mounts"),
+        sample_source=sample_source,
+    )
     # 防止镜像配置额外声明卷，避免创建隐式匿名 volume。
     volumes = item["Config"].get("Volumes")
     if volumes is not None and (

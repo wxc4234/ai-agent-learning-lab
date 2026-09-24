@@ -13,7 +13,10 @@ from app.services.runtime.docker.docker_attach_stream import drain_docker_attach
 from app.services.runtime.docker.docker_client import inspect_sandbox_container_by_id, start_sandbox_container
 from app.services.runtime.sandbox.sandbox_exit import SandboxExitResult, confirm_sandbox_exit
 from app.services.runtime.sandbox.sandbox_isolation_policy import confirm_sandbox_isolation_policy
-from app.services.runtime.sandbox.sandbox_spec import SandboxCreateSpec, build_sandbox_create_spec
+from app.services.runtime.sandbox.sandbox_spec import (
+    SandboxCreateSpec, build_sandbox_create_spec, build_sample_sandbox_create_spec,
+)
+from app.services.runtime.sandbox.sandbox_sample import SandboxSample
 from app.services.runtime.sandbox.sandbox_stop import confirm_sandbox_state, stop_and_confirm_sandbox
 
 
@@ -61,10 +64,12 @@ class SandboxExecutionCancelled(asyncio.CancelledError):
 
 
 async def _confirm_created(*, request: CommandRequest, token: str,
-                           container_id: str, spec: SandboxCreateSpec) -> None:
+                           container_id: str, spec: SandboxCreateSpec,
+                           sample: SandboxSample | None = None) -> None:
     text = await inspect_sandbox_container_by_id(container_id=container_id)
     confirm_sandbox_isolation_policy(
         request=request, execution_token=token, container_id=container_id, inspect_stdout=text,
+        sample=sample,
     )
     state = confirm_sandbox_state(container_id=container_id, inspect_stdout=text, spec=spec)
     if state.status != "created":
@@ -111,6 +116,7 @@ async def _settle_stop(*, request: CommandRequest, token: str, container_id: str
 
 async def execute_created_sandbox(
     *, request: CommandRequest, execution_token: str, expected_container_id: str,
+    sample: SandboxSample | None = None,
 ) -> SandboxExecutionResult:
     """内部执行入口；先订阅后启动，不自动重试、重建或删除目标。"""
 
@@ -118,7 +124,15 @@ async def execute_created_sandbox(
         raise TypeError("request 必须是 CommandRequest")
     # 在首次await之前复制和重新校验，避免外部修改argv影响后续身份核对与停止。
     frozen_request = CommandRequest.model_validate(request.model_dump())
-    spec = build_sandbox_create_spec(request=frozen_request, execution_token=execution_token)
+    # 样例只能由可信内部拥有者显式提供；默认分支仍禁止 bind 挂载。
+    # 模型工具入口不接收此参数，也不从请求字段推导宿主来源。
+    spec = (
+        build_sandbox_create_spec(request=frozen_request, execution_token=execution_token)
+        if sample is None
+        else build_sample_sandbox_create_spec(
+            request=frozen_request, execution_token=execution_token, sample=sample,
+        )
+    )
     build_docker_attach_request(container_id=expected_container_id)
     started_at = perf_counter_ns()
     start_attempted = False
@@ -128,7 +142,7 @@ async def execute_created_sandbox(
         async with budget:
             # 在读取任何容器输出之前核对身份及非TTY/隔离策略。
             await _confirm_created(request=frozen_request, token=execution_token,
-                                   container_id=expected_container_id, spec=spec)
+                                   container_id=expected_container_id, spec=spec, sample=sample)
             async with (
                 open_docker_attach(container_id=expected_container_id) as reader,
                 asyncio.TaskGroup() as group,
@@ -139,7 +153,7 @@ async def execute_created_sandbox(
                 await asyncio.sleep(0)
                 # 握手等待期间目标可能变化，启动前再次复核同一完整ID。
                 await _confirm_created(request=frozen_request, token=execution_token,
-                                       container_id=expected_container_id, spec=spec)
+                                       container_id=expected_container_id, spec=spec, sample=sample)
                 if output.done():
                     raise ValueError("启动前attach流已经结束")
                 # 标志放在await之前：响应丢失不证明daemon未执行start。

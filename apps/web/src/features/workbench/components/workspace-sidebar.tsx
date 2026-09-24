@@ -3,7 +3,7 @@
 import WorkbenchIcon from "./workbench-icon";
 import TaskActions from "./task-actions";
 import LoadingPlaceholder from "./loading-placeholder";
-import Link from "next/link";
+import CreateWorkspace from "@/features/workspaces/components/create-workspace";
 import { DropdownMenu } from "radix-ui";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -298,8 +298,10 @@ function ProjectGroup({ project }: { project: WorkspaceListItem }) {
     );
 }
 export default function WorkspaceSidebar() {
+    const [createOpen, setCreateOpen] = useState(false);
     const {
         projects,
+        localMode,
         loading,
         error,
         reload,
@@ -334,11 +336,7 @@ export default function WorkspaceSidebar() {
                 >
                     <WorkbenchIcon name="refresh" />
                 </Button>
-                <Button asChild variant="ghost" size="icon-xs" title="添加项目">
-                    <Link href="/workspaces" aria-label="添加项目">
-                        +
-                    </Link>
-                </Button>
+                <CreateWorkspace localMode={localMode} modal={{ open: createOpen, onOpenChange: setCreateOpen, onCreated: reload }} />
             </div>
             {loading && (
                 <p className="px-2 text-[18px] text-muted-foreground">

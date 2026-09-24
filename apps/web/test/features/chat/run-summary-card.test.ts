@@ -54,18 +54,25 @@ const Card = new Function("React", "createRunSummaryMetrics", "Card",
     props: { summary: CompletedRunSummary; status: "done" | "error" },
 ) => ReactElement;
 
-// 执行父组件真实的条件表达式，覆盖是否渲染及 status 的传递。
+const footerSource = source("../../../src/features/chat/components/run-metrics-footer.tsx");
+const footerFunction = footerSource.statements.find(ts.isFunctionDeclaration);
+assert.ok(footerFunction);
+const Footer = new Function("React", "createRunSummaryMetrics",
+    compile(footerFunction.getText(footerSource).replace(/^export default /, "")) + "\nreturn RunMetricsFooter;",
+)({ createElement }, createRunSummaryMetrics);
+
+// 执行父组件真实条件，检查新底栏保持成功/失败及过期摘要隐藏语义。
 const panelSource = source("../../../src/features/chat/components/chat-panel.tsx");
 let expression: ts.Expression | undefined;
 function visit(node: ts.Node) {
-    if (ts.isJsxExpression(node) && node.expression?.getText(panelSource).includes("<RunSummaryCard")) {
+    if (ts.isJsxExpression(node) && node.expression?.getText(panelSource).includes("<RunMetricsFooter")) {
         expression = node.expression;
     }
     ts.forEachChild(node, visit);
 }
 visit(panelSource);
 assert.ok(expression);
-const renderPanelCard = new Function("React", "RunSummaryCard", "chatState",
+const renderPanelCard = new Function("React", "RunMetricsFooter", "chatState", "restoredSummary = null",
     compile(`const result = ${expression.getText(panelSource)};`) + "\nreturn result;",
 );
 
@@ -77,24 +84,45 @@ for (const status of ["done", "error"] as const) {
         for (const value of ["0 步", "0 ms", "¥0", "暂无数据"]) assert.ok(html.includes(value));
     });
     test(`panel passes ${status} and summary to the card`, () => {
-        const element = renderPanelCard({ createElement }, Card, {
+        const element = renderPanelCard({ createElement }, Footer, {
             ...initialChatState, status, runSummary: summary,
-        }) as ReactElement<{ status: string; summary: CompletedRunSummary }>;
-        assert.equal(element.props.status, status);
+        }) as ReactElement<{ failed: boolean; summary: CompletedRunSummary }>;
+        assert.equal(element.props.failed, status === "error");
         assert.equal(element.props.summary, summary);
     });
 }
 
 for (const status of ["idle", "thinking", "streaming", "done", "aborted", "error"] as const) {
-    test(`panel hides missing summary in ${status}`, () => {
+    test(`panel keeps footer without summary in ${status}`, () => {
         const state: ChatState = { ...initialChatState, status };
-        assert.ok(!renderPanelCard({ createElement }, Card, state));
+        const element = renderPanelCard({ createElement }, Footer, state);
+        assert.equal(element.props.summary, null);
+        assert.ok(renderToStaticMarkup(element).includes("总 Token"));
     });
 }
 for (const status of ["idle", "thinking", "streaming", "aborted"] as const) {
     test(`panel hides stale summary in ${status}`, () => {
-        assert.ok(!renderPanelCard({ createElement }, Card, {
+        const element = renderPanelCard({ createElement }, Footer, {
             ...initialChatState, status, runSummary: summary,
-        }));
+        });
+        assert.equal(element.props.summary, null);
     });
 }
+
+for (const failed of [false, true]) {
+    test(`compact footer preserves known, unknown and failure values: ${failed}`, () => {
+        const html = renderToStaticMarkup(createElement(Footer, { summary, failed }));
+        assert.ok(html.includes('本次运行指标'));
+        for (const value of ['0 步', '0 ms', '¥0', '暂无数据']) assert.ok(html.includes(value));
+        assert.equal(html.includes('运行失败'), failed);
+    });
+}
+
+test('idle footer restores persisted metrics, but new run does not reuse them', () => {
+    const restored = { status: 'done', summary };
+    const idle = renderPanelCard({ createElement }, Footer, initialChatState, restored);
+    assert.equal(idle.props.summary, summary);
+    const busy = renderPanelCard({ createElement }, Footer, { ...initialChatState, status: 'thinking' }, restored);
+    assert.equal(busy.props.summary, null);
+    assert.equal(busy.props.running, true);
+});

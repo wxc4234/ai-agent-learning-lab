@@ -1,6 +1,6 @@
-"""构造 Docker Sandbox 创建参数；不访问 Docker 或文件系统。"""
+"""构造 Sandbox 规格；样例入口额外核对服务端自建来源。"""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 import re
 
 from app.services.runtime.command.command_contracts import CommandRequest
@@ -8,6 +8,11 @@ from app.services.runtime.command.command_environment import (
     build_posix_command_environment,
 )
 
+from app.services.runtime.sandbox.sandbox_sample import (
+    SAMPLE_DESTINATION,
+    SandboxSample,
+    confirm_sandbox_sample_source,
+)
 
 # 只接受上一课实际验收的镜像。
 # 摘要固定内容；允许列表表达服务端是否批准使用该内容。
@@ -124,4 +129,39 @@ def build_sandbox_create_spec(
         container_name=container_name,
         execution_token=execution_token,
         argv=argv,
+    )
+
+
+def build_sample_sandbox_create_spec(
+    *,
+    request: CommandRequest,
+    execution_token: str,
+    sample: SandboxSample,
+) -> SandboxCreateSpec:
+    """在原隔离规格上加入唯一的服务端样例只读挂载。"""
+
+    # 复用镜像、命令、环境、用户、网络及资源策略。
+    # working_directory 仍只允许 "."，容器 WorkingDir 仍为 /tmp。
+    base = build_sandbox_create_spec(
+        request=request,
+        execution_token=execution_token,
+    )
+    source = confirm_sandbox_sample_source(sample)
+
+    mount_argument = (
+        f"--mount=type=bind,source={source},"
+        f"target={SAMPLE_DESTINATION},readonly,"
+        "bind-propagation=rprivate,bind-recursive=disabled"
+    )
+
+    # Docker 选项必须位于镜像之前。
+    # 镜像之后是容器命令参数，不能在末尾随意追加 --mount。
+    image_index = base.argv.index(APPROVED_SANDBOX_IMAGE)
+    return replace(
+        base,
+        argv=(
+            *base.argv[:image_index],
+            mount_argument,
+            *base.argv[image_index:],
+        ),
     )

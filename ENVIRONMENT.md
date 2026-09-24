@@ -99,6 +99,8 @@ Windows：
 
 当前是源码本地版，安装包/自动依赖安装未交付。模型使用云 API 时，选入上下文的片段会发送至用户配置的模型服务。
 
+Git状态采集样例目前仅支持POSIX，固定可执行文件 `/usr/bin/git`，不继承宿主Git配置或PATH。专项从根目录执行 `.venv/bin/python -m pytest apps/api/tests/workspace/git/test_status_capture.py -q`；只在临时目录初始化/准备Git历史并自动清理，不操作项目仓库的暂存、提交或推送，不需要数据库。
+
 ## 5. 定向测试与静态检查
 
 选测时机、授权和范围遵循 [AGENTS.md](AGENTS.md#回归测试范围规则长期有效)。以下为选定单项后的命令示例，不是每课必跑清单；不要默认使用全量 pytest、整个领域脚本或全量 lint。
@@ -124,6 +126,8 @@ node --experimental-strip-types --test test/features/workspaces/task-sample-stat
 pnpm exec eslint src/app/api/_shared/task-sample-status-proxy.ts
 ```
 
+工作台布局交互验收：仓库根目录运行 `BROWSER_APP_MODE=local BROWSER_TEST_SCRIPT=workbench-layout-wait.mjs .venv/bin/python apps/web/test/browser/run-isolated.py`，待服务就绪后浏览器访问 `http://localhost:13000/`。`apps/web/output/playwright/layout/fixture.json` 给出两组临时项目/任务 ID（含提案、空列表），通过侧栏选任务；输入 `[layout]` 触发固定用量回答。此夹具只准备显示状态，不执行真实文件应用。检查完在仓库根运行 `touch apps/web/output/playwright/layout/done`，启动器退出并清理临时服务与隔离数据库；650 秒未结束则超时失败。不连接开发业务数据。
+
 TypeScript/路由契约变化时按影响执行 `pnpm typecheck`；构建只在构建链受影响或交付验收需要时运行 `pnpm build`。开发用 Node 需支持项目现用的 strip-types 参数。
 
 PC 浏览器验收按任务选择现有隔离启动器或组件专项。通用工作台示例，从根目录运行：
@@ -134,7 +138,72 @@ BROWSER_APP_MODE=local BROWSER_TEST_SCRIPT=sample-status-workbench.mjs .venv/bin
 
 Windows 在 PowerShell 分别设置 `$env:BROWSER_APP_MODE`、`$env:BROWSER_TEST_SCRIPT` 后，用 `.\.venv\Scripts\python.exe` 运行同一脚本。浏览器入口按自身夹具要求配置 Playwright/Chrome；`PLAYWRIGHT_MODULE`、`CHROME_EXECUTABLE` 是否支持及其默认值先查对应入口，不把某台电脑的绝对路径写成通用要求。
 
+补丁预览 PC 专项复用同一隔离启动器：
+
+```bash
+BROWSER_APP_MODE=local BROWSER_TEST_SCRIPT=patch-preview-tools.mjs .venv/bin/python apps/web/test/browser/run-isolated.py
+```
+
+同样支持 `PLAYWRIGHT_MODULE`/`CHROME_EXECUTABLE`。模型响应受控，授权读取与预览真实执行，浏览器结束后独立核对运行与零提案；自建临时文件和隔离数据库自动收尾。报告 `evidence.json`、`database-evidence.json` 及截图保存在 `/private/tmp/agent-ui-patch-preview/output/playwright/`，同名产物后次覆盖；当前入口按 macOS 环境验收。
+
+Git 状态 PC 专项：同一隔离启动器使用 `BROWSER_APP_MODE=local BROWSER_TEST_SCRIPT=git-status.mjs`，支持 `PLAYWRIGHT_MODULE` / `CHROME_EXECUTABLE`。夹具在应用生命周期内创建Task与自有Git样例，不开放HTTP登记接口；受控模型须提供ModelUsage以通过既有预算检查。浏览器、独立数据库核对、文件与关闭清理报告写入 `apps/web/output/playwright/git-status/`，同名覆盖；失败时须同时检查服务日志与本轮报告，不能把旧报告当成功证据。
+
+补丁提案 PC 专项：沿用上方命令，将 `BROWSER_TEST_SCRIPT` 改为 `patch-proposal-tools.mjs`。模型受控，保存/授权详情真实执行；专属夹具对 `unconfirmed.txt` 在真实保存后注入确认丢失，启动器独立核对数据库。报告及截图在 `/private/tmp/agent-ui-patch-proposal/output/playwright/`，同名覆盖；临时服务、样例文件和测试库自动清理。
+
+补丁样例应用 PC 联合专项：同一启动器使用 `BROWSER_TEST_SCRIPT=patch-application.mjs`。可信夹具创建四个受限样例；生产工作台保存/审批，临时 `/sample-apply` 页面挂载既有应用组件，历史详情重新查询状态。报告、截图及清理核对在 `/private/tmp/agent-ui-patch-application/output/playwright/`；路径控制文件仅供本地夹具使用。封锁样例的清理由测试进程在HTTP停止并核对非活动状态后完成，不是产品恢复入口。
+
+
+
 验收需要说明 PC 视口、真实请求链、模型/上游模拟边界、文件/数据库证据与资源清理；测试报告和截图沿用对应脚本的 output 目录。Docker 实机专项按当前平台能力单独选择，普通单测不能代替真实隔离证据。
+
+Task 样例命令 PC→真实 Docker 专项（当前 macOS Docker Desktop），从根目录运行：
+
+```bash
+.venv/bin/python apps/web/test/browser/run-task-sample-command.py
+```
+
+先通过 `PLAYWRIGHT_MODULE` 指定可用 Playwright 模块（已可解析时可省略），通过 `CHROME_EXECUTABLE` 指定本机可运行的 Chromium；要求上述 PostgreSQL 权限及本机 Docker/批准镜像。入口复用隔离启动器，模型/标题和取消通知受控，真实执行 Task 快照与命令，删除回执丢失只在夹具注入。每轮独立就绪标记，退出核对 journal 和原文件，显式清理自有资源；异常退出不能据此假定清理成功。截图、`browser-evidence.json` 与 `server-evidence.json` 写入 `tempfile.gettempdir()/agent-task-sample-browser/output/playwright/`，同名文件被下一次验收覆盖，不把这些临时文件当持久恢复存储。
+
+
+样例只读挂载实机专项（当前仅 macOS Docker Desktop），从仓库根目录运行：
+
+```bash
+PYTHONPATH=apps/api .venv/bin/python scripts/verify_sandbox_sample.py
+```
+
+该脚本使用现有批准镜像和固定本机 socket；需允许访问 Docker socket，不自动拉镜像或启动 Docker。它只创建随机标识的自有容器/样例，确认容器缺失后清理来源；失败时保留输出中的 token、完整 ID 和源目录供核对，不能批量删除其他容器或将连接失败当作对象不存在。样例中途创建/部分清理失败也可能保留现场；不得递归盲删。本地聊天已通过 Task 绑定与独立快照接入此挂载入口，普通项目目录仍不开放。
+
+内部样例命令的完整 attach 编排专项，同样从根目录运行：
+
+```bash
+PYTHONPATH=apps/api .venv/bin/python scripts/verify_sandbox_sample_command.py
+```
+
+它执行固定读取、非零退出、大输出、超时/取消与响应丢失注入场景；外部 Docker 操作真实执行，超时预算和故障点只在脚本作用域中调整。正常由服务清理，异常先验证来源仍被保留，再由脚本重核身份并显式收尾。脚本输出每个场景的 token、完整 ID、源路径与清理事实；不要将该测试收尾路径视为生产自动恢复服务。
+
+失败样例命令的只读诊断专项，从根目录运行：
+
+```bash
+PYTHONPATH=apps/api .venv/bin/python scripts/verify_sandbox_sample_reconciliation.py
+```
+
+脚本先构造自有失败现场，再单独观察生命周期/来源变化；观察区间只允许 `container ls/inspect`，比较文件、登记和容器配置前后不变。脚本在区间外显式创建/启动/停止/删除自有目标，包括一次同名替换；诊断函数本身无清理权。异常中断仍须根据输出的 token、ID 和源位置核对现场。
+
+失败样例命令的显式清理专项，从根目录运行：
+
+```bash
+PYTHONPATH=apps/api .venv/bin/python scripts/verify_sandbox_sample_cleanup.py
+```
+
+仅处理本轮拥有者保存的已知完整 ID 与已登记来源。运行中拒绝由脚本单独停止；删除回执丢失/取消先保留来源，再明确调用清理重新确认缺失。脚本输出完整 ID 和释放事实，异常保留定位；未知 ID、部分文件现场不得盲目重试或递归删除。
+
+Task 快照到命令执行的真实 PostgreSQL + Docker 专项，从 `apps/api` 运行：
+
+```bash
+../../.venv/bin/python -m pytest ../../scripts/verify_task_sample_command.py -q -s
+```
+
+脚本复用根测试夹具的独立数据库/私有 schema 和服务端 Task 绑定，真实执行容器；输出每个场景的完整 ID 与清理事实。创建回执丢失场景由脚本独立审计 ID 后显式收尾，产品不会自动接管未知 ID。仅操作本轮自有容器、快照和 Task 样例，不访问开发业务表。
 
 ## 6. 常见问题
 

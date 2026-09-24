@@ -1,5 +1,6 @@
 import asyncio
 import json
+import logging
 from collections.abc import AsyncGenerator
 from datetime import datetime, timezone
 
@@ -46,7 +47,9 @@ from app.services.runtime.agent.tool_execution_context import (
     load_tool_execution_context,
 )
 from app.tools.context import ToolExecutionContext
-from app.tools.registry import CommandExecutor, tools_for_execution
+from app.tools.registry import CommandBindingProvider, CommandExecutor, GitStatusBindingProvider, tools_for_execution
+
+logger = logging.getLogger(__name__)
 
 # 用户身份参与缓存定位；访问缓存前仍检查数据库中的会话归属。
 conversations: dict[
@@ -321,6 +324,8 @@ async def stream_chat_reply(
     execution_threads: ExecutionThreads,
     monitors: list[asyncio.Task[None]],
     command_executor: CommandExecutor | None = None,
+    command_binding_provider: CommandBindingProvider | None = None,
+    git_status_binding_provider: GitStatusBindingProvider | None = None,
 ) -> AsyncGenerator[str, None]:
     """运行 Agent Loop，并逐行返回结构化 NDJSON 事件。"""
 
@@ -367,13 +372,19 @@ async def stream_chat_reply(
 
         # 只有本地模式使用服务端请求绑定的命令入口。
         # tools_for_execution还会要求有效的任务上下文。
+        selected_executor = command_executor if settings.app_mode == "local" else None
+        sample_snapshot = False
+        if tool_context is not None and command_binding_provider is not None:
+            binding = await command_binding_provider(tool_context)
+            selected_executor = None if binding is None else binding.executor
+            sample_snapshot = binding is not None and binding.sample_snapshot
+        git_status_executor = None
+        if tool_context is not None and git_status_binding_provider is not None:
+            git_status_executor = git_status_binding_provider(tool_context)
         tool_definitions = tools_for_execution(
-            context=tool_context,
-            command_executor=(
-                command_executor
-                if settings.app_mode == "local"
-                else None
-            ),
+            context=tool_context, command_executor=selected_executor,
+            sample_snapshot=sample_snapshot,
+            git_status_executor=git_status_executor,
         )
 
         # 展示与执行使用同一份能力快照，不能分别拼接工具列表。
@@ -600,16 +611,19 @@ async def stream_chat_reply(
             error_payload,
         )
 
-    except ModelDecisionError:
+    except ModelDecisionError as exc:
         if not turn_persisted:
             rollback_pending_turn(
                 history,
                 history_checkpoint,
             )
 
+        # 仅记录固定原因及内部 Run ID；不记录正文、工具参数、密钥或隐藏推理。
+        logger.warning("model_decision_rejected run_id=%s reason=%s", run_id, exc.reason)
         error_payload = {
             "code": "invalid_model_decision",
-            "message": "模型返回了无法处理的决策",
+            "message": exc.public_message,
+            "reason": exc.reason,
         }
 
         await execution_threads.run(

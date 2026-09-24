@@ -38,7 +38,8 @@ export function parseFileEditPreview(
     toolName: string,
     raw: string,
 ): FileEditPreviewView | null {
-    if (toolName !== "preview_file_edit") {
+    // 两种只读预览共用公开协议，其他工具不能冒充预览。
+    if (toolName !== "preview_file_edit" && toolName !== "preview_file_patch") {
         return null;
     }
 

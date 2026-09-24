@@ -1,6 +1,8 @@
 """提案审阅、审批与应用状态查询 HTTP 入口。"""
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Query, Request
+from typing import Annotated
+from app.services.workspace.proposals.file_edit_proposal_list import list_task_file_edit_proposals
 from fastapi.responses import JSONResponse
 
 from app.dependencies import CurrentUser
@@ -266,4 +268,16 @@ def read_file_edit_proposal_application_status(
             "task_id": result.task_id,
             "application_status": result.application_status,
         }
+    )
+
+
+@router.get("/{workspace_id}/tasks/{task_id}/file-edit-proposals")
+def read_task_proposals(
+    workspace_id: TaskIdentifier,
+    task_id: TaskIdentifier,
+    current_user: CurrentUser,
+    before: Annotated[int | None, Query(gt=0, le=2147483647)] = None,
+):
+    return list_task_file_edit_proposals(
+        user_id=current_user.id, workspace_id=workspace_id, task_id=task_id, before=before,
     )

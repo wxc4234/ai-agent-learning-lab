@@ -398,7 +398,8 @@ async def stream_agent_loop(
                 tool_name=decision.tool_name,
                 code="invalid_tool_arguments",
                 message="工具参数未通过校验",
-                details=error.json(include_url=False),
+                # 保留字段定位与规则，不把模型原始参数或异常上下文回灌。
+                details=error.json(include_url=False, include_input=False, include_context=False),
             )
             observations.append(error_observation)
             yield ToolCallFailed(observation=error_observation)

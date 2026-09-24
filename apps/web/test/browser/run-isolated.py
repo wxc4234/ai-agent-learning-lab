@@ -75,7 +75,7 @@ try:
             ROOT / "apps/web/src/app/api/auth/login/route.ts",
             web / "app/api/auth/login/route.ts",
         )
-        for route in ("sessions/[sessionId]/execution/recover", "sessions/[sessionId]/execution", "runs/[runId]", "auth/register", "workspaces", "workspaces/[workspaceId]/directory", "workspaces/[workspaceId]/directory/select", "workspaces/[workspaceId]/tasks", "workspaces/[workspaceId]/tasks/[taskId]", "workspaces/[workspaceId]/tasks/[taskId]/messages", "workspaces/[workspaceId]/tasks/[taskId]/runs", "workspaces/[workspaceId]/tasks/[taskId]/sample-status", "workspaces/[workspaceId]/tasks/[taskId]/sample-cleanup-preflight", "workspaces/[workspaceId]/tasks/[taskId]/file-edit-proposals/[proposalId]", "workspaces/[workspaceId]/tasks/[taskId]/file-edit-proposals/[proposalId]/decision", "workspaces/[workspaceId]/tasks/[taskId]/file-edit-proposals/[proposalId]/application-status", "workspaces/[workspaceId]/tasks/[taskId]/title"):
+        for route in ("sessions/[sessionId]/execution/recover", "sessions/[sessionId]/execution", "runs/[runId]", "auth/register", "workspaces", "workspaces/[workspaceId]/directory", "workspaces/[workspaceId]/directory/select", "workspaces/[workspaceId]/tasks", "workspaces/[workspaceId]/tasks/[taskId]", "workspaces/[workspaceId]/tasks/[taskId]/messages", "workspaces/[workspaceId]/tasks/[taskId]/runs", "workspaces/[workspaceId]/tasks/[taskId]/sample-status", "workspaces/[workspaceId]/tasks/[taskId]/sample-cleanup-preflight", "workspaces/[workspaceId]/tasks/[taskId]/file-edit-proposals", "workspaces/[workspaceId]/tasks/[taskId]/file-edit-proposals/[proposalId]", "workspaces/[workspaceId]/tasks/[taskId]/file-edit-proposals/[proposalId]/decision", "workspaces/[workspaceId]/tasks/[taskId]/file-edit-proposals/[proposalId]/apply", "workspaces/[workspaceId]/tasks/[taskId]/file-edit-proposals/[proposalId]/application-status", "workspaces/[workspaceId]/tasks/[taskId]/title"):
             destination = web / "app/api" / route
             destination.mkdir(parents=True, exist_ok=True)
             shutil.copyfile(ROOT / "apps/web/src/app/api" / route / "route.ts", destination / "route.ts")
@@ -126,6 +126,15 @@ try:
             if test_mode == "local" else
             'import Link from "next/link"; import HomePage from "./home-page"; export default function Page() { return <><Link href="/login">登录测试页</Link><HomePage /></>; }'
         )
+        if os.environ.get("BROWSER_TEST_SCRIPT") == "patch-application.mjs":
+            # 仅隔离站点挂载既有独立应用组件，生产工作台保持只读状态边界。
+            (web / "app/sample-apply").mkdir()
+            (web / "app/sample-apply/page.tsx").write_text(
+                'import Panel from "../../features/chat/components/proposal-execution-actions"; '
+                'export default async function Page({searchParams}: {searchParams: Promise<Record<string,string>>}) {'
+                'const p = await searchParams; return <main className="mx-auto max-w-3xl p-6">'
+                '<h1>隔离样例应用验收</h1><Panel workspaceId={p.workspace} taskId={p.task} proposalId={p.proposal}/></main>;}'
+            )
         # 与真实项目保持 src/app 布局，确保 BFF 的相对数据模块导入一致。
         (web / "app").rename(web / "src/app")
         picked_directory = web / "选择的 项目目录"
@@ -242,6 +251,22 @@ try:
                 timeout=720,
                 env=os.environ | browser_fixture | {"AUTH_TEST_BASE_URL": "http://localhost:13000", "BROWSER_APP_MODE": test_mode, "BROWSER_TEST_DIRECTORY": env.get("BROWSER_TEST_DIRECTORY", "")},
             )
+            if os.environ.get("BROWSER_TEST_SCRIPT") == "git-status.mjs":
+                from git_status_model import verify_git_status_rows
+
+                verify_git_status_rows(engine)
+            if os.environ.get("BROWSER_TEST_SCRIPT") == "patch-preview-tools.mjs":
+                from patch_preview_model import verify_patch_preview_rows
+
+                verify_patch_preview_rows(engine)
+            if os.environ.get("BROWSER_TEST_SCRIPT") == "patch-application.mjs":
+                from patch_application_model import verify_patch_application_rows
+
+                verify_patch_application_rows(engine)
+            if os.environ.get("BROWSER_TEST_SCRIPT") == "patch-proposal-tools.mjs":
+                from patch_proposal_model import verify_patch_proposal_rows
+
+                verify_patch_proposal_rows(engine)
             if os.environ.get("BROWSER_TEST_SCRIPT") == "proposal-tools.mjs":
                 from proposal_model import verify_proposal_rows
 

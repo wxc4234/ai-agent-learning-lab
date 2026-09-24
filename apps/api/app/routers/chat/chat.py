@@ -62,7 +62,8 @@ async def chat_stream(
         execution_threads=execution.threads,
         monitors=execution.monitors,
         # 绑定到当前请求；Run身份与恢复存储由ChatExecution持有。
-        command_executor=execution.execute_command,
+        command_binding_provider=execution.bind_command_tool,
+        git_status_binding_provider=execution.bind_git_status_tool,
     )
     return StreamingResponse(
         execution.stream,

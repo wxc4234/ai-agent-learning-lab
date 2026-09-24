@@ -52,9 +52,9 @@ export default function ToolResult({
 
         if (toolName === "run_command") {
             formatMessage = "命令结果格式未识别，显示原始文本";
-        } else if (toolName === "create_file_edit_proposal") {
+        } else if (toolName === "create_file_edit_proposal" || toolName === "create_file_patch_proposal") {
             formatMessage = "提案回执格式未识别，显示原始文本";
-        } else if (toolName === "preview_file_edit") {
+        } else if (toolName === "preview_file_edit" || toolName === "preview_file_patch") {
             formatMessage = "预览结果格式未识别，显示原始文本";
         }
 

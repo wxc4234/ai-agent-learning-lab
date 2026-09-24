@@ -46,10 +46,13 @@ function EventContent({ event, taskScope }: {
                 return typeof value === 'string' && value.length > 0 ? (
                     <div key={field}>
                         <p className="text-muted-foreground">{label}</p>
-                        {/* 仅成功提案接入审批；范围来自当前任务，不能信任历史结果中的归属字段。 */}
+                        {/* 预览与提案复用结果卡片；审批仍仅属于提案，范围来自当前任务。 */}
                         {field === 'result'
                             && event.event_type === 'TOOL_CALL_RESULT'
-                            && payload.tool_name === 'create_file_edit_proposal' ? (
+                            && (payload.tool_name === 'create_file_edit_proposal'
+                                || payload.tool_name === 'create_file_patch_proposal'
+                                || payload.tool_name === 'preview_file_edit'
+                                || payload.tool_name === 'preview_file_patch') ? (
                             <ToolResult
                                 toolName={payload.tool_name}
                                 result={value}

@@ -24,7 +24,9 @@ import LoadingPlaceholder from "@/features/workbench/components/loading-placehol
 import TaskRunPanel from '@/features/workbench/components/task-run-panel';
 import ConversationExecutionPanel from '@/features/workbench/components/conversation-execution-panel';
 import ToolResult from "./tool-result";
-import RunSummaryCard from "./run-summary-card";
+import { useRestoredRunSummary } from "@/features/workbench/use-restored-run-summary";
+import RunMetricsFooter from "./run-metrics-footer";
+import TaskChangesPanel from "@/features/workbench/components/task-changes-panel";
 import MarkdownMessage from "./markdown-message";
 import TaskSampleStatusPanel from "@/features/workbench/components/task-sample-status-panel";
 import TaskSampleCleanupPreflightPanel from "@/features/workbench/components/task-sample-cleanup-preflight-panel";
@@ -133,6 +135,8 @@ function TaskChat() {
         savedIntent.current?.prompt ?? "",
     );
     const [chatState, dispatch] = useReducer(chatReducer, initialChatState);
+    const restoredMetrics = useRestoredRunSummary(initialTask.current, chatState.status === "idle");
+    const restoredSummary = restoredMetrics.summary;
     const [activeRunId, setActiveRunId] = useState<string | null>(null);
     const [cancellationNotice, setCancellationNotice] = useState<string | null>(
         null,
@@ -574,7 +578,17 @@ function TaskChat() {
     return (
         <>
             <WorkbenchDetails>
-                <div className="space-y-4">
+                {workbench.localMode && workbench.selection?.task ? (
+                    <TaskChangesPanel
+                        key={`${workbench.selection.workspace.external_id}:${workbench.selection.task.external_id}`}
+                        workspaceId={workbench.selection.workspace.external_id}
+                        taskId={workbench.selection.task.external_id}
+                        refreshKey={`${activeRunId}:${chatState.status}:${chatState.tools.filter(tool => tool.result).length}`}
+                    />
+                ) : <p className="text-sm text-muted-foreground">选择任务后查看文件改动。</p>}
+                <details className="mt-6 border-t border-border pt-4">
+                    <summary className="cursor-pointer text-sm text-muted-foreground">运行记录与诊断</summary>
+                    <div className="mt-4 space-y-4">
                     <section className="pb-1">
                         <h3 className="text-base font-medium">当前运行</h3>
 
@@ -621,6 +635,7 @@ function TaskChat() {
                                                           ? (
                                                               tool.toolName === "run_command"
                                                               || tool.toolName === "preview_file_edit"
+                                                              || tool.toolName === "preview_file_patch"
                                                                   ? "调用完成"
                                                                   : "成功"
                                                           )
@@ -674,14 +689,6 @@ function TaskChat() {
                         </section>
                     )}
 
-                    {(chatState.status === "done" ||
-                        chatState.status === "error") &&
-                        chatState.runSummary !== null && (
-                            <RunSummaryCard
-                                summary={chatState.runSummary}
-                                status={chatState.status}
-                            />
-                        )}
 
                     {workbench.localMode &&
                         workbench.rightOpen &&
@@ -722,7 +729,8 @@ function TaskChat() {
                                 />
                             </>
                         )}
-                </div>
+                    </div>
+                </details>
             </WorkbenchDetails>
             <div
                 className={`flex min-h-0 flex-1 flex-col ${emptyConversation ? "justify-center overflow-y-auto pb-[8vh]" : ""}`}
@@ -731,9 +739,9 @@ function TaskChat() {
                 <section
                     aria-label="对话内容"
                     tabIndex={0}
-                    className={`${emptyConversation ? "shrink-0 px-6 pt-8 pb-6" : "min-h-0 flex-1 overflow-y-auto overscroll-contain px-6 py-8"} outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring`}
+                    className={`${emptyConversation ? "shrink-0 px-6 pt-8 pb-6" : "min-h-0 flex-1 overflow-y-auto overscroll-contain px-6 py-6"} outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring`}
                 >
-                    <div className="mx-auto w-full max-w-3xl space-y-8">
+                    <div className="mx-auto w-full max-w-[920px] space-y-6">
                         {historyLoading && (
                             <LoadingPlaceholder label="正在读取对话" />
                         )}
@@ -762,7 +770,7 @@ function TaskChat() {
                                 }
                             >
                                 {message.role === "user" ? (
-                                    <p className="max-w-[85%] whitespace-pre-wrap break-words rounded-2xl bg-muted px-4 py-3 text-sm">
+                                    <p className="max-w-[85%] whitespace-pre-wrap break-words rounded-2xl bg-[#edf3ff] px-4 py-2.5 text-sm leading-6 dark:bg-muted">
                                         {message.content}
                                     </p>
                                 ) : (
@@ -772,7 +780,7 @@ function TaskChat() {
                         ))}
                         {chatState.lastPrompt ? (
                             <div className="flex justify-end">
-                                <div className="max-w-[85%] rounded-2xl bg-[#edf3fa] px-4 py-3 text-sm dark:bg-muted">
+                                <div className="max-w-[85%] rounded-2xl bg-[#edf3ff] px-4 py-2.5 text-sm leading-6 dark:bg-muted">
                                     <p className="whitespace-pre-wrap break-words">
                                         {chatState.lastPrompt}
                                     </p>
@@ -832,7 +840,7 @@ function TaskChat() {
                         )}
                         {chatState.lastPrompt && (
                             <section aria-label="AI 回复">
-                                <h2 className="mb-3 text-xs font-medium text-muted-foreground">
+                                <h2 className="sr-only">
                                     Agent
                                 </h2>
 
@@ -870,11 +878,11 @@ function TaskChat() {
                 </section>
 
                 <div
-                    className={`shrink-0 px-6 ${emptyConversation ? "pb-8" : "pb-5 pt-3"}`}
+                    className={`shrink-0 px-6 ${emptyConversation ? "pb-8" : "pb-3 pt-3"}`}
                 >
                     <form
                         onSubmit={handleSubmit}
-                        className="mx-auto w-full max-w-3xl rounded-2xl border border-border/80 bg-card p-3 shadow-[0_4px_24px_-8px_rgba(0,0,0,0.12)] transition-shadow focus-within:border-foreground/25 focus-within:shadow-md"
+                        className="mx-auto w-full max-w-[960px] rounded-[22px] border border-border/60 bg-card p-2 shadow-[0_4px_24px_rgba(0,0,0,0.04)] transition-shadow focus-within:border-foreground/20 focus-within:shadow-[0_4px_24px_rgba(0,0,0,0.07)]"
                     >
                         <Label htmlFor="prompt" className="sr-only">
                             你的问题
@@ -906,17 +914,17 @@ function TaskChat() {
                             }
                             onChange={(event) => setPrompt(event.target.value)}
                             placeholder="描述问题或任务…"
-                            className="min-h-24 max-h-48 resize-y border-0 bg-transparent px-2 py-2 text-[18px] shadow-none focus-visible:ring-0"
+                            className="min-h-12 max-h-48 resize-y border-0 bg-transparent px-2 py-2 text-sm leading-6 shadow-none focus-visible:ring-0"
                         />
 
-                        <div className="mt-2 flex flex-wrap items-center gap-2">
+                        <div className="mt-1 flex flex-wrap items-center gap-2">
                             <span
                                 title={workbench.selection?.workspace.name}
-                                className="mr-auto max-w-[50%] truncate rounded-md bg-muted/60 px-2 py-1 text-xs text-muted-foreground"
+                                className="mr-auto max-w-[50%] truncate rounded-md px-2 py-1 text-xs text-muted-foreground"
                             >
                                 {workbench.selection?.workspace.name ?? "对话"}
                             </span>
-                            <span className="hidden text-[18px] text-muted-foreground/70 sm:inline">
+                            <span className="hidden text-xs text-muted-foreground/70 sm:inline">
                                 Enter 发送 · Shift+Enter 换行
                             </span>
                             {isBusy && (
@@ -969,12 +977,20 @@ function TaskChat() {
                                           ? "生成中…"
                                           : "发送"
                                 }
-                                className="rounded-full bg-foreground text-background hover:bg-foreground/85 disabled:opacity-25"
+                                className="rounded-full bg-[#527fe8] text-white hover:bg-[#416ed8] disabled:bg-[#b5c9fa] disabled:opacity-100 dark:disabled:bg-muted"
                             >
                                 <WorkbenchIcon name="send" />
                             </Button>
                         </div>
                     </form>
+                    {restoredMetrics.failed && <button type="button" onClick={restoredMetrics.retry} className="mx-auto mt-1 block text-xs text-muted-foreground underline">指标读取失败，点击重试</button>}
+                    {(
+                        <RunMetricsFooter
+                            summary={chatState.status === "done" || chatState.status === "error" ? chatState.runSummary : chatState.status === "idle" ? restoredSummary?.summary ?? null : null}
+                            failed={chatState.status === "error" || (chatState.status === "idle" && restoredSummary?.status === "error")}
+                            running={chatState.status === "thinking" || chatState.status === "streaming"}
+                        />
+                    )}
                 </div>
             </div>
         </>

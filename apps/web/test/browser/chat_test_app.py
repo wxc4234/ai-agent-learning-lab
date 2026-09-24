@@ -15,12 +15,38 @@ from app.services.runtime.agent.agent_runtime import FinalAnswer, ModelUsage, To
 class BrowserDecisionMaker:
     def __init__(self, **kwargs):
         self.prompt = str(kwargs.get("messages", ""))
+        if "[task-sample-" in self.prompt:
+            command = next(tool for tool in kwargs['tool_definitions'] if tool.name == 'run_command')
+            assert '独立快照' in command.description
+            assert set(command.arguments_model.model_json_schema()['properties']) == {'argv', 'working_directory'}
 
     async def __call__(self, observations):
+        if "[layout]" in self.prompt:
+            return FinalAnswer(content="布局验收完成，未修改文件。\n\n### 代码与文件\n\n- 阅读代码、搜索符号与文本\n- 审查修改提案，区分批准与应用状态\n- 查看本次运行的 Token 与耗时\n\n### 使用方式\n\n描述你要完成的任务，例如：`检查当前项目结构`。\n\n```python\nprint(\"Hello, Agent\")\n```\n\n长回复保持清晰的段落间距，代码块独立滚动。", model_usage=ModelUsage(input_tokens=20, output_tokens=30, total_tokens=50))
+        if "[git-status]" in self.prompt:
+            from git_status_model import git_status_decision
+
+            return git_status_decision(observations)
+        if "[task-sample-" in self.prompt:
+            from task_sample_command_model import sample_command_decision
+
+            return sample_command_decision(self.prompt, observations)
+        if "[patch-apply-" in self.prompt:
+            from patch_application_model import patch_application_decision
+
+            return patch_application_decision(self.prompt, observations)
+        if "[patch-proposal-" in self.prompt:
+            from patch_proposal_model import patch_proposal_decision
+
+            return patch_proposal_decision(self.prompt, observations)
         if "[proposal-" in self.prompt:
             from proposal_model import proposal_decision
 
             return proposal_decision(self.prompt, observations)
+        if "[patch-preview-" in self.prompt:
+            from patch_preview_model import patch_preview_decision
+
+            return patch_preview_decision(self.prompt, observations)
         if "[preview-" in self.prompt:
             from preview_model import preview_decision
 
@@ -104,3 +130,38 @@ if os.environ.get("BROWSER_TEST_SCRIPT") == "command-tools.mjs":
     from command_model import install_command_fixture
 
     install_command_fixture(app)
+
+
+if os.environ.get("BROWSER_TEST_SCRIPT") == "task-sample-command.mjs":
+    from task_sample_command_model import install_sample_command_fixture
+
+    install_sample_command_fixture(app)
+
+# 只在专属隔离浏览器场景中注入真实提交后的确认丢失。
+if os.environ.get("BROWSER_TEST_SCRIPT") == "patch-proposal-tools.mjs":
+    from app.tools import create_file_patch_proposal as patch_adapter
+
+    _save_patch_proposal = patch_adapter.create_task_file_patch_proposal
+
+    def _save_with_confirmation_fault(**kwargs):
+        result = _save_patch_proposal(**kwargs)
+        if kwargs["relative_path"] == "unconfirmed.txt":
+            raise RuntimeError("injected confirmation loss")
+        return result
+
+    patch_adapter.create_task_file_patch_proposal = _save_with_confirmation_fault
+
+if os.environ.get("BROWSER_TEST_SCRIPT") == "patch-application.mjs":
+    from patch_application_model import install_patch_application_fixture
+
+    install_patch_application_fixture(app)
+
+if os.environ.get("BROWSER_TEST_SCRIPT") == "git-status.mjs":
+    from git_status_model import install_git_status_fixture
+
+    install_git_status_fixture(app)
+
+if os.environ.get("BROWSER_TEST_SCRIPT") == "workbench-layout-wait.mjs":
+    from workbench_layout_fixture import install_layout_fixture
+
+    install_layout_fixture(app)

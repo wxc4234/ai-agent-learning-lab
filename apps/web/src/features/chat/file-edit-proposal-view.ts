@@ -57,7 +57,7 @@ export function parseFileEditProposal(
     toolName: string,
     raw: string,
 ): FileEditProposalView | null {
-    if (toolName !== "create_file_edit_proposal") {
+    if (toolName !== "create_file_edit_proposal" && toolName !== "create_file_patch_proposal") {
         return null;
     }
 

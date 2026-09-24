@@ -1,5 +1,6 @@
 """生成、保存与授权查询待审批文件修改提案，不执行文件写入。"""
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime
 from hashlib import sha256
@@ -12,8 +13,10 @@ from app.repositories.workspace.file_edit_proposal_repository import (
 )
 from app.services.tasks.task_workspace import owned_task
 from app.services.workspace.edits.workspace_file_preview import (
+    WorkspaceFileEditPreview,
     preview_task_file_replacement,
 )
+from app.services.workspace.edits.workspace_patch_preview import preview_task_file_patch
 from app.services.workspace.directory.workspace_path import WorkspacePathError
 
 
@@ -52,6 +55,54 @@ def create_task_file_edit_proposal(
 ) -> CreatedFileEditProposal:
     """复制归属快照、生成预览，再重新授权并提交待审批提案。"""
 
+    return _create_task_file_proposal(
+        user_id=user_id,
+        workspace_id=workspace_id,
+        task_id=task_id,
+        build_preview=lambda: preview_task_file_replacement(
+            user_id=user_id,
+            workspace_id=workspace_id,
+            task_id=task_id,
+            relative_path=relative_path,
+            old_text=old_text,
+            new_text=new_text,
+        ),
+    )
+
+
+def create_task_file_patch_proposal(
+    *,
+    user_id: int,
+    workspace_id: str,
+    task_id: str,
+    relative_path: str,
+    patch: str,
+) -> CreatedFileEditProposal:
+    """把授权补丁候选保存为既有 pending 提案，不批准或写入文件。"""
+
+    return _create_task_file_proposal(
+        user_id=user_id,
+        workspace_id=workspace_id,
+        task_id=task_id,
+        build_preview=lambda: preview_task_file_patch(
+            user_id=user_id,
+            workspace_id=workspace_id,
+            task_id=task_id,
+            relative_path=relative_path,
+            patch=patch,
+        ),
+    )
+
+
+def _create_task_file_proposal(
+    *,
+    user_id: int,
+    workspace_id: str,
+    task_id: str,
+    build_preview: Callable[[], WorkspaceFileEditPreview],
+) -> CreatedFileEditProposal:
+    """两种内部预览共用事务；调用者不能注入模型提供的候选或回调。"""
+
     with SessionLocal() as session:
         task, _ = owned_task(
             session,
@@ -70,14 +121,7 @@ def create_task_file_edit_proposal(
             "当前任务所属项目尚未绑定本地目录",
         )
 
-    source = preview_task_file_replacement(
-        user_id=user_id,
-        workspace_id=workspace_id,
-        task_id=task_id,
-        relative_path=relative_path,
-        old_text=old_text,
-        new_text=new_text,
-    )
+    source = build_preview()
 
     proposed_sha256 = sha256(
         source.preview.updated_content.encode("utf-8")
@@ -125,7 +169,8 @@ def create_task_file_edit_proposal(
             created_at=proposal.created_at,
         )
 
-    # 必须退出begin并成功提交后才能返回；提交失败不返回成功结果。
+    # 必须退出begin并收到提交确认后才能返回；确认异常不等于未保存。
+    # 异常交给调用方处理，不在这里自动重试，以免重复创建提案。
     return result
 
 

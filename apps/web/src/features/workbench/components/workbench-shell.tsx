@@ -59,7 +59,7 @@ export default function WorkbenchShell({
         <DetailsTarget.Provider value={detailsTarget}>
             <div
                 ref={containerRef}
-                className={`grid h-dvh min-h-0 overflow-hidden bg-white text-foreground dark:bg-background ${dragging ? "cursor-col-resize select-none" : ""}`}
+                className={`grid h-dvh min-h-0 overflow-hidden bg-white text-sm text-foreground dark:bg-background ${dragging ? "cursor-col-resize select-none" : ""}`}
                 style={{
                     // 三栏显式指定列位置，隐藏左栏后中栏仍留在第二列。
                     // 中栏始终保留同一个节点，只改变两侧宽度。
@@ -75,7 +75,7 @@ export default function WorkbenchShell({
                     id="workbench-navigation"
                     aria-label="工作台导航"
                     hidden={!leftOpen}
-                    className="col-start-1 row-start-1 min-h-0 overflow-y-auto border-r border-black/5 bg-[#f0f2eb] dark:border-border dark:bg-card"
+                    className="col-start-1 row-start-1 min-h-0 overflow-y-auto border-r border-black/5 bg-[#f7f8fa] dark:border-border dark:bg-card"
                 >
                     <div className="flex min-h-full flex-col px-3 py-3">
                         <p className="px-2 py-3 text-base font-semibold">
@@ -134,7 +134,7 @@ export default function WorkbenchShell({
 
                 <aside
                     id="workbench-details"
-                    aria-label="运行详情"
+                    aria-label="文件改动"
                     hidden={!rightOpen}
                     className={`relative col-start-3 row-start-1 ${rightOpen ? "flex" : "hidden"} min-h-0 min-w-0 flex-col border-l border-border/60 bg-muted/10`}
                 >
@@ -177,8 +177,8 @@ export default function WorkbenchShell({
                             if (next !== null) { event.preventDefault(); resize(next); }
                         }}
                     />
-                    <h2 className="flex h-14 shrink-0 items-center border-b border-border/50 px-5 text-base font-medium">
-                        运行详情
+                    <h2 className="flex h-14 shrink-0 items-center border-b border-border/50 px-5 text-sm font-medium">
+                        文件改动
                     </h2>
                     {/* 滚动内容与拖动边界分开，改变宽度不重建当前聊天或详情。 */}
                     <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-5">

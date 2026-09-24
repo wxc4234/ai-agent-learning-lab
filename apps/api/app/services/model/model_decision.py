@@ -3,6 +3,7 @@
 import json
 from collections.abc import Sequence
 from time import perf_counter_ns
+from typing import ClassVar
 from openai import AsyncOpenAI
 from openai.types.chat import (
     ChatCompletion,
@@ -26,11 +27,32 @@ from app.tools.registry import ToolDefinition, model_tools_for_context
 DEFAULT_SYSTEM_PROMPT = """你是一个可以使用工具解决问题的 AI 助手。
 需要外部计算或实时信息时，请调用提供的工具；收到工具结果后再给出最终回答。
 当前运行时每轮只支持调用一个工具，不要在同一条消息中请求多个工具。
+用户要求继续时，先参考消息中已提供的同一会话历史，不要笼统声称无法访问历史。
+历史可能被裁剪或不包含失败轮次；确实缺少问题时，明确指出缺少哪部分内容。
+用户询问当前仓库的代码、文件或 session 实现时，优先使用已提供的文件查询工具核实。
+只依据当前工具结果说明能力，不能声称能访问其他会话或未授权目录。
 如果工具返回错误，请根据错误修正参数、改用其他方式，或向用户解释无法完成的原因。"""
 
 
 class ModelDecisionError(RuntimeError):
-    """模型返回了当前 Runtime 无法解释的响应。"""
+    """内部诊断与公开错误分离，禁止把原始模型内容带到浏览器。"""
+
+    MESSAGES: ClassVar[dict[str, str]] = {
+        "multiple_tool_calls": "模型一次请求了多个工具，当前仅支持逐个执行。请重新发送原问题；本次未执行这批工具。",
+        "empty_response": "模型未返回有效回答或工具调用。请重新发送原问题。",
+        "missing_choice": "模型返回了空响应。请重新发送原问题。",
+        "incomplete_response": "模型响应被截断，未采用不完整回答或执行其中的工具。请缩小问题范围后重试。",
+        "unsupported_tool_type": "模型返回了不支持的工具类型，本次未执行该工具。",
+        "history_mismatch": "本次工具结果上下文不一致，运行已停止。请重新发送原问题。",
+        "invalid_response": "模型响应格式异常，运行已停止。请重新发送原问题。",
+    }
+
+    def __init__(self, message: str, *, reason: str = "invalid_response") -> None:
+        super().__init__(message)
+        # 只允许固定原因，不能把供应商返回值当作公开错误或日志字段。
+        self.reason = reason if reason in self.MESSAGES else "invalid_response"
+        self.public_message = self.MESSAGES[self.reason]
+
 
 
 class DeepSeekDecisionMaker:
@@ -108,6 +130,8 @@ class DeepSeekDecisionMaker:
             messages=self._messages,
             tools=self._tools,
             stream=False,
+            # 与单工具 Runtime 一致；供应商仍可能违约，响应边界继续严格检查。
+            parallel_tool_calls=False,
             extra_body={
                 "thinking": {
                     "type": "disabled",
@@ -122,9 +146,12 @@ class DeepSeekDecisionMaker:
         model_usage = self._extract_model_usage(response)
 
         if not response.choices:
-            raise ModelDecisionError("模型响应中没有可用的 choice")
+            raise ModelDecisionError("模型响应中没有可用的 choice", reason="missing_choice")
 
-        message = response.choices[0].message
+        choice = response.choices[0]
+        if getattr(choice, "finish_reason", None) in {"length", "content_filter"}:
+            raise ModelDecisionError("模型响应未完整结束", reason="incomplete_response")
+        message = choice.message
         tool_calls = message.tool_calls or []
 
         if len(tool_calls) > 1:
@@ -132,7 +159,8 @@ class DeepSeekDecisionMaker:
             # assistant 消息，否则下一次模型请求的上下文将不合法。
             raise ModelDecisionError(
                 "当前 Agent Runtime 每轮只支持一个工具调用，"
-                f"但模型一次返回了 {len(tool_calls)} 个"
+                f"但模型一次返回了 {len(tool_calls)} 个",
+                reason="multiple_tool_calls",
             )
 
         if tool_calls:
@@ -140,7 +168,8 @@ class DeepSeekDecisionMaker:
 
             if tool_call.type != "function":
                 raise ModelDecisionError(
-                    f"当前 Agent Runtime 不支持工具类型：{tool_call.type}"
+                    "当前 Agent Runtime 不支持该工具类型",
+                    reason="unsupported_tool_type",
                 )
 
             assistant_message: ChatCompletionAssistantMessageParam = {
@@ -170,8 +199,8 @@ class DeepSeekDecisionMaker:
                 model_duration_ms=model_duration_ms,
             )
 
-        if not message.content:
-            raise ModelDecisionError("模型既没有请求工具，也没有返回最终文本")
+        if not message.content or not message.content.strip():
+            raise ModelDecisionError("模型既没有请求工具，也没有返回最终文本", reason="empty_response")
 
         self._messages.append(
             {
@@ -218,7 +247,7 @@ class DeepSeekDecisionMaker:
         processed_count = len(self._processed_observations)
 
         if observation[:processed_count] != self._processed_observations:
-            raise ModelDecisionError("Agent Observation 历史发生倒退或改写")
+            raise ModelDecisionError("Agent Observation 历史发生倒退或改写", reason="history_mismatch")
 
         new_observation = observation[processed_count:]
 

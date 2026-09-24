@@ -22,16 +22,20 @@ from app.services.runtime.execution.run_cancellation import close_cancellation_b
 from app.services.runtime.execution.command_recovery_store import (
     CommandRecoveryStore,
 )
+from app.services.runtime.execution.task_sample_recovery_store import TaskSampleRecoveryStore
+from app.services.workspace.git.application_samples import start_git_samples, stop_git_samples
 
 
 @asynccontextmanager
 async def lifespan(application: FastAPI) -> AsyncGenerator[None, None]:
     # 数据库准备完成后再创建应用级资源，每次启动使用独立实例。
     await asyncio.to_thread(check_database_ready)
+    start_git_samples(application)
     application.state.execution_budget = ExecutionBudget(
         capacity=settings.agent_max_concurrent_executions,
     )
     application.state.command_recovery_store = CommandRecoveryStore()
+    application.state.task_sample_recovery_store = TaskSampleRecoveryStore()
 
     try:
         yield
@@ -39,10 +43,14 @@ async def lifespan(application: FastAPI) -> AsyncGenerator[None, None]:
         try:
             await close_cancellation_broker()
         finally:
-            # 本课仅内存保存，应用退出不等于容器已经清理。
-            # 这里释放Python引用，不执行猜测性Docker删除。
-            del application.state.command_recovery_store
-            del application.state.execution_budget
+            try:
+                await stop_git_samples(application)
+            finally:
+                # 恢复记录只封闭内存登记，不推断Docker已清理；Git关闭失败也须收尾。
+                application.state.task_sample_recovery_store.close()
+                del application.state.task_sample_recovery_store
+                del application.state.command_recovery_store
+                del application.state.execution_budget
 
 
 # 将生命周期交给 FastAPI，确保启动和关闭资源的时机集中管理。
