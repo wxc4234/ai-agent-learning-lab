@@ -3,8 +3,9 @@
 import asyncio
 from collections.abc import AsyncIterator, Awaitable, Callable, Sequence
 from dataclasses import dataclass, field
+from contextlib import aclosing
 from time import perf_counter_ns
-from typing import Literal, TypeAlias
+from typing import Literal, TypeAlias, Protocol, runtime_checkable
 
 from pydantic import ValidationError
 
@@ -116,6 +117,19 @@ class ToolErrorObservation:
 
 AgentObservation: TypeAlias = ToolObservation | ToolErrorObservation
 
+@dataclass(frozen=True, slots=True)
+class ModelTextDelta:
+    """模型公开文本片段；不是完整答案，也不包含隐藏推理或工具参数。"""
+
+    content: str
+    new_message: bool = False
+
+
+@runtime_checkable
+class StreamingDecisionMaker(Protocol):
+    def stream_decisions(self, observations: tuple[AgentObservation, ...]) -> AsyncIterator[ModelTextDelta | AgentDecision]: ...
+
+
 
 @dataclass(frozen=True, slots=True)
 class AgentLoopResult:
@@ -185,7 +199,7 @@ class AgentLoopCompleted:
 
 
 AgentLoopEvent: TypeAlias = (
-    ToolCallStarted | ToolCallSucceeded | ToolCallFailed | AgentLoopCompleted
+    ToolCallStarted | ToolCallSucceeded | ToolCallFailed | AgentLoopCompleted | ModelTextDelta
 )
 
 
@@ -298,7 +312,23 @@ async def stream_agent_loop(
     model_duration_is_complete = True
 
     for step_number in range(1, max_steps + 1):
-        decision = await decide(tuple(observations))
+        if isinstance(decide, StreamingDecisionMaker):
+            decision = None
+            # 显式关闭嵌套生成器，取消/客户端离开时及时释放模型 HTTP 流。
+            async with aclosing(decide.stream_decisions(tuple(observations))) as stream:
+                async for part in stream:
+                    if decision is not None:
+                        raise RuntimeError("决策完成后仍收到模型事件")
+                    if isinstance(part, ModelTextDelta):
+                        yield part
+                    elif isinstance(part, (ToolAction, FinalAnswer)):
+                        decision = part
+                    else:
+                        raise TypeError("未知模型流事件")
+            if decision is None:
+                raise RuntimeError("模型流缺少完整决策")
+        else:
+            decision = await decide(tuple(observations))
 
         # 只要有一步缺失 usage，最终就不能声称拥有完整总量。
         if decision.model_usage is None:

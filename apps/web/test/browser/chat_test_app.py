@@ -20,6 +20,14 @@ class BrowserDecisionMaker:
             assert '独立快照' in command.description
             assert set(command.arguments_model.model_json_schema()['properties']) == {'argv', 'working_directory'}
 
+    async def stream_decisions(self, observations):
+        if "[typewriter]" in self.prompt:
+            from typewriter_model import stream_typewriter
+            async for part in stream_typewriter():
+                yield part
+        else:
+            yield await self(observations)
+
     async def __call__(self, observations):
         if "[layout]" in self.prompt:
             return FinalAnswer(content="布局验收完成，未修改文件。\n\n### 代码与文件\n\n- 阅读代码、搜索符号与文本\n- 审查修改提案，区分批准与应用状态\n- 查看本次运行的 Token 与耗时\n\n### 使用方式\n\n描述你要完成的任务，例如：`检查当前项目结构`。\n\n```python\nprint(\"Hello, Agent\")\n```\n\n长回复保持清晰的段落间距，代码块独立滚动。", model_usage=ModelUsage(input_tokens=20, output_tokens=30, total_tokens=50))

@@ -2,6 +2,7 @@
 
 import {
     useEffect,
+    useLayoutEffect,
     useReducer,
     useRef,
     useState,
@@ -115,6 +116,31 @@ function TaskChat() {
     const initialTask = useRef(workbench.selection?.task ?? null);
     const currentTaskRef = useRef(initialTask.current);
     const [history, setHistory] = useState<HistoryMessage[]>([]);
+    const conversationRef = useRef<HTMLElement | null>(null);
+    const currentTurnRef = useRef<HTMLDivElement | null>(null);
+    const [turnPositionVersion, positionNewTurn] = useReducer(value => value + 1, 0);
+
+    useLayoutEffect(() => {
+        const viewport = conversationRef.current;
+        const turn = currentTurnRef.current;
+        if (!viewport || !turn || !turnPositionVersion) return;
+
+        // 预留一屏高度，让短回复的问题也能停在顶部。
+        // 仅发送/重试时定位，文本增量和终态不抢走用户的阅读位置。
+        const reserveSpace = () => {
+            const styles = getComputedStyle(viewport);
+            turn.style.minHeight = `${Math.max(0, viewport.clientHeight
+                - parseFloat(styles.paddingTop) - parseFloat(styles.paddingBottom))}px`;
+        };
+        reserveSpace();
+        viewport.scrollTop += turn.getBoundingClientRect().top
+            - viewport.getBoundingClientRect().top
+            - parseFloat(getComputedStyle(viewport).paddingTop);
+        const observer = new ResizeObserver(reserveSpace);
+        observer.observe(viewport);
+        return () => observer.disconnect();
+    }, [turnPositionVersion]);
+
     const [historyLoading, setHistoryLoading] = useState(
         Boolean(initialTask.current),
     );
@@ -325,6 +351,7 @@ function TaskChat() {
                 { role: "assistant", content: chatState.reply },
             ]);
         }
+        positionNewTurn();
         requestVersionRef.current += 1;
         setCancellationNotice(null);
         activeRunIdRef.current = null;
@@ -737,9 +764,10 @@ function TaskChat() {
             >
                 {/* 只有对话内容滚动；底部输入框不随长回复离开视口。 */}
                 <section
+                    ref={conversationRef}
                     aria-label="对话内容"
                     tabIndex={0}
-                    className={`${emptyConversation ? "shrink-0 px-6 pt-8 pb-6" : "min-h-0 flex-1 overflow-y-auto overscroll-contain px-6 py-6"} outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring`}
+                    className={`${emptyConversation ? "shrink-0 px-6 pt-8 pb-6" : "min-h-0 flex-1 overflow-y-auto overscroll-contain [overflow-anchor:none] px-6 py-6"} outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring`}
                 >
                     <div className="mx-auto w-full max-w-[920px] space-y-6">
                         {historyLoading && (
@@ -778,102 +806,104 @@ function TaskChat() {
                                 )}
                             </div>
                         ))}
-                        {chatState.lastPrompt ? (
-                            <div className="flex justify-end">
-                                <div className="max-w-[85%] rounded-2xl bg-[#edf3ff] px-4 py-2.5 text-sm leading-6 dark:bg-muted">
-                                    <p className="whitespace-pre-wrap break-words">
-                                        {chatState.lastPrompt}
+                        <div ref={currentTurnRef} className="space-y-6">
+                            {chatState.lastPrompt ? (
+                                <div className="flex justify-end">
+                                    <div className="max-w-[85%] rounded-2xl bg-[#edf3ff] px-4 py-2.5 text-sm leading-6 dark:bg-muted">
+                                        <p className="whitespace-pre-wrap break-words">
+                                            {chatState.lastPrompt}
+                                        </p>
+                                    </div>
+                                </div>
+                            ) : !history.length &&
+                              !historyLoading &&
+                              !historyError ? (
+                                <div className="space-y-3">
+                                    <h2 className="text-[28px] font-semibold tracking-tight">
+                                        今天想完成什么？
+                                    </h2>
+
+                                    <p className="mt-3 text-sm text-muted-foreground">
+                                        {workbench.selection
+                                            ? `一起在 ${workbench.selection.workspace.name} 中完成下一件事。`
+                                            : "先在左侧添加项目，然后开始对话。"}
                                     </p>
                                 </div>
-                            </div>
-                        ) : !history.length &&
-                          !historyLoading &&
-                          !historyError ? (
-                            <div className="space-y-3">
-                                <h2 className="text-[28px] font-semibold tracking-tight">
-                                    今天想完成什么？
-                                </h2>
+                            ) : null}
 
-                                <p className="mt-3 text-sm text-muted-foreground">
-                                    {workbench.selection
-                                        ? `一起在 ${workbench.selection.workspace.name} 中完成下一件事。`
-                                        : "先在左侧添加项目，然后开始对话。"}
+                            {creationError && (
+                                <p
+                                    role={uncertain ? "alert" : "status"}
+                                    className={uncertain ? "text-sm text-destructive" : "text-sm text-muted-foreground"}
+                                >
+                                    {creationError}
                                 </p>
-                            </div>
-                        ) : null}
-
-                        {creationError && (
-                            <p
-                                role={uncertain ? "alert" : "status"}
-                                className={uncertain ? "text-sm text-destructive" : "text-sm text-muted-foreground"}
-                            >
-                                {creationError}
-                            </p>
-                        )}
-                        {uncertain && (
-                            <div className="space-y-3 rounded-lg border p-4">
-                                <p className="text-sm text-muted-foreground">
-                                    切换项目后可回到这份草稿重试。刷新页面会清除未发送内容和重试信息；刷新前请先确认结果。
-                                </p>
-                                <div className="flex flex-wrap gap-3">
-                                    {!creationBlocked && (
-                                        <Button type="button" variant="outline" disabled={creating} onClick={retryCreation}>
-                                            重试创建
-                                        </Button>
-                                    )}
-                                    <Button type="button" variant="outline" disabled={creating} onClick={startAnotherTask}>
-                                        放弃本次重试，开始另一任务
-                                    </Button>
-                                </div>
-                                <p className="text-sm text-muted-foreground">
-                                    开始另一任务不会删除可能已创建的任务，可从左侧列表查看。
-                                </p>
-                            </div>
-                        )}
-                        {creating && (
-                            <p
-                                role="status"
-                                className="text-sm text-muted-foreground"
-                            >
-                                正在创建任务…
-                            </p>
-                        )}
-                        {chatState.lastPrompt && (
-                            <section aria-label="AI 回复">
-                                <h2 className="sr-only">
-                                    Agent
-                                </h2>
-
-                                {/* 已收到的内容与错误分别展示，失败不遮盖已有回复。 */}
-                                {chatState.reply && (
-                                    <MarkdownMessage content={chatState.reply} />
-                                )}
-
-                                {isBusy && !chatState.reply && (
+                            )}
+                            {uncertain && (
+                                <div className="space-y-3 rounded-lg border p-4">
                                     <p className="text-sm text-muted-foreground">
-                                        正在处理…
+                                        切换项目后可回到这份草稿重试。刷新页面会清除未发送内容和重试信息；刷新前请先确认结果。
                                     </p>
-                                )}
-                            </section>
-                        )}
+                                    <div className="flex flex-wrap gap-3">
+                                        {!creationBlocked && (
+                                            <Button type="button" variant="outline" disabled={creating} onClick={retryCreation}>
+                                                重试创建
+                                            </Button>
+                                        )}
+                                        <Button type="button" variant="outline" disabled={creating} onClick={startAnotherTask}>
+                                            放弃本次重试，开始另一任务
+                                        </Button>
+                                    </div>
+                                    <p className="text-sm text-muted-foreground">
+                                        开始另一任务不会删除可能已创建的任务，可从左侧列表查看。
+                                    </p>
+                                </div>
+                            )}
+                            {creating && (
+                                <p
+                                    role="status"
+                                    className="text-sm text-muted-foreground"
+                                >
+                                    正在创建任务…
+                                </p>
+                            )}
+                            {chatState.lastPrompt && (
+                                <section aria-label="AI 回复">
+                                    <h2 className="sr-only">
+                                        Agent
+                                    </h2>
 
-                        {chatState.errorMessage && (
-                            <p
-                                role="alert"
-                                className="break-words text-sm text-destructive"
-                            >
-                                {chatState.errorMessage}
-                            </p>
-                        )}
+                                    {/* 已收到的内容与错误分别展示，失败不遮盖已有回复。 */}
+                                    {chatState.reply && (
+                                        <MarkdownMessage content={chatState.reply} />
+                                    )}
 
-                        {cancellationNotice && (
-                            <p
-                                role="alert"
-                                className="break-words text-sm text-destructive"
-                            >
-                                {cancellationNotice}
-                            </p>
-                        )}
+                                    {isBusy && !chatState.reply && (
+                                        <p className="text-sm text-muted-foreground">
+                                            正在处理…
+                                        </p>
+                                    )}
+                                </section>
+                            )}
+
+                            {chatState.errorMessage && (
+                                <p
+                                    role="alert"
+                                    className="break-words text-sm text-destructive"
+                                >
+                                    {chatState.errorMessage}
+                                </p>
+                            )}
+
+                            {cancellationNotice && (
+                                <p
+                                    role="alert"
+                                    className="break-words text-sm text-destructive"
+                                >
+                                    {cancellationNotice}
+                                </p>
+                            )}
+                        </div>
                     </div>
                 </section>
 

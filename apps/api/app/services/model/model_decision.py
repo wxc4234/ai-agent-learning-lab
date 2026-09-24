@@ -41,7 +41,7 @@ class ModelDecisionError(RuntimeError):
         "multiple_tool_calls": "模型一次请求了多个工具，当前仅支持逐个执行。请重新发送原问题；本次未执行这批工具。",
         "empty_response": "模型未返回有效回答或工具调用。请重新发送原问题。",
         "missing_choice": "模型返回了空响应。请重新发送原问题。",
-        "incomplete_response": "模型响应被截断，未采用不完整回答或执行其中的工具。请缩小问题范围后重试。",
+        "incomplete_response": "模型响应未完整结束，已显示内容可能不完整，未保存为完整回答或执行未完成的工具调用。请重试。",
         "unsupported_tool_type": "模型返回了不支持的工具类型，本次未执行该工具。",
         "history_mismatch": "本次工具结果上下文不一致，运行已停止。请重新发送原问题。",
         "invalid_response": "模型响应格式异常，运行已停止。请重新发送原问题。",
@@ -143,6 +143,10 @@ class DeepSeekDecisionMaker:
             0,
             (perf_counter_ns() - model_started_at_ns) // 1_000_000,
         )
+        return self._parse_response(response, model_duration_ms)
+
+    def _parse_response(self, response: ChatCompletion, model_duration_ms: int) -> AgentDecision:
+        """完整响应共用决策校验；流式参数未拼接完成前不得进入这里。"""
         model_usage = self._extract_model_usage(response)
 
         if not response.choices:

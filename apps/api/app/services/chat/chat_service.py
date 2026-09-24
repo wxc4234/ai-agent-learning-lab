@@ -20,6 +20,7 @@ from app.repositories.runtime.run_repository import (
 )
 from app.services.runtime.agent.agent_runtime import (
     AgentLoopCompleted,
+    ModelTextDelta,
     AgentLoopResult,
     ToolCallFailed,
     ToolCallStarted,
@@ -29,9 +30,9 @@ from app.services.runtime.agent.agent_runtime import (
 from app.services.model.model_client import client
 from app.services.model.model_decision import (
     DEFAULT_SYSTEM_PROMPT,
-    DeepSeekDecisionMaker,
     ModelDecisionError,
 )
+from app.services.model.streaming_model_decision import StreamingDeepSeekDecisionMaker as DeepSeekDecisionMaker
 from app.services.model.model_pricing import (
     DeepSeekPricingSchedule,
     ModelPricing,
@@ -332,6 +333,8 @@ async def stream_chat_reply(
     history: list[ChatCompletionMessageParam] | None = None
     history_checkpoint: int | None = None
     turn_persisted = False
+    streamed_parts: list[str] = []
+    agent_events = None
 
     stream_task = asyncio.current_task()
     if stream_task is None:
@@ -396,14 +399,24 @@ async def stream_chat_reply(
             tool_definitions=tool_definitions,
         )
 
-        async for event in stream_agent_loop(
+        agent_events = stream_agent_loop(
             decision_maker,
             max_steps=5,
             max_total_tokens=settings.agent_max_total_tokens,
             execution_threads=execution_threads,
             tool_context=tool_context,
             tool_definitions=tool_definitions,
-        ):
+        )
+        async for event in agent_events:
+            if isinstance(event, ModelTextDelta):
+                if not streamed_parts:
+                    yield encode_stream_event("TEXT_MESSAGE_START")
+                chunk = ("\n\n" if event.new_message and streamed_parts else "") + event.content
+                streamed_parts.append(chunk)
+                # 增量只用于传输，正式消息/完整 Run 文本在成功结束时一次落库。
+                yield encode_stream_event("TEXT_MESSAGE_CONTENT", {"chunk": chunk})
+                continue
+
             if isinstance(event, ToolCallStarted):
                 payload: dict[str, object] = {
                     "tool_call_id": event.action.tool_call_id,
@@ -489,7 +502,7 @@ async def stream_chat_reply(
                 if result.answer is None:
                     raise RuntimeError("已完成的 Agent Loop 没有最终答案")
 
-                reply = result.answer
+                reply = "".join(streamed_parts) if streamed_parts else result.answer
 
                 await execution_threads.run(
                     record_run_event,
@@ -497,7 +510,8 @@ async def stream_chat_reply(
                     "TEXT_MESSAGE_START",
                     {},
                 )
-                yield encode_stream_event("TEXT_MESSAGE_START")
+                if not streamed_parts:
+                    yield encode_stream_event("TEXT_MESSAGE_START")
 
                 await execution_threads.run(
                     record_run_event,
@@ -507,12 +521,8 @@ async def stream_chat_reply(
                         "chunk": reply,
                     },
                 )
-                yield encode_stream_event(
-                    "TEXT_MESSAGE_CONTENT",
-                    {
-                        "chunk": reply,
-                    },
-                )
+                if not streamed_parts:
+                    yield encode_stream_event("TEXT_MESSAGE_CONTENT", {"chunk": reply})
 
                 await execution_threads.run(
                     record_run_event,
@@ -664,7 +674,11 @@ async def stream_chat_reply(
         )
 
     finally:
-        cancellation_monitor.cancel()
+        try:
+            if agent_events is not None:
+                await agent_events.aclose()
+        finally:
+            cancellation_monitor.cancel()
 
         # 请求级依赖会在释放占用前受保护地等待监听器退出。
 

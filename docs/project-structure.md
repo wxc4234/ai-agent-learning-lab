@@ -271,3 +271,5 @@ Git状态PC验收：`apps/web/test/browser/git-status.mjs`复用真实聊天/BFF
 工作台改动侧栏：`features/workbench/components/task-changes-panel.tsx` 展示任务提案及应用状态，`task-changes-data.ts` 校验公开分页协议；`app/api/_shared/task-changes-proxy.ts` 提供本地同源只读代理。后端 `services/workspace/proposals/file_edit_proposal_list.py` 配合 repository 的归属过滤查询，不读取磁盘或返回提案正文。`features/chat/components/run-metrics-footer.tsx` 提供常驻图标指标栏；`latest-run-summary.ts` 与 `use-restored-run-summary.ts` 按任务查询最新 Run、核对会话并恢复持久化终态，切换/取消隔离迟到回执。历史详情仍在折叠运行记录中。交互显示夹具为 `apps/web/test/browser/workbench_layout_fixture.py`，运行入口见 ENVIRONMENT。
 
 项目创建浮窗：`features/workspaces/components/create-workspace.tsx` 同时支持原页面与侧栏 Dialog 展示，复用创建请求/未确认结果保护；侧栏成功后刷新列表，不跳转或替换当前任务。创建成功后在浮窗内复用 `workspace-directory-panel.tsx` 绑定源文件夹。
+
+模型流式适配：`apps/api/app/services/model/streaming_model_decision.py` 扩展完整响应适配器，聚合 tool-call delta、核对终态并转发公开文本；Runtime 的 `ModelTextDelta` 与 chat_service 连接既有 NDJSON。工具参数、隐藏推理不作为正文转发；完整落库和取消边界见 docs/agent-ui-events.md。

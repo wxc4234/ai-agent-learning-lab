@@ -126,7 +126,7 @@ node --experimental-strip-types --test test/features/workspaces/task-sample-stat
 pnpm exec eslint src/app/api/_shared/task-sample-status-proxy.ts
 ```
 
-工作台布局交互验收：仓库根目录运行 `BROWSER_APP_MODE=local BROWSER_TEST_SCRIPT=workbench-layout-wait.mjs .venv/bin/python apps/web/test/browser/run-isolated.py`，待服务就绪后浏览器访问 `http://localhost:13000/`。`apps/web/output/playwright/layout/fixture.json` 给出两组临时项目/任务 ID（含提案、空列表），通过侧栏选任务；输入 `[layout]` 触发固定用量回答。此夹具只准备显示状态，不执行真实文件应用。检查完在仓库根运行 `touch apps/web/output/playwright/layout/done`，启动器退出并清理临时服务与隔离数据库；650 秒未结束则超时失败。不连接开发业务数据。
+工作台布局交互验收：仓库根目录运行 `BROWSER_APP_MODE=local BROWSER_TEST_SCRIPT=workbench-layout-wait.mjs .venv/bin/python apps/web/test/browser/run-isolated.py`，待服务就绪后浏览器访问 `http://localhost:13000/`。`apps/web/output/playwright/layout/fixture.json` 给出两组临时项目/任务 ID（含提案、空列表），通过侧栏选任务；输入 `[layout]` 触发固定用量回答；输入 `[typewriter]` 经真实流式适配器读取延迟 SDK chunk，用于检查逐片段 Markdown、停止与历史恢复。此夹具只准备显示状态，不执行真实文件应用。检查完在仓库根运行 `touch apps/web/output/playwright/layout/done`，启动器退出并清理临时服务与隔离数据库；650 秒未结束则超时失败。不连接开发业务数据。
 
 TypeScript/路由契约变化时按影响执行 `pnpm typecheck`；构建只在构建链受影响或交付验收需要时运行 `pnpm build`。开发用 Node 需支持项目现用的 strip-types 参数。
 
