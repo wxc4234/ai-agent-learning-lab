@@ -9,6 +9,7 @@ from pathlib import Path, PurePosixPath
 from typing import Literal
 
 from app.services.workspace.directory.workspace_path import resolve_task_workspace_path
+from app.platform_compat import O_DIRECTORY, O_NOFOLLOW, O_NONBLOCK
 
 
 # 限制由服务端决定，暂不允许模型自行扩大。
@@ -51,14 +52,14 @@ class WorkspaceTextFile:
 def _require_supported_file_access() -> None:
     """能力不足时拒绝，不退回存在跟随链接风险的普通路径打开。"""
 
-    required_flags = ("O_DIRECTORY", "O_NOFOLLOW", "O_NONBLOCK")
+    required_flags = (O_DIRECTORY, O_NOFOLLOW, O_NONBLOCK)
 
     if (
         os.name != "posix"
         or os.open not in os.supports_dir_fd
         or os.stat not in os.supports_dir_fd
         or os.stat not in os.supports_follow_symlinks
-        or not all(hasattr(os, name) for name in required_flags)
+        or not all(required_flags)
     ):
         raise WorkspaceFileError(
             "file_read_unsupported",
@@ -128,8 +129,8 @@ def _read_resolved_file(path: Path) -> bytes:
             "文件路径无法用于受限读取",
         )
 
-    directory_flags = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW
-    file_flags = os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK
+    directory_flags = os.O_RDONLY | O_DIRECTORY | O_NOFOLLOW
+    file_flags = os.O_RDONLY | O_NOFOLLOW | O_NONBLOCK
 
     # 由入口确保平台能力满足要求。
     # 从文件系统根逐段打开，也保护 Workspace 根目录的祖先路径。

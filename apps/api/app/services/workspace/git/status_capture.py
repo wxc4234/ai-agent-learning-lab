@@ -5,7 +5,6 @@ from dataclasses import dataclass
 import os
 from pathlib import Path
 import selectors
-import signal
 import stat
 import subprocess
 import tempfile
@@ -13,6 +12,7 @@ from time import monotonic
 
 from app.services.runtime.command.command_environment import build_posix_command_environment
 from app.services.workspace.git.status_parser import MAX_STATUS_BYTES, GitStatusSnapshot, parse_git_status
+from app.platform_compat import kill_process_group
 
 GIT_EXECUTABLE = '/usr/bin/git'
 STATUS_TIMEOUT_SECONDS = 5.0
@@ -108,7 +108,7 @@ def _capture(argv: tuple[str, ...], *, cwd: Path, env: dict[str, str]) -> bytes:
         if process is not None:
             # 异常/中断不能遗留子进程；本样例只启动固定Git，不提供任意命令接口。
             try:
-                os.killpg(process.pid, signal.SIGKILL)
+                kill_process_group(process.pid)
             except ProcessLookupError:
                 pass
             process.wait()

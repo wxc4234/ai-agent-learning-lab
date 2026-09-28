@@ -72,14 +72,13 @@ def install(monkeypatch, *, stage=None, error=None, close_error=False, close_gat
         await step("handshake")
         await actual_handshake(stream)
 
-    def make_socket(family, kind):
-        assert family == service.socket.AF_UNIX and kind == service.socket.SOCK_STREAM
+    def make_socket():
         calls.append("socket")
         return raw
 
-    monkeypatch.setattr(service.socket, "socket", make_socket)
+    monkeypatch.setattr(service, "create_unix_stream_socket", make_socket)
     monkeypatch.setattr(asyncio.get_running_loop(), "sock_connect", connect)
-    monkeypatch.setattr(service.asyncio, "open_unix_connection", open_stream)
+    monkeypatch.setattr(service, "open_unix_stream_connection", open_stream)
     monkeypatch.setattr(service, "read_docker_attach_upgrade", handshake)
     return calls, entered
 
@@ -271,7 +270,7 @@ def test_connect_and_send_share_one_budget(monkeypatch):
     async def scenario():
         calls, _ = install(monkeypatch)
         original_connect = asyncio.get_running_loop().sock_connect
-        original_open = service.asyncio.open_unix_connection
+        original_open = service.open_unix_stream_connection
 
         async def connect(*args):
             await asyncio.sleep(0.03)
@@ -289,7 +288,7 @@ def test_connect_and_send_share_one_budget(monkeypatch):
             return reader, writer
 
         monkeypatch.setattr(asyncio.get_running_loop(), "sock_connect", connect)
-        monkeypatch.setattr(service.asyncio, "open_unix_connection", open_stream)
+        monkeypatch.setattr(service, "open_unix_stream_connection", open_stream)
         monkeypatch.setattr(service, "ATTACH_CONNECT_TIMEOUT_SECONDS", 0.05)
         with pytest.raises(service.DockerAttachConnectionError):
             async with service.open_docker_attach(container_id=CID):

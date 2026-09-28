@@ -13,6 +13,7 @@ from app.services.workspace.samples.temporary_proposal_sample import (
     TemporaryProposalSample,
     temporary_proposal_sample,
 )
+from app.platform_compat import get_effective_user_id
 
 MAX_REGISTERED_SAMPLES = 32
 
@@ -120,7 +121,8 @@ class TemporarySampleRegistry:
                 valid = (
                     self._identity(entry.sample.root) == entry.root_identity
                     and self._identity(entry.sample.root.parent) == entry.parent_identity
-                    and entry.sample.root.stat(follow_symlinks=False).st_uid == os.geteuid()
+                    and entry.sample.root.stat(follow_symlinks=False).st_uid
+                    == get_effective_user_id()
                     and stat.S_IMODE(entry.sample.root.stat(follow_symlinks=False).st_mode) == 0o700
                 )
             except (OSError, SampleRegistryError):

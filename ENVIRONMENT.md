@@ -11,7 +11,7 @@
 | Python | 3.12，每台电脑独立 `.venv` | `.python-version`；旧 3.10 环境不再适用 |
 | Python 包 | 按锁定清单安装 | `requirements.txt`；FastAPI/Pydantic、SQLAlchemy/psycopg、Alembic、模型 SDK、pytest/httpx、Ruff |
 | Node.js | 沿用项目 Node.js 24 环境 | Next.js/React 前端与 Node 测试 |
-| pnpm | 10.34.1 | `apps/web/package.json` 的 packageManager；`pnpm-lock.yaml` 锁定依赖 |
+| pnpm | 10.34.1 | 根 `package.json` 的 packageManager；根 `pnpm-lock.yaml` 锁定所有 Node workspace 依赖 |
 | Docker Desktop/Compose | 本机可用 | `infra/compose.yaml` 提供 PostgreSQL + pgvector、Redis；Docker Sandbox 另按当前平台边界验收 |
 | Git、模型 API Key | 本机配置 | 代码同步、模型请求；真实 Key 不进代码或文档 |
 
@@ -19,18 +19,15 @@
 
 ## 2. 首次安装
 
-命令从仓库根目录执行，除非明确要求 `cd`。已有 `.env` 不覆盖；安装依赖失败时先解决错误再继续。
+命令从仓库根目录执行，除非明确要求 `cd`。已有 `.env` 不覆盖；安装依赖失败时先解决错误再继续。根目录 `pnpm install` 或 `npm install` 会安装所有 Node workspace，并创建/复用 `.venv`、按 `requirements.txt` 补齐 Python 依赖；已满足版本的依赖不会重新安装。项目以 pnpm 锁文件为唯一 Node 依赖事实来源，日常优先使用 pnpm，不要在同一工作区来回切换包管理器。
 
 macOS / Linux（先安装 Git、Python 3.12、Node.js 与 Docker）：
 
 ```bash
 git clone https://github.com/wxc4234/ai-agent-learning-lab.git
 cd ai-agent-learning-lab
-python3.12 -m venv .venv
-source .venv/bin/activate
-python -m pip install -r requirements.txt
 npm install --global pnpm@10.34.1
-pnpm install --dir apps/web --frozen-lockfile
+pnpm install --frozen-lockfile
 cp .env.example .env
 ```
 
@@ -39,14 +36,12 @@ Windows PowerShell（先安装 Git、Python 3.12、Node.js、Docker Desktop/WSL 
 ```powershell
 git clone https://github.com/wxc4234/ai-agent-learning-lab.git
 cd ai-agent-learning-lab
-py -3.12 -m venv .venv
-.\.venv\Scripts\python.exe -m pip install -r requirements.txt
 npm install --global pnpm@10.34.1
-pnpm install --dir apps/web --frozen-lockfile
+pnpm install --frozen-lockfile
 Copy-Item .env.example .env
 ```
 
-已安装 uv 时可用 `uv pip install -r requirements.txt`。缺 pip 可先用项目解释器执行 `-m ensurepip --upgrade`。PowerShell 可直接调用 `.venv\Scripts\python.exe`；需要激活时使用 `.\.venv\Scripts\Activate.ps1`，受限终端仅按需设置当前进程的 ExecutionPolicy。
+不想安装 pnpm 时，也可在根目录运行 `npm install`，但它不使用项目的 `pnpm-lock.yaml`，因此只作为兼容入口。只需单独修复 Python 环境时，可运行 `pnpm install:python`，或使用项目解释器执行 `-m pip install -r requirements.txt`；已安装 uv 时也可用 `uv pip install -r requirements.txt`。缺 pip 可先用项目解释器执行 `-m ensurepip --upgrade`。PowerShell 可直接调用 `.venv\Scripts\python.exe`；需要激活时使用 `.\.venv\Scripts\Activate.ps1`，受限终端仅按需设置当前进程的 ExecutionPolicy。
 
 在根目录 `.env` 填写自己的 `DEEPSEEK_API_KEY`，按 `.env.example` 配置 `DATABASE_URL`、Redis 与模型设置。不要把服务端变量加上 `NEXT_PUBLIC_` 前缀。VS Code 的 Python 解释器选择项目 `.venv/bin/python`（Windows 为 `.venv\Scripts\python.exe`）。
 

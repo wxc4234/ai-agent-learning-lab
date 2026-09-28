@@ -9,6 +9,7 @@ from pathlib import Path, PurePosixPath
 from typing import Literal
 
 from app.services.workspace.directory.workspace_path import resolve_task_workspace_path
+from app.platform_compat import O_DIRECTORY, O_NOFOLLOW
 
 
 # 上限由服务端决定，暂不允许模型扩大扫描范围。
@@ -62,8 +63,8 @@ def _require_supported_listing() -> None:
         os.name != "posix"
         or os.open not in os.supports_dir_fd
         or os.scandir not in os.supports_fd
-        or not hasattr(os, "O_DIRECTORY")
-        or not hasattr(os, "O_NOFOLLOW")
+        or not O_DIRECTORY
+        or not O_NOFOLLOW
     ):
         raise WorkspaceListingError(
             "directory_listing_unsupported",
@@ -157,7 +158,7 @@ def _list_resolved_directory(
             "目录路径无法用于受限枚举",
         )
 
-    flags = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW
+    flags = os.O_RDONLY | O_DIRECTORY | O_NOFOLLOW
 
     # 每个打开成功的目录立即登记清理，包括中途失败的情况。
     # 不复用文件读取服务的私有函数，两个服务独立管理资源。

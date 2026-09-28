@@ -10,6 +10,10 @@ from app.services.runtime.docker.docker_attach_http import (
     build_docker_attach_request,
     read_docker_attach_upgrade,
 )
+from app.platform_compat import (
+    create_unix_stream_socket,
+    open_unix_stream_connection,
+)
 
 
 # 与现有 CLI 客户端使用同一本机 Docker Desktop socket；不读取 DOCKER_HOST。
@@ -76,12 +80,13 @@ async def open_docker_attach(
             # 总预算覆盖 connect、流装配、write/drain 与响应握手。
             # 退出预算后才 yield，命令输出寿命不受握手预算限制。
             async with asyncio.timeout(ATTACH_CONNECT_TIMEOUT_SECONDS):
-                owned_socket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+                owned_socket = create_unix_stream_socket()
                 owned_socket.setblocking(False)
                 await asyncio.get_running_loop().sock_connect(owned_socket, str(DOCKER_ATTACH_SOCKET))
-                reader, writer = await asyncio.open_unix_connection(
+                reader, connected_writer = await open_unix_stream_connection(
                     sock=owned_socket, limit=ATTACH_READER_LIMIT_BYTES,
                 )
+                writer = connected_writer
                 # 返回 writer 后由传输拥有 socket；此前任一步失败由 finally 兜底关闭。
                 owned_socket = None
                 writer.write(request)

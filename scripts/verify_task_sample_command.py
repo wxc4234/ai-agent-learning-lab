@@ -8,12 +8,14 @@
 import asyncio
 import json
 from pathlib import Path
+from typing import Any
 
 import pytest
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models import Workspace
+from app.services.runtime.command.byte_reader import AsyncByteReader
 from app.services.runtime.command.command_contracts import CommandRequest
 from app.services.runtime.docker import docker_client as client
 from app.services.runtime.sandbox import sandbox_execution as execution
@@ -62,7 +64,7 @@ def test_real_task_snapshot_command(lab, target, engine, monkeypatch, mode):
     task_file = task_root / 'example.txt'
     task_file.write_bytes(b'task snapshot content\n')
     original_mode = task_file.stat().st_mode
-    audit = {}
+    audit: dict[str, Any] = {}
     actual_snapshot = service.create_task_sandbox_snapshot
     actual_create = owner.create_sandbox_container
     actual_remove = owner.remove_sandbox_container
@@ -103,10 +105,10 @@ def test_real_task_snapshot_command(lab, target, engine, monkeypatch, mode):
 
     async def scenario():
         ready = asyncio.Event()
-        async def drain(reader):
+        async def drain(reader: AsyncByteReader):
             class Observed:
                 tail = b''
-                async def read(self, n):
+                async def read(self, n: int) -> bytes:
                     value = await reader.read(n)
                     self.tail = (self.tail + value)[-128:]
                     if b'task snapshot content\n' in self.tail:

@@ -26,6 +26,13 @@ from app.services.workspace.metadata.workspace_file_metadata import (
     read_file_metadata,
     verify_file_metadata,
 )
+from app.platform_compat import (
+    HAS_EFFECTIVE_USER_ID,
+    O_DIRECTORY,
+    O_NOFOLLOW,
+    O_NONBLOCK,
+    get_effective_user_id,
+)
 
 ReplaceStatus = Literal["not_replaced", "replaced", "uncertain"]
 
@@ -52,22 +59,18 @@ class FileReplaceRejected(ValueError):
 def _require_supported_platform() -> None:
     """平台能力不足时拒绝，不退回普通字符串路径写入。"""
 
-    required_flags = (
-        "O_DIRECTORY",
-        "O_NOFOLLOW",
-        "O_NONBLOCK",
-    )
+    required_flags = (O_DIRECTORY, O_NOFOLLOW, O_NONBLOCK)
     required_functions = (
         "fchmod",
         "fchown",
-        "geteuid",
         "replace",
         "fsync",
     )
 
     if (
         os.name != "posix"
-        or not all(hasattr(os, name) for name in required_flags)
+        or not all(required_flags)
+        or not HAS_EFFECTIVE_USER_ID
         or not all(hasattr(os, name) for name in required_functions)
         or not all(
             function in os.supports_dir_fd
@@ -252,8 +255,8 @@ def replace_workspace_text_file(
 
             directory_flags = (
                 os.O_RDONLY
-                | os.O_DIRECTORY
-                | os.O_NOFOLLOW
+                | O_DIRECTORY
+                | O_NOFOLLOW
             )
 
             parent_fd = os.open(root.anchor, directory_flags)
@@ -291,7 +294,7 @@ def replace_workspace_text_file(
             if (
                 not stat.S_ISREG(original.st_mode)
                 or original.st_nlink != 1
-                or original.st_uid != os.geteuid()
+                or original.st_uid != get_effective_user_id()
                 or not original.st_mode & stat.S_IWUSR
                 or original.st_mode
                 & (stat.S_ISUID | stat.S_ISGID | stat.S_ISVTX)
@@ -302,7 +305,7 @@ def replace_workspace_text_file(
 
             source_fd = os.open(
                 filename,
-                os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK,
+                os.O_RDONLY | O_NOFOLLOW | O_NONBLOCK,
                 dir_fd=parent_fd,
             )
             stack.callback(close_descriptor, source_fd)
@@ -333,7 +336,7 @@ def replace_workspace_text_file(
             candidate = f".agent-edit-{uuid4().hex}.tmp"
             temp_fd = os.open(
                 candidate,
-                os.O_RDWR | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW,
+                os.O_RDWR | os.O_CREAT | os.O_EXCL | O_NOFOLLOW,
                 0o600,
                 dir_fd=parent_fd,
             )

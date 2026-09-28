@@ -1,0 +1,21 @@
+{
+    "name": "ai-agent-learning-lab",
+    "version": "0.0.0",
+    "private": true,
+    "packageManager": "pnpm@10.34.1",
+    "engines": {
+        "node": ">=24"
+    },
+    "workspaces": [
+        "apps/*",
+        "packages/*"
+    ],
+    "scripts": {
+        "install:python": "node scripts/install-python-dependencies.mjs",
+        "preinstall": "node scripts/install-python-dependencies.mjs",
+        "typecheck": "pyright && pnpm --filter web typecheck"
+    },
+    "devDependencies": {
+        "pyright": "1.1.405"
+    }
+}

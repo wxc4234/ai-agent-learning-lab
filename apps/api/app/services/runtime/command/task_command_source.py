@@ -14,6 +14,12 @@ from app.services.workspace.files.workspace_file import (
     _read_bounded_bytes,
     _require_supported_file_access,
 )
+from app.platform_compat import (
+    O_DIRECTORY,
+    O_NOFOLLOW,
+    O_NONBLOCK,
+    get_effective_user_id,
+)
 from app.services.workspace.samples.temporary_proposal_sample import (
     SAMPLE_FILENAME,
     TemporaryProposalSample,
@@ -74,7 +80,7 @@ class TaskCommandSource:
                 or identity(opened) != self._sample.root_identity
                 or identity(linked) != self._sample.root_identity
                 or not stat.S_ISDIR(linked.st_mode)
-                or opened.st_uid != os.geteuid()
+                or opened.st_uid != get_effective_user_id()
                 or stat.S_IMODE(opened.st_mode) != 0o700
             ):
                 raise TaskCommandSourceUnavailable()
@@ -84,7 +90,7 @@ class TaskCommandSource:
             # 不要求固定 inode，因为提案应用可以合法地原子替换文件。
             if (
                 not stat.S_ISREG(info.st_mode)
-                or info.st_uid != os.geteuid()
+                or info.st_uid != get_effective_user_id()
                 or info.st_nlink != 1
                 or stat.S_IMODE(info.st_mode) != 0o600
             ):
@@ -94,7 +100,7 @@ class TaskCommandSource:
             if not root.is_absolute() or ".." in root.parts:
                 raise TaskCommandSourceUnavailable()
 
-            directory_flags = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW
+            directory_flags = os.O_RDONLY | O_DIRECTORY | O_NOFOLLOW
 
             # 从根目录逐级打开，保护样例目录及其祖先路径。
             # ExitStack 在成功和异常路径都按逆序关闭描述符。
@@ -132,7 +138,7 @@ class TaskCommandSource:
                 # O_NONBLOCK 避免文件被替换成 FIFO 后阻塞在打开阶段。
                 file_fd = os.open(
                     SAMPLE_FILENAME,
-                    os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK,
+                    os.O_RDONLY | O_NOFOLLOW | O_NONBLOCK,
                     dir_fd=root_fd,
                 )
                 stack.callback(os.close, file_fd)

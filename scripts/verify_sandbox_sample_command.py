@@ -1,4 +1,3 @@
-from typing import Any
 """真实样例命令链：attach 输出、退出、超时/取消及响应丢失注入。
 
 运行：PYTHONPATH=apps/api .venv/bin/python scripts/verify_sandbox_sample_command.py
@@ -8,8 +7,10 @@ Docker 操作均真实执行；仅测试预算、观测屏障与响应丢失由�
 import asyncio
 import json
 from contextlib import ExitStack
+from typing import Any
 from unittest.mock import patch
 
+from app.services.runtime.command.byte_reader import AsyncByteReader
 from app.services.runtime.command.command_contracts import CommandRequest
 from app.services.runtime.docker import docker_client as client
 from app.services.runtime.sandbox import sandbox_execution as execution
@@ -58,7 +59,7 @@ async def scenario(mode):
         program = "import signal,time; from pathlib import Path; assert Path('/workspace/example.txt').read_bytes()==b'sandbox sample\\n'; signal.signal(signal.SIGTERM,signal.SIG_IGN); print('ready',flush=True); time.sleep(600)"
     command = CommandRequest(argv=['/usr/local/bin/python', '-c', program])
     audit: dict[str, Any] = {'mode': mode}
-    report = {'mode': mode}
+    report: dict[str, Any] = {'mode': mode}
     actual_sample = service.create_sandbox_sample
     actual_create = service.create_sandbox_container
     actual_cleanup = service.cleanup_sandbox_sample
@@ -91,10 +92,10 @@ async def scenario(mode):
         if mode == 'start_loss':
             raise OSError('injected lost start response after daemon success')
 
-    async def drain(reader):
+    async def drain(reader: AsyncByteReader):
         class ObservedReader:
             tail = b''
-            async def read(self, n):
+            async def read(self, n: int) -> bytes:
                 chunk = await reader.read(n)
                 self.tail = (self.tail + chunk)[-32:]
                 if b'ready\n' in self.tail:

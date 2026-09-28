@@ -1,0 +1,10 @@
+packages:
+    - "apps/*"
+    - "packages/*"
+
+allowBuilds:
+    sharp: false
+    unrs-resolver: false
+
+# 每次安装都执行根 preinstall，保证 Node 已齐时也会补查 Python 依赖。
+optimisticRepeatInstall: false

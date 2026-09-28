@@ -1,4 +1,3 @@
-from typing import Any
 """自建样例只读 bind 实机验收；不接 Task、Workspace 或模型工具。
 
 从仓库根目录运行：PYTHONPATH=apps/api .venv/bin/python scripts/verify_sandbox_sample.py
@@ -8,6 +7,7 @@ from typing import Any
 import asyncio
 import copy
 import json
+from typing import Any
 from uuid import uuid4
 
 from app.services.runtime.command.command_contracts import CommandRequest
@@ -202,6 +202,8 @@ async def main():
             if create_attempted:
                 if container_id is None:
                     # 只恢复归属一致、仍 created 的对象；未知状态保留现场。
+                    if spec is None:
+                        raise RuntimeError('create spec unavailable')
                     recovered = recover_created_sandbox_identity(
                         inspect_stdout=await inspect_sandbox_container(execution_token=token), spec=require_value(spec),
                     )

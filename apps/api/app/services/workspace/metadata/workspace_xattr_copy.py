@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from functools import lru_cache
 
 from app.services.workspace.metadata.workspace_file_xattrs import FileXattr, read_file_xattrs
+from app.platform_compat import get_effective_user_id, get_stat_flags
 
 
 class XattrCopyError(ValueError):
@@ -42,7 +43,7 @@ def _target_version(metadata: os.stat_result) -> tuple[int, ...]:
     # 设置属性允许ctime变化；其余对象身份、内容信息与权限不得改变。
     return (metadata.st_dev, metadata.st_ino, metadata.st_mode,
             metadata.st_uid, metadata.st_gid, metadata.st_nlink,
-            metadata.st_size, metadata.st_mtime_ns, metadata.st_flags)
+            metadata.st_size, metadata.st_mtime_ns, get_stat_flags(metadata))
 
 
 def copy_file_xattrs(
@@ -71,8 +72,8 @@ def copy_file_xattrs(
             or (source_before.st_dev, source_before.st_ino)
             == (target_before.st_dev, target_before.st_ino)
             or target_before.st_nlink not in (0, 1)
-            or target_before.st_uid != os.geteuid()
-            or target_before.st_flags != 0
+            or target_before.st_uid != get_effective_user_id()
+            or get_stat_flags(target_before) != 0
             or target_before.st_mode & (stat.S_ISUID | stat.S_ISGID | stat.S_ISVTX)
         ):
             raise XattrCopyError('xattr_copy_target_unsupported')

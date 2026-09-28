@@ -5,6 +5,7 @@
     "venvPath": ".",
     "venv": ".venv",
     "pythonVersion": "3.12",
+    "pythonPlatform": "All",
     "typeCheckingMode": "basic",
     "reportDeprecated": "warning"
 }

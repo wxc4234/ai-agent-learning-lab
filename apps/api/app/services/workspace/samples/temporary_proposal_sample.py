@@ -10,6 +10,12 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from uuid import uuid4
 
+from app.platform_compat import (
+    O_DIRECTORY,
+    O_NOFOLLOW,
+    get_effective_user_id,
+)
+
 SAMPLE_FILENAME = 'example.txt'
 SAMPLE_CONTENT = b'old\n'
 
@@ -43,7 +49,7 @@ def _check_root(parent_fd: int, name: str, root_fd: int, identity: tuple[int, in
         not stat.S_ISDIR(linked.st_mode)
         or _identity(linked) != identity
         or _identity(opened) != identity
-        or opened.st_uid != os.geteuid()
+        or opened.st_uid != get_effective_user_id()
         or stat.S_IMODE(opened.st_mode) != 0o700
     ):
         raise TemporarySampleError('sample_identity_changed')
@@ -57,7 +63,7 @@ def _cleanup(parent_fd: int, name: str, root_fd: int, identity: tuple[int, int])
     if SAMPLE_FILENAME in entries:
         info = os.stat(SAMPLE_FILENAME, dir_fd=root_fd, follow_symlinks=False)
         # 允许可信执行器原子替换样例文件；不跟随链接或递归处理子目录。
-        if not stat.S_ISREG(info.st_mode) or info.st_uid != os.geteuid() or info.st_nlink != 1:
+        if not stat.S_ISREG(info.st_mode) or info.st_uid != get_effective_user_id() or info.st_nlink != 1:
             raise TemporarySampleError('sample_cleanup_incomplete')
         os.unlink(SAMPLE_FILENAME, dir_fd=root_fd)
     _check_root(parent_fd, name, root_fd, identity)
@@ -79,7 +85,7 @@ def temporary_proposal_sample() -> Generator[TemporaryProposalSample, None, None
     name = 'agent-proposal-' + uuid4().hex
     try:
         parent = Path(tempfile.gettempdir()).resolve(strict=True)
-        parent_fd = os.open(parent, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+        parent_fd = os.open(parent, os.O_RDONLY | O_DIRECTORY | O_NOFOLLOW)
     except OSError:
         raise TemporarySampleError('sample_creation_failed') from None
     root_fd = None
@@ -94,7 +100,7 @@ def temporary_proposal_sample() -> Generator[TemporaryProposalSample, None, None
         identity = _identity(os.stat(name, dir_fd=parent_fd, follow_symlinks=False))
         root_fd = os.open(
             name,
-            os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW,
+            os.O_RDONLY | O_DIRECTORY | O_NOFOLLOW,
             dir_fd=parent_fd,
         )
         opened_identity = _identity(os.fstat(root_fd))
@@ -104,7 +110,7 @@ def temporary_proposal_sample() -> Generator[TemporaryProposalSample, None, None
         identity = opened_identity
         os.fchmod(root_fd, 0o700)
         _check_root(parent_fd, name, root_fd, identity)
-        descriptor = os.open(SAMPLE_FILENAME, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW,
+        descriptor = os.open(SAMPLE_FILENAME, os.O_WRONLY | os.O_CREAT | os.O_EXCL | O_NOFOLLOW,
                              0o600, dir_fd=root_fd)
         try:
             os.fchmod(descriptor, 0o600)

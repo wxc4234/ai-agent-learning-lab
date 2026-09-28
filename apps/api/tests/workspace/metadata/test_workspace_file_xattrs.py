@@ -8,6 +8,7 @@ from dataclasses import FrozenInstanceError
 import pytest
 
 from app.services.workspace.metadata import workspace_file_xattrs as service
+from app.platform_compat import O_DIRECTORY
 
 
 class Attributes:
@@ -186,7 +187,7 @@ def test_closed_descriptor_is_safe_failure(source, native):
 
 
 def test_directory_rejected_before_attribute_access(tmp_path, native):
-    descriptor = os.open(tmp_path, os.O_RDONLY | os.O_DIRECTORY)
+    descriptor = os.open(tmp_path, os.O_RDONLY | O_DIRECTORY)
     try:
         with pytest.raises(service.FileXattrError, match='unsupported'):
             service.read_file_xattrs(descriptor)

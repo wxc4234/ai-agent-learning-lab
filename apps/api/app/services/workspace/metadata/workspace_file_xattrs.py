@@ -8,6 +8,8 @@ import sys
 from dataclasses import dataclass, field
 from functools import lru_cache
 
+from app.platform_compat import get_stat_flags
+
 
 # 使用描述符接口，并请求显示压缩相关属性。
 XATTR_SHOWCOMPRESSION = 0x0020
@@ -111,7 +113,7 @@ def _file_version(descriptor: int) -> tuple[int, ...]:
         metadata.st_size,
         metadata.st_mtime_ns,
         metadata.st_ctime_ns,
-        metadata.st_flags,
+        get_stat_flags(metadata),
     )
 
 

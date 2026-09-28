@@ -12,6 +12,12 @@ from collections.abc import Generator
 from typing import Literal
 from uuid import uuid4
 
+from app.platform_compat import (
+    O_DIRECTORY,
+    O_NOFOLLOW,
+    get_effective_user_id,
+)
+
 
 SAMPLE_DESTINATION = "/workspace"
 SAMPLE_FILENAME = "example.txt"
@@ -81,13 +87,13 @@ def _open_directory_without_links(path: Path) -> int:
 
     descriptor = os.open(
         "/",
-        os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW,
+        os.O_RDONLY | O_DIRECTORY | O_NOFOLLOW,
     )
     try:
         for part in path.parts[1:]:
             next_descriptor = os.open(
                 part,
-                os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW,
+                os.O_RDONLY | O_DIRECTORY | O_NOFOLLOW,
                 dir_fd=descriptor,
             )
             os.close(descriptor)
@@ -118,13 +124,13 @@ def _checked_sample_directories(
         # 先确认父目录，再打开子目录；父目录已被替换不能误报为来源缺失。
         if (
             _identity(parent_info) != sample.parent_identity
-            or parent_info.st_uid != os.geteuid()
+            or parent_info.st_uid != get_effective_user_id()
             or stat.S_IMODE(parent_info.st_mode) != 0o700
         ):
             raise _SampleIdentityChanged()
         root_fd = os.open(
             sample.root.name,
-            os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW,
+            os.O_RDONLY | O_DIRECTORY | O_NOFOLLOW,
             dir_fd=parent_fd,
         )
 
@@ -147,11 +153,11 @@ def _checked_sample_directories(
             or _identity(root_info) != sample.root_identity
             or _identity(linked_info) != sample.root_identity
             or not stat.S_ISDIR(linked_info.st_mode)
-            or root_info.st_uid != os.geteuid()
+            or root_info.st_uid != get_effective_user_id()
             or stat.S_IMODE(root_info.st_mode) != 0o755
             or not stat.S_ISREG(file_info.st_mode)
             or _identity(file_info) != sample.file_identity
-            or file_info.st_uid != os.geteuid()
+            or file_info.st_uid != get_effective_user_id()
             or file_info.st_nlink != 1
             or sample.file_mode not in (0o444, 0o666)
             or stat.S_IMODE(file_info.st_mode) != sample.file_mode
@@ -216,7 +222,7 @@ def _create_sandbox_sample(
 
             parent_fd = os.open(
                 parent_name,
-                os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW,
+                os.O_RDONLY | O_DIRECTORY | O_NOFOLLOW,
                 dir_fd=base_fd,
             )
             stack.callback(os.close, parent_fd)
@@ -225,7 +231,7 @@ def _create_sandbox_sample(
             os.mkdir("repository", mode=0o755, dir_fd=parent_fd)
             root_fd = os.open(
                 "repository",
-                os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW,
+                os.O_RDONLY | O_DIRECTORY | O_NOFOLLOW,
                 dir_fd=parent_fd,
             )
             stack.callback(os.close, root_fd)
@@ -233,7 +239,7 @@ def _create_sandbox_sample(
 
             file_fd = os.open(
                 SAMPLE_FILENAME,
-                os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW,
+                os.O_WRONLY | os.O_CREAT | os.O_EXCL | O_NOFOLLOW,
                 0o600,
                 dir_fd=root_fd,
             )

@@ -39,7 +39,7 @@
 
 ## 快速启动
 
-在仓库根目录，完成 Python/Node 依赖安装与数据库迁移后运行：
+在仓库根目录运行 `pnpm install`（或兼容入口 `npm install`）即可补齐 Python 与所有 Node workspace 依赖。完成数据库迁移后运行：
 
 ```bash
 docker compose -f infra/compose.yaml up -d

@@ -8,6 +8,7 @@ from pathlib import Path
 import pytest
 
 from app.services.workspace.files import workspace_file as service
+from app.platform_compat import O_NONBLOCK
 from tests.workspace.directory import test_workspace_path as path_tests
 
 
@@ -120,7 +121,7 @@ def test_replacement_during_open(file, descriptors, monkeypatch, kind):
                 if kind == "leaf-link":
                     file.symlink_to(outside / file.name)
                 elif kind == "fifo":
-                    assert flags & os.O_NONBLOCK
+                    assert flags & O_NONBLOCK
                     os.mkfifo(file)
                 else:
                     file.write_bytes(b"replacement")

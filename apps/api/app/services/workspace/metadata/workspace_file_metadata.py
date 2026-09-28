@@ -19,6 +19,12 @@ from app.services.workspace.metadata.workspace_xattr_copy import (
     XattrCopyError,
     copy_file_xattrs,
 )
+from app.platform_compat import (
+    get_effective_user_id,
+    get_stat_flags,
+    set_file_mode,
+    set_file_owner,
+)
 
 
 # 来自 macOS SDK 的 sys/acl.h；xattr ABI 由专用模块管理。
@@ -156,7 +162,7 @@ def _require_supported_file(descriptor: int) -> os.stat_result:
     if (
         not stat.S_ISREG(current.st_mode)
         or current.st_nlink != 1
-        or current.st_uid != os.geteuid()
+        or current.st_uid != get_effective_user_id()
         or flags is None
         or flags != 0
         or current.st_mode & (stat.S_ISUID | stat.S_ISGID | stat.S_ISVTX)
@@ -179,7 +185,7 @@ def _file_version(current: os.stat_result) -> tuple:
         current.st_size,
         current.st_mtime_ns,
         current.st_ctime_ns,
-        current.st_flags,
+        get_stat_flags(current),
     )
 
 
@@ -194,7 +200,7 @@ def _target_content_version(current: os.stat_result) -> tuple:
         current.st_nlink,
         current.st_size,
         current.st_mtime_ns,
-        current.st_flags,
+        get_stat_flags(current),
     )
 
 
@@ -305,9 +311,9 @@ def copy_file_metadata(
         # 此处没有数据库事务，也没有文件提交。
         # chown 可能影响权限位，因此先处理属组，再设置权限。
         if target_metadata.gid != expected.gid:
-            os.fchown(target_fd, -1, expected.gid)
+            set_file_owner(target_fd, -1, expected.gid)
 
-        os.fchmod(target_fd, expected.mode)
+        set_file_mode(target_fd, expected.mode)
 
         # 在安装最终 ACL 之前复制属性，避免 ACL 提前限制属性写入。
         # 原语自行重新读取源、拒绝目标额外属性，并验证完整回读。

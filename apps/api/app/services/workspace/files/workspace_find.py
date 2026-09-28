@@ -9,6 +9,7 @@ from pathlib import Path, PurePosixPath
 from typing import Literal
 
 from app.services.workspace.directory.workspace_path import resolve_task_workspace_path
+from app.platform_compat import O_DIRECTORY, O_NOFOLLOW
 
 
 # 限制由服务端固定，不能通过模型参数扩大扫描范围。
@@ -87,8 +88,8 @@ def _require_supported_find() -> None:
         os.name != "posix"
         or os.open not in os.supports_dir_fd
         or os.scandir not in os.supports_fd
-        or not hasattr(os, "O_DIRECTORY")
-        or not hasattr(os, "O_NOFOLLOW")
+        or not O_DIRECTORY
+        or not O_NOFOLLOW
     ):
         raise WorkspaceFindError(
             "file_find_unsupported",
@@ -127,7 +128,7 @@ def _walk_directory(
     """沿已打开的目录描述符深度优先扫描，共享本次全局预算。"""
 
     before = os.fstat(descriptor)
-    flags = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW
+    flags = os.O_RDONLY | O_DIRECTORY | O_NOFOLLOW
 
     # 迭代器和子目录描述符由当前递归层负责关闭。
     # 最多保留固定深度的扫描栈，不预先加载整个目录。
@@ -180,10 +181,7 @@ def _walk_directory(
                     opened = os.fstat(child_fd)
 
                     # 无跟随打开阻止链接替换；身份比较再发现目录替换。
-                    if (
-                        _directory_version(opened)
-                        != _directory_version(metadata)
-                    ):
+                    if _directory_version(opened) != _directory_version(metadata):
                         raise _changed()
 
                     _walk_directory(
@@ -222,7 +220,7 @@ def _find_resolved_directory(
             "目标目录无法用于受限查找",
         )
 
-    flags = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW
+    flags = os.O_RDONLY | O_DIRECTORY | O_NOFOLLOW
     state = _FindState(paths=[])
 
     # 包括根目录祖先在内，所有成功打开的描述符都立即登记清理。

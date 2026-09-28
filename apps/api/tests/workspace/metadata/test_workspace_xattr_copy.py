@@ -9,6 +9,7 @@ import pytest
 
 from app.services.workspace.metadata import workspace_xattr_copy as service
 from app.services.workspace.metadata.workspace_file_xattrs import FileXattr, FileXattrError, read_file_xattrs
+from app.platform_compat import O_DIRECTORY
 
 
 @pytest.fixture
@@ -71,7 +72,7 @@ def test_unsafe_target_rejected(files, harness, kind):
         opened = os.dup(source)
         harness.args['target_fd'] = opened
     elif kind == 'directory':
-        opened = os.open(first.parent, os.O_RDONLY | os.O_DIRECTORY)
+        opened = os.open(first.parent, os.O_RDONLY | O_DIRECTORY)
         harness.args['target_fd'] = opened
     else:
         os.link(second, first.parent / 'another')

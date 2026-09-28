@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 
 from app.models import Workspace, WorkspaceSampleOrigin
 from app.repositories.workspace.workspace_repository import WorkspaceNotAccessibleError
+from app.platform_compat import O_DIRECTORY, O_NOFOLLOW
 from app.services.workspace.samples import cleanup_preflight as inspection
 from app.services.workspace.samples.task_sample_binding import TaskSampleBindingError, TaskSampleBindings
 from tests.workspace.samples.test_task_sample_binding import root, setup, target
@@ -389,8 +390,8 @@ def test_candidate_is_opened_without_following_links_and_all_fds_are_closed(
     )
     assert len(candidate_opens) == 1
     flags, parent_fd, candidate_fd = candidate_opens[0]
-    assert flags & os.O_DIRECTORY
-    assert flags & os.O_NOFOLLOW
+    assert flags & O_DIRECTORY
+    assert flags & O_NOFOLLOW
     assert parent_fd in opened and parent_fd != candidate_fd
     for descriptor in opened:
         with pytest.raises(OSError):

@@ -9,6 +9,12 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
 
+from app.platform_compat import (
+    O_DIRECTORY,
+    O_NOFOLLOW,
+    get_effective_user_id,
+)
+
 
 PreflightResult = Literal[
     'evidence_missing',
@@ -74,7 +80,7 @@ def inspect_pending_sample_directory(
         return 'inspection_unavailable'
 
     try:
-        parent_fd = os.open(parent, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+        parent_fd = os.open(parent, os.O_RDONLY | O_DIRECTORY | O_NOFOLLOW)
     except OSError:
         return 'inspection_unavailable'
 
@@ -114,7 +120,7 @@ def inspect_pending_sample_directory(
                     # 目录项形态明显不符时不尝试打开候选对象。
                     valid_candidate = (
                         stat.S_ISDIR(candidate.st_mode)
-                        and candidate.st_uid == os.geteuid()
+                        and candidate.st_uid == get_effective_user_id()
                         and stat.S_IMODE(candidate.st_mode) == 0o700
                     )
                     if not valid_candidate:
@@ -124,7 +130,7 @@ def inspect_pending_sample_directory(
                             # 只读打开当前目录项，不沿链接追踪，也不读取目录内容。
                             candidate_fd = os.open(
                                 name,
-                                os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW,
+                                os.O_RDONLY | O_DIRECTORY | O_NOFOLLOW,
                                 dir_fd=parent_fd,
                             )
                             opened_candidate = os.fstat(candidate_fd)

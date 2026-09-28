@@ -1,4 +1,3 @@
-from typing import Any
 """真实 Docker 的样例只读诊断专项；变更阶段与只读观测阶段明确分离。
 
 运行：PYTHONPATH=apps/api .venv/bin/python scripts/verify_sandbox_sample_reconciliation.py
@@ -10,6 +9,7 @@ import errno
 import json
 import stat
 from dataclasses import replace
+from typing import Any
 from unittest.mock import patch
 
 from app.services.runtime.command.command_contracts import CommandRequest
@@ -20,8 +20,6 @@ from app.services.runtime.sandbox.sandbox_identity import parse_created_containe
 from app.services.runtime.sandbox.sandbox_isolation_policy import confirm_sandbox_isolation_policy
 from app.services.runtime.sandbox.sandbox_sample_reconciliation import reconcile_sample_command
 from app.services.runtime.sandbox.sandbox_stop import stop_and_confirm_sandbox
-
-
 
 
 def source_evidence(sample):
@@ -41,8 +39,6 @@ def source_evidence(sample):
         )
     return result
 
-
-from tests.assertions import require_value
 
 async def main():
     command = CommandRequest(argv=['/usr/local/bin/python', '-c', 'import time; time.sleep(600)'])
@@ -68,7 +64,9 @@ async def main():
         return result
 
     async def observe(label, evidence, expected_container, expected_sample, *, fail_docker=False):
-        before_files = source_evidence(require_value(recovery).sample)
+        sample = evidence.sample
+        assert sample is not None
+        before_files = source_evidence(sample)
         before_containers = await container_evidence()
         before_registry = dict(samples._ACTIVE_SAMPLES)
         calls = []
@@ -83,7 +81,7 @@ async def main():
         assert snapshot.container_status == expected_container
         assert snapshot.sample_status == expected_sample
         assert snapshot.recovery is evidence and snapshot.recovery.command is evidence.command
-        assert source_evidence(require_value(recovery).sample) == before_files
+        assert source_evidence(sample) == before_files
         assert await container_evidence() == before_containers
         assert samples._ACTIVE_SAMPLES == before_registry
         if evidence.container_id is not None:
@@ -153,8 +151,10 @@ async def main():
             held.rename(recovery.sample.root)
 
         real_open = samples.os.open
+        source_sample = recovery.sample
+        assert source_sample is not None
         def denied(path, *args, **kwargs):
-            if path == require_value(recovery.sample).root.name:
+            if path == source_sample.root.name:
                 raise PermissionError(errno.EACCES, 'injected source permission failure')
             return real_open(path, *args, **kwargs)
         with patch.object(samples.os, 'open', denied):
@@ -180,8 +180,9 @@ async def main():
                 if not audit['container_ids'] and recovery.create_attempted:
                     raise RuntimeError('unknown creation outcome; preserve sample')
                 if recovery.sample is not None:
-                    samples.cleanup_sandbox_sample(recovery.sample)
-                    assert not recovery.sample.root.parent.exists()
+                    sample = recovery.sample
+                    samples.cleanup_sandbox_sample(sample)
+                    assert not sample.root.parent.exists()
             assert not [task for task in asyncio.all_tasks() if task.get_name() in (
                 'docker-client-spawn', 'docker-client-collect', 'docker-client-cleanup',
             )]

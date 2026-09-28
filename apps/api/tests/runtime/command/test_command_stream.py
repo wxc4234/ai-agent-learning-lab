@@ -22,7 +22,11 @@ class ScriptedReader:
         return item
 
 
-@pytest.mark.parametrize("data", [b"", b"a", b"a" * 4096, b"a" * 4097, b"x" * 70_000, "中文🙂".encode()])
+@pytest.mark.parametrize(
+    "data",
+    [b"", b"a", b"a" * 4096, b"a" * 4097, b"x" * 70_000, "中文🙂".encode()],
+    ids=["empty", "one-byte", "one-chunk", "chunk-plus-one", "truncated", "utf8"],
+)
 def test_real_memory_stream_reaches_eof(data):
     async def scenario():
         reader = asyncio.StreamReader()

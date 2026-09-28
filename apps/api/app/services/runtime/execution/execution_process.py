@@ -1,13 +1,29 @@
 """本机进程存活证据：无法确认时拒绝恢复，不按占用年龄推断。"""
 
 import hashlib
+import importlib
 import os
 from pathlib import Path
 import platform
 import re
 import subprocess
-import sys
 from functools import lru_cache
+
+
+def _windows_machine_guid() -> str | None:
+    """延迟读取 Windows 注册表；其他平台不要求存在 winreg API。"""
+
+    try:
+        registry = importlib.import_module("winreg")
+        registry_api = vars(registry)
+        open_key = registry_api["OpenKey"]
+        hive = registry_api["HKEY_LOCAL_MACHINE"]
+        query_value = registry_api["QueryValueEx"]
+        with open_key(hive, r"SOFTWARE\Microsoft\Cryptography") as key:
+            value = query_value(key, "MachineGuid")[0]
+        return value if isinstance(value, str) else None
+    except (ImportError, KeyError, OSError):
+        return None
 
 
 @lru_cache(maxsize=1)
@@ -27,10 +43,8 @@ def host_identity() -> str | None:
         elif system == 'Linux':
             identity = Path('/etc/machine-id').read_text().strip()
             identity += ':' + os.readlink('/proc/self/ns/pid')
-        elif sys.platform == 'win32':
-            import winreg
-            with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, r'SOFTWARE\Microsoft\Cryptography') as key:
-                identity = winreg.QueryValueEx(key, 'MachineGuid')[0]
+        elif system == 'Windows':
+            identity = _windows_machine_guid()
         else:
             return None
         if not identity:
