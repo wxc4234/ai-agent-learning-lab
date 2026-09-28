@@ -11,6 +11,7 @@ import pytest
 from app.services.workspace.files import workspace_file_replace as service
 from tests.workspace.metadata.metadata_support import plain_metadata
 from tests.workspace.files.test_workspace_file import descriptors
+from typing import Any
 
 __all__ = ['descriptors', 'plain_metadata']
 
@@ -29,7 +30,7 @@ def sample(tmp_path, plain_metadata):
 
 def replace(sample, **overrides):
     root, _ = sample
-    args = {
+    args: dict[str, Any] = {
         'bound_root': str(root), 'relative_path': 'src/中文 file.txt',
         'baseline_sha256': sha256(b'\xef\xbb\xbfold\r\n').hexdigest(),
         'proposed_content': '\ufeffnew\r\n',
@@ -67,7 +68,7 @@ def test_exact_content_metadata_immutable_and_clean(sample, descriptors, content
     assert set(asdict(result)) == {'status', 'code', 'cleanup_complete'}
     assert descriptors[0] and not descriptors[1]
     with pytest.raises(FrozenInstanceError):
-        result.status = 'other'
+        setattr(result, 'status', 'other')  # noqa: B010 -- 测试冻结属性或动态故障注入，需要运行时属性访问
 
 
 @pytest.mark.parametrize('overrides', [

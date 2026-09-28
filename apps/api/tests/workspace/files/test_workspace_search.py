@@ -43,9 +43,9 @@ def test_valid_query_preserved_and_identity_forwarded(monkeypatch, query):
     assert result.matches[0].snippet == query
     assert result.matches[0].column_number == 1
     with pytest.raises(FrozenInstanceError):
-        result.truncated = True
+        setattr(result, 'truncated', True)  # noqa: B010 -- 测试冻结属性或动态故障注入，需要运行时属性访问
     with pytest.raises(FrozenInstanceError):
-        result.matches[0].line_number = 99
+        setattr(result.matches[0], 'line_number', 99)  # noqa: B010 -- 测试冻结属性或动态故障注入，需要运行时属性访问
 
 
 @pytest.mark.parametrize("content,query,positions", [

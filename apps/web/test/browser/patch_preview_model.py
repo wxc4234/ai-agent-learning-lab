@@ -10,6 +10,8 @@ from app.models import AgentRun, AgentRunEvent, FileEditProposal
 from app.services.runtime.agent.agent_runtime import FinalAnswer, ModelUsage, ToolAction, ToolErrorObservation
 
 
+
+
 def patch_preview_decision(prompt, observations):
     usage = ModelUsage(input_tokens=10, output_tokens=10, total_tokens=20)
     if observations:
@@ -37,6 +39,9 @@ def patch_preview_decision(prompt, observations):
     )
 
 
+
+from tests.assertions import require_value
+
 def verify_patch_preview_rows(engine):
     # 浏览器输出先完成，再独立核对真实数据库；SELECT 不改变任何业务状态。
     report_path = Path('/private/tmp/agent-ui-patch-preview/output/playwright/evidence.json')
@@ -45,7 +50,7 @@ def verify_patch_preview_rows(engine):
         assert len(report) == session.scalar(select(func.count()).select_from(AgentRun)) == 4
         assert session.scalar(select(func.count()).select_from(FileEditProposal)) == 0
         for item in report:
-            assert session.get(AgentRun, item['run_id']).status == 'done'
+            assert require_value(session.get(AgentRun, item['run_id'])).status == 'done'
             events = session.scalars(select(AgentRunEvent).where(AgentRunEvent.run_id == item['run_id'])).all()
             assert sum(event.event_type == 'TOOL_CALL_START' for event in events) == 1
             assert sum(event.event_type == 'TOOL_CALL_RESULT' for event in events) == item['result_count']

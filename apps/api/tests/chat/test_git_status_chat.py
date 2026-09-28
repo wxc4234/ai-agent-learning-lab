@@ -24,7 +24,8 @@ from app.services.workspace.git import task_git_samples
 from app.services.workspace.git.application_samples import start_git_samples, stop_git_samples, get_git_samples
 from tests.chat.test_chat_tool_context import isolated_history_and_monitor as isolated_history_and_monitor  # noqa: PLC0414
 from tests.tasks.test_task_deletion_service import target as target  # noqa: PLC0414
-from tests.model.test_model_decision import build_text_response, build_tool_response
+from tests.model.response_stream import build_text_response, build_tool_response
+from tests.assertions import require_value
 
 
 @pytest.mark.parametrize('kind', ['success', 'missing', 'invalid', 'manager-missing'])
@@ -42,8 +43,8 @@ def test_route_status_events_and_unchanged_project(engine, target, monkeypatch, 
     scope = {key: target[key] for key in ('user_id', 'workspace_id', 'task_id')}
     path = None
     if kind in ('success', 'invalid'):
-        manager.bind(**scope)
-        root = manager._bindings[tuple(scope.values())].sample.root
+        require_value(manager).bind(**scope)
+        root = require_value(manager)._bindings[tuple(scope.values())].sample.root
         path = root / '中文.txt'
         path.write_text('unchanged')
         before = (path.read_bytes(), path.stat().st_ino, path.stat().st_mtime_ns)
@@ -63,12 +64,12 @@ def test_route_status_events_and_unchanged_project(engine, target, monkeypatch, 
     async def scenario():
         try:
             response = await route.chat_stream(owner)
-            events = [json.loads(line) async for line in response.body_iterator]
+            events = [json.loads(line if isinstance(line, str) else bytes(line)) async for line in response.body_iterator]
             expected = 'RUN_ERROR' if kind == 'manager-missing' else 'RUN_FINISHED'
             assert events[-1]['type'] == expected
             if path is not None:
                 assert (path.read_bytes(), path.stat().st_ino, path.stat().st_mtime_ns) == before
-            return owner.creation.result(), events
+            return require_value(owner.creation).result(), events
         finally:
             await owner.close()
             await stop_git_samples(application)
@@ -89,13 +90,13 @@ def test_route_status_events_and_unchanged_project(engine, target, monkeypatch, 
             assert str(root) not in raw
         elif kind == 'missing':
             assert result['error']['details'] == 'task_git_sample_unavailable'
-            assert not manager._bindings
+            assert not require_value(manager)._bindings
         else:
             assert result['error']['code'] == 'invalid_tool_arguments'
         expected_event = 'TOOL_CALL_RESULT' if kind == 'success' else 'TOOL_CALL_ERROR'
         assert sum(event['type'] == expected_event for event in events) == 1
     with Session(engine) as session:
         assert session.scalar(select(Workspace.root_path)) == original_root
-        assert session.get(AgentRun, run_id).status == ('error' if kind == 'manager-missing' else 'done')
+        assert require_value(session.get(AgentRun, run_id)).status == ('error' if kind == 'manager-missing' else 'done')
         stored = session.scalars(select(AgentRunEvent.event_type).where(AgentRunEvent.run_id == run_id)).all()
         assert ('RUN_ERROR' if kind == 'manager-missing' else expected_event) in stored

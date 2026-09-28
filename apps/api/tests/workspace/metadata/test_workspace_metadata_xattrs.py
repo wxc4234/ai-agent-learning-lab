@@ -1,4 +1,5 @@
 """真实临时文件的完整快照、装配顺序和失败边界。"""
+
 import ctypes
 import os
 
@@ -48,7 +49,7 @@ def test_extra_target_refused_before_permissions(opened, monkeypatch):
     expected = m.read_file_metadata(opened[0])
     monkeypatch.setattr(m.os, 'fchmod', lambda *args: pytest.fail('must not write'))
     with pytest.raises(m.FileMetadataError, match='unsupported'):
-        m.copy_file_metadata(*opened, expected)
+        m.copy_file_metadata(opened[0], opened[1], expected)
 
 
 @pytest.mark.parametrize('where', [0, 1])
@@ -60,7 +61,7 @@ def test_change_after_xattr_copy_rejected(opened, monkeypatch, where):
         set_attr(opened[where])
     monkeypatch.setattr(m, 'copy_file_xattrs', change)
     with pytest.raises(m.FileMetadataError, match='changed'):
-        m.copy_file_metadata(*opened, expected)
+        m.copy_file_metadata(opened[0], opened[1], expected)
 
 
 @pytest.mark.parametrize('error', [m.FileXattrError('private'), x.XattrCopyError('private'), OSError('private'), KeyboardInterrupt()])
@@ -71,10 +72,10 @@ def test_partial_failure_keeps_fds(opened, monkeypatch, error):
         raise error
     monkeypatch.setattr(m, 'copy_file_xattrs', fail)
     proxy = NativeProxy(m._native_library())
-    proxy.acl_set_fd_np = lambda *args: pytest.fail('ACL must follow xattrs')
+    setattr(proxy, 'acl_set_fd_np', lambda *args: pytest.fail('ACL must follow xattrs'))  # noqa: B010 -- 测试冻结属性或动态故障注入，需要运行时属性访问
     monkeypatch.setattr(m, '_native_library', lambda: proxy)
     with pytest.raises(KeyboardInterrupt if isinstance(error, KeyboardInterrupt) else m.FileMetadataError) as caught:
-        m.copy_file_metadata(*opened, expected)
+        m.copy_file_metadata(opened[0], opened[1], expected)
     assert 'private' not in str(caught.value)
     assert any(item.name == b'com.example.lesson' for item in m.read_file_xattrs(opened[1]))
     for fd in opened:
@@ -89,10 +90,10 @@ def test_acl_invalidates_xattrs_detected(opened, monkeypatch):
         result = original(fd, pointer, kind)
         set_attr(fd)
         return result
-    proxy.acl_set_fd_np = change
+    setattr(proxy, 'acl_set_fd_np', change)  # noqa: B010 -- 测试冻结属性或动态故障注入，需要运行时属性访问
     monkeypatch.setattr(m, '_native_library', lambda: proxy)
     with pytest.raises(m.FileMetadataError, match='changed'):
-        m.copy_file_metadata(*opened, expected)
+        m.copy_file_metadata(opened[0], opened[1], expected)
 
 
 def test_read_error_is_not_empty(opened, monkeypatch):
@@ -136,9 +137,9 @@ def test_permissions_xattrs_acl_order(opened, monkeypatch):
         return acl(*args)
     monkeypatch.setattr(m.os, 'fchmod', mode)
     monkeypatch.setattr(m, 'copy_file_xattrs', attributes)
-    proxy.acl_set_fd_np = access
+    setattr(proxy, 'acl_set_fd_np', access)  # noqa: B010 -- 测试冻结属性或动态故障注入，需要运行时属性访问
     monkeypatch.setattr(m, '_native_library', lambda: proxy)
-    m.copy_file_metadata(*opened, expected)
+    m.copy_file_metadata(opened[0], opened[1], expected)
     assert calls == ['mode', 'xattrs', 'acl']
 
 
@@ -151,4 +152,4 @@ def test_content_change_during_copy_rejected(opened, monkeypatch, where):
         os.pwrite(opened[where], b'changed-content', 0)
     monkeypatch.setattr(m, 'copy_file_xattrs', change)
     with pytest.raises(m.FileMetadataError, match='changed'):
-        m.copy_file_metadata(*opened, expected)
+        m.copy_file_metadata(opened[0], opened[1], expected)

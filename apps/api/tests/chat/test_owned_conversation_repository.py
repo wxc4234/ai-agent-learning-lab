@@ -15,6 +15,9 @@ from app.repositories.chat.conversation_repository import (
     get_or_create_owned_conversation,
     require_owned_conversation,
 )
+from psycopg import Error as PsycopgError
+from tests.assertions import require_instance
+from tests.assertions import require_value
 
 
 @pytest.fixture
@@ -56,8 +59,8 @@ def test_other_owner_cannot_read_or_take_over(engine, owners, operation):
         assert session.scalar(text("SELECT 1")) == 1
     with Session(engine) as session:
         record = session.scalar(select(Conversation))
-        assert record.user_id == owners[0]
-        assert record.title == "private-title"
+        assert require_value(record).user_id == owners[0]
+        assert require_value(record).title == "private-title"
         assert session.scalar(select(func.count()).select_from(Conversation)) == 1
 
 
@@ -107,7 +110,7 @@ def test_foreign_key_error_is_not_swallowed_and_caller_can_rollback(engine, owne
     with Session(engine) as session:
         with pytest.raises(IntegrityError) as error:
             get_or_create_owned_conversation(session, user_id=max(owners) + 1000, session_id="bad-owner")
-        assert error.value.orig.sqlstate == "23503"
+        assert require_instance(require_value(error.value.orig), PsycopgError).sqlstate == "23503"
         session.rollback()
         assert session.scalar(select(func.count()).select_from(Conversation)) == 0
 
@@ -121,8 +124,8 @@ def test_unrelated_unique_constraint_is_not_swallowed(engine, owners):
     with Session(engine) as session:
         with pytest.raises(IntegrityError) as error:
             get_or_create_owned_conversation(session, user_id=owners[0], session_id="two")
-        assert error.value.orig.sqlstate == "23505"
-        assert error.value.orig.diag.constraint_name == "test_unique_owner"
+        assert require_instance(require_value(error.value.orig), PsycopgError).sqlstate == "23505"
+        assert require_instance(require_value(error.value.orig), PsycopgError).diag.constraint_name == "test_unique_owner"
         session.rollback()
         assert session.scalar(select(func.count()).select_from(Conversation)) == 1
 
@@ -133,7 +136,7 @@ def test_sql_failure_keeps_database_classification(engine, owners, operation):
         session.execute(text("SET LOCAL search_path TO pg_catalog"))
         with pytest.raises(ProgrammingError) as error:
             operation(session, user_id=owners[0], session_id="failure")
-        assert error.value.orig.sqlstate == "42P01"
+        assert require_instance(require_value(error.value.orig), PsycopgError).sqlstate == "42P01"
         session.rollback()
         assert session.scalar(text("SELECT 1")) == 1
 
@@ -189,8 +192,8 @@ def test_concurrent_same_identifier_never_overwrites_owner(engine, owners, same_
         record = session.scalar(select(Conversation))
         assert session.scalar(select(func.count()).select_from(Conversation)) == 1
         if first_commits:
-            assert record.id == created_id and record.user_id == owners[0]
+            assert require_value(record).id == created_id and require_value(record).user_id == owners[0]
             assert outcome == ((created_id, owners[0]) if same_owner else "denied")
         else:
-            assert record.user_id == second_owner
-            assert outcome == (record.id, second_owner)
+            assert require_value(record).user_id == second_owner
+            assert outcome == (require_value(record).id, second_owner)

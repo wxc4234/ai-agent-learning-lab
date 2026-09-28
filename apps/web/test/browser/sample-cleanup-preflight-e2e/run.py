@@ -23,8 +23,13 @@ HERE = Path(__file__).resolve().parent
 SAMPLE_APP = HERE.parent / 'execution-e2e'
 sys.path.insert(0, str(API))
 spec = importlib.util.spec_from_file_location('isolated_fixtures', API / 'tests/conftest.py')
-fixtures = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(fixtures)
+
+from tests.assertions import require_value
+
+fixtures = importlib.util.module_from_spec(require_value(spec))
+require_value(require_value(spec).loader).exec_module(fixtures)
+
+
 
 
 def port():
@@ -143,10 +148,10 @@ try:
             with Session(engine) as session:
                 proposal = session.scalar(select(FileEditProposal).where(FileEditProposal.external_id == fixture['proposal_id']))
                 workspace = session.scalar(select(Workspace).where(Workspace.external_id == fixture['workspace_id']))
-                origin = session.get(WorkspaceSampleOrigin, workspace.id)
+                origin = session.get(WorkspaceSampleOrigin, require_value(workspace).id)
                 source_task_id = session.scalar(select(Task.id).where(Task.external_id == fixture['task_id']))
                 assert origin is not None and origin.task_id == source_task_id
-                assert origin.lifecycle_state == 'cleanup_pending' and workspace.root_path is None
+                assert origin.lifecycle_state == 'cleanup_pending' and require_value(workspace).root_path is None
                 assert origin.root_path == fixture['root']
                 assert (origin.parent_dev, origin.parent_ino) == (
                     Path(fixture['root']).parent.stat().st_dev,
@@ -157,7 +162,7 @@ try:
                     Path(fixture['root']).stat().st_ino,
                 )
                 before_database = (
-                    proposal.status, proposal.application_status, workspace.root_path,
+                    require_value(proposal).status, require_value(proposal).application_status, require_value(workspace).root_path,
                     origin.task_id, origin.root_path, origin.lifecycle_state,
                     origin.parent_dev, origin.parent_ino, origin.root_dev, origin.root_ino,
                 )
@@ -175,13 +180,13 @@ try:
                 + json.dumps(public_scope) + '} />;}'
             )
             start(
-                [shutil.which('node'), str(WEB / 'node_modules/next/dist/bin/next'),
+                [require_value(shutil.which('node')), str(WEB / 'node_modules/next/dist/bin/next'),
                  'dev', '--webpack', '--hostname', '127.0.0.1', '--port', str(web_port)],
                 web, 'web',
             )
             ready(base, token, processes)
             subprocess.run(
-                [shutil.which('node'), str(HERE / 'verify.mjs')],
+                [require_value(shutil.which('node')), str(HERE / 'verify.mjs')],
                 cwd=WEB, env=env, check=True, timeout=120,
             )
 
@@ -193,10 +198,10 @@ try:
             with Session(engine) as session:
                 proposal = session.scalar(select(FileEditProposal).where(FileEditProposal.external_id == fixture['proposal_id']))
                 workspace = session.scalar(select(Workspace).where(Workspace.external_id == fixture['workspace_id']))
-                origin = session.get(WorkspaceSampleOrigin, workspace.id)
+                origin = session.get(WorkspaceSampleOrigin, require_value(workspace).id)
                 assert origin is not None
                 assert (
-                    proposal.status, proposal.application_status, workspace.root_path,
+                    require_value(proposal).status, require_value(proposal).application_status, require_value(workspace).root_path,
                     origin.task_id, origin.root_path, origin.lifecycle_state,
                     origin.parent_dev, origin.parent_ino, origin.root_dev, origin.root_ino,
                 ) == before_database
@@ -215,8 +220,8 @@ try:
         assert not Path(fixture['root']).exists()
         with Session(engine) as session:
             workspace = session.scalar(select(Workspace).where(Workspace.external_id == fixture['workspace_id']))
-            assert workspace.root_path is None
-            assert session.get(WorkspaceSampleOrigin, workspace.id) is None
+            assert require_value(workspace).root_path is None
+            assert session.get(WorkspaceSampleOrigin, require_value(workspace).id) is None
         api_log = (output / 'api.log').read_text()
         for task_id in (fixture['task_id'], sibling_task_id, 'f' * 32):
             assert f'GET /workspaces/{fixture["workspace_id"]}/tasks/{task_id}/sample-cleanup-preflight' in api_log

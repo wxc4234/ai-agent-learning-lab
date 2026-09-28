@@ -13,6 +13,7 @@ from app.routers.workspace import proposals as routes
 from app.services.workspace.proposals import file_edit_proposal_decision as decisions
 from tests.local.test_local_mode import HEADERS
 from tests.workspace.proposals import test_file_edit_proposal_api as detail_tests
+from tests.assertions import require_value
 
 local_client = detail_tests.local_client
 saved = detail_tests.saved
@@ -163,7 +164,7 @@ def test_inaccessible_and_missing_are_same_404(local_client, ready, engine, kind
             session.add(other)
             session.flush()
             row = session.scalar(select(Workspace if kind == "owner" else Conversation))
-            row.user_id = other.id
+            require_value(row).user_id = other.id
     response = send(local_client, path)
     error(response, 404, "workspace_not_accessible")
     assert stored(engine) == (None if kind == "deleted" else "pending")
@@ -184,9 +185,9 @@ def test_approval_guard_then_rejection_remains_available(local_client, ready, en
     path, file, _ = ready[0]
     with Session(engine) as session, session.begin():
         if kind == "truncated":
-            session.scalar(select(FileEditProposal)).diff_truncated = True
+            require_value(session.scalar(select(FileEditProposal))).diff_truncated = True
         else:
-            session.scalar(select(Workspace)).root_path = None if kind == "unbound" else "/PRIVATE"
+            require_value(session.scalar(select(Workspace))).root_path = None if kind == "unbound" else "/PRIVATE"
     code = "proposal_diff_incomplete" if kind == "truncated" else "proposal_binding_changed"
     error(send(local_client, path), 409, code)
     assert stored(engine) == "pending"

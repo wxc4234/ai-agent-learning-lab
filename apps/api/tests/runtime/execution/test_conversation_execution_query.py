@@ -12,6 +12,7 @@ from app.models import AgentRun, Conversation, ConversationExecutionSlot, Worksp
 from app.repositories.chat.conversation_repository import ConversationNotAccessibleError
 from app.services.runtime.execution import conversation_execution_query as query
 from tests.runtime.execution import test_conversation_execution_service as service_tests
+from tests.assertions import require_value
 
 
 # 复用本地 Task/Workspace 数据，底层由公共夹具创建随机数据库和私有 schema。
@@ -65,9 +66,9 @@ def test_acquire_release_and_detached_public_snapshot(engine, target, reader):
     assert asdict(occupied) == {
         "session_id": target[1], "occupied": True, "acquired_at": ownership.acquired_at,
     }
-    assert occupied.acquired_at.tzinfo is not None
+    assert require_value(occupied.acquired_at).tzinfo is not None
     with pytest.raises(FrozenInstanceError):
-        occupied.occupied = False
+        setattr(occupied, 'occupied', False)  # noqa: B010 -- 测试冻结属性或动态故障注入，需要运行时属性访问
     with Session(engine) as session:
         assert service_tests.release(session, target, ownership.owner_token)
     assert read(target) == empty
@@ -123,7 +124,7 @@ def test_old_slot_remains_occupied_independent_of_run(engine, target, reader, ru
     # 独立连接确认原 token、原时间及 Run 状态均未被查询改变。
     with Session(engine) as session:
         slot = session.scalar(select(ConversationExecutionSlot))
-        assert slot.owner_token == ownership.owner_token and slot.acquired_at == old_time
+        assert require_value(slot).owner_token == ownership.owner_token and require_value(slot).acquired_at == old_time
         assert session.scalar(select(AgentRun.status)) == run_status
     assert not query.get_conversation_execution_status(user_id=target[0], session_id=target[3]).occupied
 

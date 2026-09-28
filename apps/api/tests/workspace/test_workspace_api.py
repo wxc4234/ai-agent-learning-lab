@@ -18,6 +18,7 @@ from app.routers.workspace import projects as workspace
 from app.schemas import LoginRequest, RegisterRequest
 from app.services.auth.login_session_service import issue_login_session
 from app.services.auth.registration_service import register_user
+from tests.assertions import require_value
 
 
 @pytest.fixture
@@ -25,9 +26,9 @@ def lab(engine, monkeypatch):
     identities = []
     for name in ("工作空间甲", "工作空间乙"):
         with Session(engine) as session:
-            register_user(session, RegisterRequest(username=name, password="Workspace-HTTP-2026!"))
+            register_user(session, RegisterRequest.model_validate({'username': name, 'password': "Workspace-HTTP-2026!"}))
         with Session(engine) as session:
-            identities.append(issue_login_session(session, LoginRequest(username=name, password="Workspace-HTTP-2026!")))
+            identities.append(issue_login_session(session, LoginRequest.model_validate({'username': name, 'password': "Workspace-HTTP-2026!"})))
     auth_sessions = []
     business_sessions = []
 
@@ -97,8 +98,8 @@ def test_registered_route_creates_for_cookie_owner_and_closes_sessions(lab, engi
     assert auth_sessions[0].was_closed and business_sessions[0].was_closed
     with Session(engine) as session:
         record = session.scalar(select(Workspace))
-        assert record.user_id == owner.user.id
-        assert record.external_id == body["external_id"]
+        assert require_value(record).user_id == owner.user.id
+        assert require_value(record).external_id == body["external_id"]
     second = client.post("/workspaces", headers=headers(other), json={"name": body["name"]})
     assert_safe(second, 201)
     assert second.json()["external_id"] != body["external_id"]
@@ -117,10 +118,10 @@ def test_invalid_auth_rejected_before_business_work(lab, engine, state):
         with Session(engine) as session, session.begin():
             record = session.scalar(select(LoginSession).where(LoginSession.user_id == owner.user.id))
             if state == "expired":
-                record.created_at = datetime.now(timezone.utc) - timedelta(hours=2)
-                record.expires_at = datetime.now(timezone.utc) - timedelta(hours=1)
+                require_value(record).created_at = datetime.now(timezone.utc) - timedelta(hours=2)
+                require_value(record).expires_at = datetime.now(timezone.utc) - timedelta(hours=1)
             else:
-                record.revoked_at = datetime.now(timezone.utc)
+                require_value(record).revoked_at = datetime.now(timezone.utc)
     response = client.post("/workspaces", headers=request_headers, json={"name": "PRIVATE"})
     assert_safe(response, 401, "invalid_login_session")
     assert not business_sessions and count(engine) == 0

@@ -1,3 +1,4 @@
+from typing import Any
 """真实样例命令链：attach 输出、退出、超时/取消及响应丢失注入。
 
 运行：PYTHONPATH=apps/api .venv/bin/python scripts/verify_sandbox_sample_command.py
@@ -37,11 +38,15 @@ os.write(2, b'sample-stderr\n')
 '''
 
 
+
+
 def fingerprint(sample):
     path = sample.root / SAMPLE_FILENAME
     info = path.stat()
     return path.read_bytes(), info.st_ino, info.st_mtime_ns
 
+
+from tests.assertions import require_value
 
 async def scenario(mode):
     program = READ_PROBE
@@ -52,7 +57,7 @@ async def scenario(mode):
     elif mode in ('timeout', 'cancel', 'start_loss'):
         program = "import signal,time; from pathlib import Path; assert Path('/workspace/example.txt').read_bytes()==b'sandbox sample\\n'; signal.signal(signal.SIGTERM,signal.SIG_IGN); print('ready',flush=True); time.sleep(600)"
     command = CommandRequest(argv=['/usr/local/bin/python', '-c', program])
-    audit = {'mode': mode}
+    audit: dict[str, Any] = {'mode': mode}
     report = {'mode': mode}
     actual_sample = service.create_sandbox_sample
     actual_create = service.create_sandbox_container
@@ -126,7 +131,7 @@ async def scenario(mode):
                 assert mode in ('timeout', 'cancel', 'create_loss', 'create_cancel', 'start_loss')
                 recovery = error.recovery
                 assert recovery.sample is audit['sample']
-                assert recovery.sample_root.exists() and not recovery.sample_cleaned
+                assert require_value(recovery.sample_root).exists() and not recovery.sample_cleaned
                 assert not recovery.delete_attempted
                 if mode in ('timeout', 'cancel', 'start_loss'):
                     assert recovery.start_attempted and recovery.stop_confirmed

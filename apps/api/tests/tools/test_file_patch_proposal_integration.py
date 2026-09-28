@@ -14,6 +14,7 @@ from app.tools.context import ToolExecutionContext
 from app.tools.errors import SafeToolExecutionError
 from tests.workspace.proposals import test_file_patch_proposal_service as existing
 from tests.workspace.proposals.test_file_edit_proposal_service import count
+from tests.assertions import require_value
 
 root = existing.root
 target = existing.target
@@ -39,12 +40,12 @@ def test_real_saved_receipt_and_unchanged_file(patch_setup, engine, target, afte
     result = json.loads(invoke(args, target))
     with Session(engine) as session:
         row = session.scalar(select(FileEditProposal))
-        assert row.external_id == result['proposal_id']
-        assert row.status == result['status'] == 'pending'
-        assert row.proposed_content == after
-        assert row.baseline_sha256 == result['baseline_sha256'] == sha256(b'old\n').hexdigest()
-        assert row.proposed_sha256 == result['proposed_sha256'] == sha256(after.encode()).hexdigest()
-        assert row.diff_truncated == result['diff_truncated'] == (len(after) > 20000)
+        assert require_value(row).external_id == result['proposal_id']
+        assert require_value(row).status == result['status'] == 'pending'
+        assert require_value(row).proposed_content == after
+        assert require_value(row).baseline_sha256 == result['baseline_sha256'] == sha256(b'old\n').hexdigest()
+        assert require_value(row).proposed_sha256 == result['proposed_sha256'] == sha256(after.encode()).hexdigest()
+        assert require_value(row).diff_truncated == result['diff_truncated'] == (len(after) > 20000)
     assert set(result) == {
         'proposal_id', 'status', 'relative_path', 'baseline_sha256',
         'proposed_sha256', 'diff_truncated', 'created_at',
@@ -68,7 +69,7 @@ def test_rejection_never_saves(patch_setup, engine, target, monkeypatch, kind, c
         def preview(**kwargs):
             result = original(**kwargs)
             with Session(engine) as session, session.begin():
-                session.scalar(select(Workspace)).root_path = '/changed'
+                require_value(session.scalar(select(Workspace))).root_path = '/changed'
             return result
         monkeypatch.setattr(existing.service, 'preview_task_file_patch', preview)
     with pytest.raises(SafeToolExecutionError) as caught:

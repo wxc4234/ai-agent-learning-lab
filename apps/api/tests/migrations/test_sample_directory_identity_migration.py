@@ -12,6 +12,9 @@ from sqlalchemy.exc import DBAPIError
 
 from app.database import Base
 from tests.migrations.test_database_readiness import migrate
+from psycopg import Error as PsycopgError
+from tests.assertions import require_instance
+from tests.assertions import require_value
 
 
 @pytest.fixture
@@ -93,7 +96,7 @@ def test_database_rejects_partial_or_invalid_identity(upgraded, identity):
             identity,
             strict=True,
         )))
-    assert caught.value.orig.sqlstate == "23514"
+    assert require_instance(require_value(caught.value.orig), PsycopgError).sqlstate == "23514"
     with upgraded.connect() as connection:
         assert connection.execute(text(
             "SELECT parent_dev,parent_ino,root_dev,root_ino "

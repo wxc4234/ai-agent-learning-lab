@@ -138,6 +138,7 @@ class ChatExecution:
     ) -> str:
         if (
             self._command_closed or not isinstance(self.task_sample_recovery_store, TaskSampleRecoveryStore)
+            or not isinstance(self.sample_bindings, TaskSampleBindings)
             or self.creation is None or not self.creation.done() or self.creation.cancelled()
         ):
             raise SafeToolExecutionError('command_recovery_unavailable')

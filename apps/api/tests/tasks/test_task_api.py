@@ -13,6 +13,7 @@ from app.models import Conversation, Task, User, Workspace
 from app.routers.workspace import tasks as workspace
 import tests.workspace.directory.test_workspace_binding_api as binding
 from tests.local.test_local_mode import HEADERS
+from tests.assertions import require_value
 
 local_client = binding.local_client
 target = binding.target
@@ -41,11 +42,11 @@ def test_success_normalizes_commits_and_keeps_identity_server_owned(local_client
     with Session(engine) as session:
         task = session.scalar(select(Task))
         conversation = session.scalar(select(Conversation))
-        assert task.external_id == payload['external_id']
-        assert conversation.external_id == payload['conversation_id']
-        assert task.conversation is conversation
-        assert conversation.user_id == task.workspace.user_id
-        assert task.workspace.root_path is None
+        assert require_value(task).external_id == payload['external_id']
+        assert require_value(conversation).external_id == payload['conversation_id']
+        assert require_value(task).conversation is conversation
+        assert require_value(conversation).user_id == require_value(task).workspace.user_id
+        assert require_value(task).workspace.root_path is None
     # 同标题不是幂等键，重复调用确实创建不同资源。
     second = post(local_client, target, {'title': '新任务'})
     binding.safe(second, 201)

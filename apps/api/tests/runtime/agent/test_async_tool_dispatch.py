@@ -12,6 +12,10 @@ from app.services.runtime.execution.execution_threads import ExecutionThreads
 from app.tools.context import ToolExecutionContext
 from app.tools.errors import SafeToolExecutionError
 from app.tools.registry import TOOL_REGISTRY, GetCurrentTimeArguments, ToolDefinition
+from tests.assertions import require_value
+from app.services.runtime.agent.agent_runtime import ToolErrorObservation
+from app.services.runtime.agent.agent_runtime import ToolObservation
+from tests.assertions import require_instance
 
 
 class RejectThreads(ExecutionThreads):
@@ -25,7 +29,7 @@ async def decide(observations):
     return FinalAnswer(content="done")
 
 
-def register(monkeypatch, executor, *, timeout=5, requires_context=False):
+def register(monkeypatch, executor, *, timeout: float=5, requires_context=False):
     monkeypatch.setitem(TOOL_REGISTRY, "async-test", ToolDefinition(
         name="async-test", description="test", arguments_model=GetCurrentTimeArguments,
         async_executor=executor, timeout_seconds=timeout, requires_context=requires_context,
@@ -77,10 +81,10 @@ def test_async_protocol_and_no_threads(monkeypatch, mode, tracked, outcome):
             assert observation.duration_ms is not None and observation.duration_ms >= 0
             assert "PRIVATE" not in str(observation)
             if outcome == "success":
-                assert observation.result == "async result"
+                assert require_instance(observation, ToolObservation).result == "async result"
             else:
-                assert observation.code == "tool_execution_failed"
-                assert observation.details == {"safe": "file_unavailable", "unknown": "RuntimeError",
+                assert require_instance(observation, ToolErrorObservation).code == "tool_execution_failed"
+                assert require_instance(observation, ToolErrorObservation).details == {"safe": "file_unavailable", "unknown": "RuntimeError",
                                                "bad_result": "TypeError"}[outcome]
             if mode == "stream":
                 terminal = ToolCallSucceeded if outcome == "success" else ToolCallFailed
@@ -122,8 +126,8 @@ def test_waits_for_async_finally_before_timeout_or_cancel(monkeypatch, mode, sto
                     await task
             else:
                 result = await task
-                assert result.observations[0].code == "tool_timeout"
-                assert result.observations[0].duration_ms >= 0
+                assert require_instance(result.observations[0], ToolErrorObservation).code == "tool_timeout"
+                assert require_value(result.observations[0].duration_ms) >= 0
             assert finished.is_set()
         finally:
             release.set()
@@ -148,7 +152,7 @@ def test_preflight_never_starts_async_executor(monkeypatch, mode, failure):
     result = asyncio.run(consume(mode, decide=decision, execution_threads=RejectThreads()))
     observation = result.observations[0]
     assert observation.duration_ms is None
-    assert observation.code == ("invalid_tool_arguments" if failure == "arguments" else "tool_execution_failed")
+    assert require_instance(observation, ToolErrorObservation).code == ("invalid_tool_arguments" if failure == "arguments" else "tool_execution_failed")
 
 
 @pytest.mark.parametrize("mode", ["result", "stream"])
@@ -160,7 +164,7 @@ def test_context_is_injected_from_server(monkeypatch, mode):
     expected = context
     register(monkeypatch, executor, requires_context=True)
     result = asyncio.run(consume(mode, decide=decide, tool_context=context))
-    assert result.observations[0].result == "context accepted"
+    assert require_instance(result.observations[0], ToolObservation).result == "context accepted"
 
 
 @pytest.mark.parametrize("mode", ["result", "stream"])

@@ -3,6 +3,9 @@
 from sqlalchemy import CheckConstraint, Text
 
 from app.models import User, Workspace
+from psycopg import Error as PsycopgError
+from tests.assertions import require_instance
+from tests.assertions import require_value
 
 
 def checks(model):
@@ -86,7 +89,7 @@ def test_real_migration_preserves_rows_and_enforces_constraint(empty_engine):
         # savepoint 保留真实 PostgreSQL 约束失败后的外层事务可用性。
         with pytest.raises(IntegrityError) as caught, connection.begin_nested():
             connection.execute(text("UPDATE workspaces SET root_path = ''"))
-        assert caught.value.orig.diag.constraint_name == "ck_workspaces_root_path_not_empty"
+        assert require_instance(require_value(caught.value.orig), PsycopgError).diag.constraint_name == "ck_workspaces_root_path_not_empty"
         connection.execute(text("UPDATE workspaces SET root_path = :path"), {"path": "/项目/ 中文目录 "})
         connection.execute(text("INSERT INTO workspaces (external_id, user_id, name) VALUES ('new', 1, '新项目')"))
     with empty_engine.connect() as connection:

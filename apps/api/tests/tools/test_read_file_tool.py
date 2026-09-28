@@ -19,6 +19,12 @@ from app.tools.context import ToolExecutionContext
 from app.tools.errors import SafeToolExecutionError
 from app.tools.registry import TOOL_REGISTRY, TOOLS, model_tools_for_context
 from tests.model.test_model_decision import build_text_response, build_tool_response
+from app.services.runtime.agent.agent_runtime import AgentLoopCompleted
+from app.services.runtime.agent.agent_runtime import ToolErrorObservation
+from app.services.runtime.agent.agent_runtime import ToolObservation
+from openai import AsyncOpenAI
+from tests.assertions import require_instance
+from typing import cast
 
 
 CONTEXT = ToolExecutionContext(1, "private-conversation", "private-workspace", "private-task")
@@ -89,10 +95,10 @@ def test_capability_filter_and_schema(provided):
     names = {tool["function"]["name"] for tool in tools}
     expected = {"get_current_time", "calculate_rectangle_area"}
     if provided is CONTEXT:
-        expected.update({"read_text_file", "list_directory", "search_text_file", "find_files", "preview_file_edit", "create_file_edit_proposal"})
+        expected.update({"read_text_file", "list_directory", "search_text_file", "find_files", "preview_file_edit", "create_file_edit_proposal", "preview_file_patch", "create_file_patch_proposal"})
     assert names == expected
-    schema = TOOL_REGISTRY["read_text_file"].as_model_tool()["function"]["parameters"]
-    assert set(schema["properties"]) == {"relative_path"}
+    schema = require_instance(TOOL_REGISTRY["read_text_file"].as_model_tool()["function"], dict)["parameters"]
+    assert set(require_instance(schema["properties"], dict)) == {"relative_path"}
     assert schema["additionalProperties"] is False
     assert len(TOOLS) == 2
 
@@ -100,7 +106,7 @@ def test_capability_filter_and_schema(provided):
 def test_lists_and_nested_schemas_are_independent():
     first = model_tools_for_context(CONTEXT)
     second = model_tools_for_context(CONTEXT)
-    first[0]["function"]["parameters"]["properties"].clear()
+    require_instance(first[0]["function"], dict)["parameters"]["properties"].clear()
     first.pop()
     assert second == model_tools_for_context(CONTEXT)
     assert TOOLS == model_tools_for_context()
@@ -110,7 +116,7 @@ def test_lists_and_nested_schemas_are_independent():
 def test_actual_model_request_filters_tools_without_sending_identity(provided):
     create = AsyncMock(return_value=build_text_response("done"))
     client = SimpleNamespace(chat=SimpleNamespace(completions=SimpleNamespace(create=create)))
-    maker = DeepSeekDecisionMaker(client=client, model="test", system_prompt="system", user_prompt="hello", tool_context=provided)
+    maker = DeepSeekDecisionMaker(client=cast(AsyncOpenAI, client), model="test", system_prompt="system", user_prompt="hello", tool_context=provided)
     asyncio.run(maker(()))
     payload = create.call_args.kwargs
     assert payload["tools"] == model_tools_for_context(provided)
@@ -137,22 +143,22 @@ def test_model_runtime_file_tool_round_trip(monkeypatch, kind):
     ])
     client = SimpleNamespace(chat=SimpleNamespace(completions=SimpleNamespace(create=create)))
     provided = None if kind == "no-context" else CONTEXT
-    maker = DeepSeekDecisionMaker(client=client, model="test", system_prompt="system", user_prompt="hello", tool_context=provided)
+    maker = DeepSeekDecisionMaker(client=cast(AsyncOpenAI, client), model="test", system_prompt="system", user_prompt="hello", tool_context=provided)
 
     async def scenario():
         return [event async for event in runtime.stream_agent_loop(maker, tool_context=provided)]
 
     events = asyncio.run(scenario())
-    observation = events[-1].result.observations[0]
+    observation = require_instance(events[-1], AgentLoopCompleted).result.observations[0]
     message = create.call_args.kwargs["messages"][-2]
     assert message["role"] == "tool" and message["tool_call_id"] == "call-file"
     if kind == "success":
         assert isinstance(events[1], runtime.ToolCallSucceeded)
-        assert json.loads(observation.result)["content"] == "text"
+        assert json.loads(require_instance(observation, ToolObservation).result)["content"] == "text"
     else:
         assert isinstance(events[1], runtime.ToolCallFailed)
-        assert observation.code == "tool_execution_failed"
-        assert observation.details == {"safe": "file_too_large", "unknown": "RuntimeError",
+        assert require_instance(observation, ToolErrorObservation).code == "tool_execution_failed"
+        assert require_instance(observation, ToolErrorObservation).details == {"safe": "file_too_large", "unknown": "RuntimeError",
                                        "no-context": "tool_context_required"}[kind]
         assert (observation.duration_ms is None) is (kind == "no-context")
         assert json.loads(message["content"])["type"] == "tool_error"

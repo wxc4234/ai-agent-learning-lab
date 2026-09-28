@@ -13,6 +13,9 @@ from sqlalchemy.orm import Session
 from app.models import AgentRun, AgentRunEvent, Conversation, ConversationExecutionSlot, Message, Task, User, Workspace
 from app.repositories.workspace.workspace_repository import WorkspaceNotAccessibleError
 from app.services.tasks import task_deletion_service as service
+from psycopg import Error as PsycopgError
+from tests.assertions import require_instance
+from tests.assertions import require_value
 
 
 @pytest.fixture
@@ -66,7 +69,7 @@ def test_delete_commits_and_plain_result_survives_session_close(engine, target, 
         assert not session.in_transaction()
     assert asdict(result) == {key: target[key] for key in ('workspace_id', 'task_id', 'conversation_id')}
     with pytest.raises(FrozenInstanceError):
-        result.task_id = 'changed'
+        setattr(result, 'task_id', 'changed')  # noqa: B010 -- 测试冻结属性或动态故障注入，需要运行时属性访问
     assert_pair(engine, target, False)
     with Session(engine) as session:
         with pytest.raises(WorkspaceNotAccessibleError):
@@ -88,7 +91,7 @@ def test_inaccessible_or_inconsistent_resources_do_not_delete(engine, target, ki
             session.add(Workspace(external_id='f' * 32, name='其他项目', user_id=target['user_id']))
             overrides['workspace_id'] = 'f' * 32
         elif kind == 'foreign-conversation':
-            session.get(Conversation, target['conversation_pk']).user_id = target['other_id']
+            require_value(session.get(Conversation, target['conversation_pk'])).user_id = target['other_id']
         else:
             session.delete(session.get(Conversation, target['conversation_pk']))
     with Session(engine) as session:
@@ -138,7 +141,7 @@ def test_existing_transaction_is_not_rolled_back(engine, target, kind):
         transaction = session.get_transaction()
         with pytest.raises(RuntimeError, match='无活动事务'):
             remove(session, target)
-        assert session.get_transaction() is transaction and transaction.is_active
+        assert session.get_transaction() is transaction and require_value(transaction).is_active
         session.commit()
     assert_pair(engine, target)
     if kind in ('pending', 'flushed'):
@@ -219,7 +222,7 @@ def test_locked_deletion_blocks_child_insert_until_commit_or_rollback(engine, ta
                 return 'committed'
             except DBAPIError as exc:
                 session.rollback()
-                return exc.orig.sqlstate
+                return require_instance(require_value(exc.orig), PsycopgError).sqlstate
     with ThreadPoolExecutor(max_workers=2) as pool:
         deleting = pool.submit(deletion)
         try:
@@ -290,7 +293,7 @@ def test_slot_blocks_empty_or_terminal_task_without_reading_token(engine, target
     assert not any('owner_token' in sql or sql.startswith('DELETE') for sql in statements)
     assert_pair(engine, target)
     with Session(engine) as reader:
-        assert reader.get(ConversationExecutionSlot, target['conversation_pk']).owner_token == 'a' * 32
+        assert require_value(reader.get(ConversationExecutionSlot, target['conversation_pk'])).owner_token == 'a' * 32
         assert reader.scalar(select(AgentRun.status)) == status
 
 

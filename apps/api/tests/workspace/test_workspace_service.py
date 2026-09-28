@@ -11,6 +11,9 @@ from sqlalchemy.orm import Session
 from app.models import User, Workspace
 from app.repositories.workspace.workspace_repository import InvalidWorkspaceNameError
 from app.services.workspace import workspace_service as service
+from psycopg import Error as PsycopgError
+from tests.assertions import require_instance
+from tests.assertions import require_value
 
 
 @pytest.fixture
@@ -38,16 +41,16 @@ def test_success_returns_detached_safe_result_without_reopening_transaction(engi
         assert session.is_active
         with Session(engine) as reader:
             stored = reader.scalar(select(Workspace))
-            assert stored.user_id == owner_id
-            assert stored.external_id == result.external_id
-            assert stored.name == result.name == "我的 Agent 项目"
-            assert stored.created_at == result.created_at
+            assert require_value(stored).user_id == owner_id
+            assert require_value(stored).external_id == result.external_id
+            assert require_value(stored).name == result.name == "我的 Agent 项目"
+            assert require_value(stored).created_at == result.created_at
     # Session 关闭后结果仍可读取，且只包含允许公开的普通字段。
     assert set(asdict(result)) == {"external_id", "name", "created_at"}
     assert UUID(hex=result.external_id).version == 4
     assert result.created_at.tzinfo is not None
     with pytest.raises(FrozenInstanceError):
-        result.name = "不能修改"
+        setattr(result, 'name', "不能修改")  # noqa: B010 -- 测试冻结属性或动态故障注入，需要运行时属性访问
 
 
 @pytest.mark.parametrize("name", ["", " \t\n\u3000", "a" * 101, "中" * 101])
@@ -81,9 +84,9 @@ def test_existing_transaction_is_rejected_without_touching_caller_work(engine, o
             service.create_user_workspace(session, user_id=owner_id, name=name)
         # 即使名称非法，也应先拒绝已有事务；服务不得提交或回滚调用方工作。
         assert session.get_transaction() is transaction
-        assert transaction.is_active
+        assert require_value(transaction).is_active
         if transaction_kind == "pending":
-            assert pending in session.new and pending.id is None
+            assert pending in session.new and require_value(pending).id is None
         assert workspace_count(engine) == 0
         session.commit()
     if pending is not None:
@@ -151,7 +154,7 @@ def test_unknown_user_keeps_foreign_key_error(engine, owner_id):
     with Session(engine) as session:
         with pytest.raises(IntegrityError) as caught:
             service.create_user_workspace(session, user_id=owner_id + 100, name="无效身份")
-        assert caught.value.orig.sqlstate == "23503"
+        assert require_instance(require_value(caught.value.orig), PsycopgError).sqlstate == "23503"
         assert not session.in_transaction()
         assert session.is_active
         assert workspace_count(engine) == 0

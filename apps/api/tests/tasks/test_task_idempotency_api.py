@@ -16,6 +16,7 @@ import tests.tasks.test_task_api as task_api
 from tests.tasks.test_task_creation_idempotency import KEY, counts
 from tests.local.test_local_mode import HEADERS
 from tests.workspace.directory.test_workspace_binding_api import safe
+from tests.assertions import require_value
 
 local_client = task_api.local_client
 target = task_api.target
@@ -40,10 +41,10 @@ def test_real_replay_uses_same_identity_and_current_public_title(local_client, t
     assert counts(engine) == (1, 1, 1)
     with Session(engine) as reader:
         receipt = reader.scalar(select(TaskCreationRequest))
-        task = reader.get(Task, receipt.task_id)
-        assert task.external_id == first.json()['external_id']
-        assert task.workspace.external_id == target[0]
-        assert task.workspace.user_id == receipt.user_id == task.conversation.user_id
+        task = reader.get(Task, require_value(receipt).task_id)
+        assert require_value(task).external_id == first.json()['external_id']
+        assert require_value(task).workspace.external_id == target[0]
+        assert require_value(task).workspace.user_id == require_value(receipt).user_id == require_value(require_value(task).conversation).user_id
 
 
 def test_conflict_then_original_replay(local_client, target, engine):
@@ -65,7 +66,7 @@ def test_real_delete_preserves_key_and_new_key_can_create(local_client, target, 
     safe(post(local_client, target, title='PRIVATE changed'), 409, 'task_creation_conflict')
     assert counts(engine) == (0, 0, 1)
     with Session(engine) as reader:
-        assert reader.scalar(select(TaskCreationRequest)).task_id is None
+        assert require_value(reader.scalar(select(TaskCreationRequest))).task_id is None
     fresh = post(local_client, target, request_key='f' * 32)
     safe(fresh, 201)
     assert fresh.json()['external_id'] != first.json()['external_id']
@@ -74,7 +75,7 @@ def test_real_delete_preserves_key_and_new_key_can_create(local_client, target, 
 
 @pytest.mark.parametrize('explicit_null', [False, True])
 def test_legacy_missing_or_null_key_remains_nonidempotent(local_client, target, engine, explicit_null):
-    body = {'title': '任务'}
+    body: dict[str, str | None] = {'title': '任务'}
     if explicit_null:
         body['request_key'] = None
     first = task_api.post(local_client, target, body)
@@ -186,8 +187,8 @@ def test_committed_but_failed_response_then_same_key_replays(local_client, targe
     assert counts(engine) == (1, 1, 1)
     with Session(engine) as reader:
         task = reader.scalar(select(Task))
-        original_id = task.external_id
-        original_conversation = task.conversation.external_id
+        original_id = require_value(task).external_id
+        original_conversation = require_value(require_value(task).conversation).external_id
     retry = post(local_client, target)
     safe(retry, 201)
     assert retry.json()['external_id'] == original_id

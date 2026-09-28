@@ -10,6 +10,7 @@ from app.models import FileEditProposal, Workspace, User
 from app.services.workspace.proposals import file_edit_proposal_list as service
 from tests.workspace.proposals import test_file_edit_proposal_api as existing
 from tests.local.test_local_mode import HEADERS
+from tests.assertions import require_value
 
 local_client = existing.local_client
 saved = existing.saved
@@ -26,7 +27,7 @@ def test_public_list_and_keyset_pagination(local_client, query, saved, engine):
         original = session.scalar(select(FileEditProposal))
         for index in range(51):
             session.add(FileEditProposal(
-                external_id=uuid4().hex, task_id=original.task_id, bound_root='PRIVATE',
+                external_id=uuid4().hex, task_id=require_value(original).task_id, bound_root='PRIVATE',
                 relative_path=f'file-{index}.txt', baseline_sha256='a'*64, proposed_sha256='b'*64,
                 proposed_content='PRIVATE', diff='PRIVATE', diff_truncated=False,
                 status='approved', application_status='applied', application_token=uuid4().hex,
@@ -55,7 +56,7 @@ def test_wrong_scope_is_not_empty_success(local_client, query, engine, kind):
             other = User(external_id=uuid4().hex)
             session.add(other)
             session.flush()
-            session.scalar(select(Workspace)).user_id = other.id
+            require_value(session.scalar(select(Workspace))).user_id = other.id
     assert local_client.get(query, headers=HEADERS).status_code == 404
 
 

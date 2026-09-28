@@ -50,7 +50,7 @@ def test_success_fixed_operations_and_immutable_result(monkeypatch):
                          ("container", "rm", CID),
                          ("container", "ls", "--all", "--quiet", "--no-trunc", "--filter", f"id={CID}")]
         with pytest.raises(FrozenInstanceError):
-            result.container_id = "b" * 64
+            setattr(result, 'container_id', "b" * 64)  # noqa: B010 -- 测试冻结属性或动态故障注入，需要运行时属性访问
     run(scenario)
 
 

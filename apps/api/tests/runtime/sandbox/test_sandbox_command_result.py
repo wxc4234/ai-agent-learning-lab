@@ -95,7 +95,7 @@ def test_even_confirmed_stop_does_not_convert_failure_to_completed_result(cancel
     }
     error = SandboxExecutionCancelled(**facts) if cancel else SandboxExecutionUnconfirmed(**facts, reason="timed_out")
     with pytest.raises(TypeError):
-        build_command_result(error)
+        build_command_result(error)  # pyright: ignore[reportArgumentType] -- 故意越过静态签名，验证运行时拒绝非法输入
     assert error.stop_confirmed
 
 

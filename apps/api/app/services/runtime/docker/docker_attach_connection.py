@@ -2,7 +2,7 @@
 
 import asyncio
 import socket
-from collections.abc import AsyncIterator
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -62,7 +62,7 @@ async def _settle_writer(writer: asyncio.StreamWriter) -> tuple[bool, bool]:
 @asynccontextmanager
 async def open_docker_attach(
     *, container_id: str,
-) -> AsyncIterator[asyncio.StreamReader]:
+) -> AsyncGenerator[asyncio.StreamReader, None]:
     """借出握手后的读取端；调用方必须先完成目标归属及非TTY策略核对。"""
 
     # 无效目标在分配 socket 前拒绝；本函数不是资源授权入口。

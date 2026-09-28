@@ -30,6 +30,7 @@ def install(monkeypatch, *, stage=None, error=None, close_error=False, close_gat
         if stage == name:
             entered.set()
             if error is not None:
+                assert isinstance(error, BaseException)
                 raise error
             await asyncio.Future()
 
@@ -39,6 +40,7 @@ def install(monkeypatch, *, stage=None, error=None, close_error=False, close_gat
         def write(self, data):
             calls.append(("write", data))
             if stage == "write":
+                assert isinstance(error, BaseException)
                 raise error
 
         async def drain(self):
@@ -141,6 +143,7 @@ def test_body_failure_is_preserved(monkeypatch, error, close_error):
         calls, _ = install(monkeypatch, close_error=close_error)
         with pytest.raises(type(error)) as caught:
             async with service.open_docker_attach(container_id=CID):
+                assert isinstance(error, BaseException)
                 raise error
         assert caught.value is error
         assert calls.count("close") == 1

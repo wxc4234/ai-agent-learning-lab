@@ -2,6 +2,8 @@
 
 import asyncio
 
+from app.services.runtime.command.byte_reader import AsyncByteReader
+
 from app.services.runtime.command.command_capture import CapturedCommandStreams
 from app.services.runtime.docker.docker_attach_parser import (
     MAX_ATTACH_CHUNK_BYTES,
@@ -10,7 +12,7 @@ from app.services.runtime.docker.docker_attach_parser import (
 
 
 async def drain_docker_attach(
-    reader: asyncio.StreamReader,
+    reader: AsyncByteReader,
 ) -> CapturedCommandStreams:
     """正常读到 EOF 且帧完整时返回输出；失败和取消向上传播。"""
 

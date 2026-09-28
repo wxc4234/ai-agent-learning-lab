@@ -68,11 +68,15 @@ def _capture(argv: tuple[str, ...], *, cwd: Path, env: dict[str, str]) -> bytes:
     try:
         process = subprocess.Popen(argv, cwd=cwd, env=env, stdin=subprocess.DEVNULL,
                                    stdout=subprocess.PIPE, stderr=subprocess.PIPE, start_new_session=True)
+        stdout, stderr = process.stdout, process.stderr
+        # Popen类型允许管道为None；显式收窄后再注册，异常仍由finally回收。
+        if stdout is None or stderr is None:
+            raise GitStatusCaptureError('git_status_unavailable')
         deadline = monotonic() + STATUS_TIMEOUT_SECONDS
         buffers = [bytearray(), bytearray()]
         limits = [MAX_STATUS_BYTES, MAX_STDERR_BYTES]
         with selectors.DefaultSelector() as selector:
-            for index, stream in enumerate((process.stdout, process.stderr)):
+            for index, stream in enumerate((stdout, stderr)):
                 os.set_blocking(stream.fileno(), False)
                 selector.register(stream, selectors.EVENT_READ, index)
             while selector.get_map():
@@ -80,7 +84,7 @@ def _capture(argv: tuple[str, ...], *, cwd: Path, env: dict[str, str]) -> bytes:
                 if remaining <= 0:
                     raise GitStatusCaptureError('git_status_timeout')
                 for key, _ in selector.select(remaining):
-                    chunk = os.read(key.fileobj.fileno(), 8192)
+                    chunk = os.read(key.fd, 8192)
                     if not chunk:
                         selector.unregister(key.fileobj)
                         continue
@@ -133,32 +137,72 @@ def temporary_git_status_sample():
             _SAMPLES.pop(sample, None)
 
 
-def collect_sample_git_status(sample: GitStatusSample) -> GitStatusSnapshot:
-    """仅本进程登记对象可调用；禁止外部并发写者，不提供Workspace授权。"""
+def _require_sample_source(sample: GitStatusSample) -> _Source:
+    """验证进程内登记句柄；不接受路径或重新构造的同值对象。"""
 
     if type(sample) is not GitStatusSample or sample not in _SAMPLES:
         raise GitStatusCaptureError('git_sample_unavailable')
+
     source = _SAMPLES[sample]
     root = sample.root
     metadata = root / '.git'
+
     try:
-        if _identity(root) != source.root_identity or _identity(metadata) != source.git_identity:
+        if (
+            _identity(root) != source.root_identity
+            or _identity(metadata) != source.git_identity
+        ):
             raise GitStatusCaptureError('git_sample_unavailable')
+
+        # 配置必须保持创建时的内容，拒绝改变仓库解析位置的元数据。
         config = metadata / 'config'
-        if (not stat.S_ISREG(config.lstat().st_mode) or config.stat().st_size != len(source.config)
-                or config.read_bytes() != source.config
-                or any((metadata / name).exists() or (metadata / name).is_symlink()
-                       for name in ('commondir', 'config.worktree', 'objects/info/alternates'))):
+        if (
+            not stat.S_ISREG(config.lstat().st_mode)
+            or config.stat().st_size != len(source.config)
+            or config.read_bytes() != source.config
+            or any(
+                (metadata / name).exists()
+                or (metadata / name).is_symlink()
+                for name in (
+                    'commondir',
+                    'config.worktree',
+                    'objects/info/alternates',
+                )
+            )
+        ):
             raise GitStatusCaptureError('git_sample_unavailable')
     except OSError:
         raise GitStatusCaptureError('git_sample_unavailable') from None
-    # 显式git-dir/work-tree，不向父目录发现仓库；配置冻结且参数不能由模型指定。
-    argv = (GIT_EXECUTABLE, '--no-optional-locks', '--no-pager',
-            f'--git-dir={metadata}', f'--work-tree={root}',
-            '-c', 'core.fsmonitor=false', '-c', 'core.untrackedCache=false',
-            '-c', 'core.hooksPath=/dev/null', '-c', 'core.excludesFile=/dev/null',
-            '-c', 'core.attributesFile=/dev/null', '-c', 'core.quotePath=false',
-            'status', '--porcelain=v1', '-z', '--untracked-files=all',
-            '--ignore-submodules=all', '--renames')
+
+    return source
+
+
+def collect_sample_git_status(sample: GitStatusSample) -> GitStatusSnapshot:
+    """仅本进程登记对象可调用；禁止外部并发写者，不提供Workspace授权。"""
+
+    source = _require_sample_source(sample)
+    root = sample.root
+    metadata = root / '.git'
+
+    # 显式git-dir/work-tree，不向父目录发现仓库；配置和参数由服务端固定。
+    argv = (
+        GIT_EXECUTABLE,
+        '--no-optional-locks',
+        '--no-pager',
+        f'--git-dir={metadata}',
+        f'--work-tree={root}',
+        '-c', 'core.fsmonitor=false',
+        '-c', 'core.untrackedCache=false',
+        '-c', 'core.hooksPath=/dev/null',
+        '-c', 'core.excludesFile=/dev/null',
+        '-c', 'core.attributesFile=/dev/null',
+        '-c', 'core.quotePath=false',
+        'status',
+        '--porcelain=v1',
+        '-z',
+        '--untracked-files=all',
+        '--ignore-submodules=all',
+        '--renames',
+    )
     data = _capture(argv, cwd=root, env=_environment(source.directory))
     return parse_git_status(data, source_truncated=False)

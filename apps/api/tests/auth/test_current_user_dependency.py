@@ -29,10 +29,10 @@ def identities(engine: Engine):
     results = []
     for username in ("用户甲", "用户乙"):
         with Session(engine) as session:
-            register_user(session, RegisterRequest(username=username, password=PASSWORD))
+            register_user(session, RegisterRequest.model_validate({'username': username, 'password': PASSWORD}))
         with Session(engine) as session:
             results.append(issue_login_session(
-                session, LoginRequest(username=username, password=PASSWORD),
+                session, LoginRequest.model_validate({'username': username, 'password': PASSWORD}),
             ))
     return results
 
@@ -74,7 +74,7 @@ def probe(engine: Engine, monkeypatch: pytest.MonkeyPatch):
         assert get_ident() not in workers
         assert identity is same_identity
         with pytest.raises(FrozenInstanceError):
-            identity.username = "changed"
+            setattr(identity, 'username', "changed")  # noqa: B010 -- 测试冻结属性或动态故障注入，需要运行时属性访问
         entered.append(identity)
         return {"external_id": identity.external_id, "username": identity.username}
 

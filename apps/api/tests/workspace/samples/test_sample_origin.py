@@ -13,6 +13,7 @@ from app.services.tasks.task_deletion_service import (
 )
 from app.services.workspace.samples.task_sample_binding import TaskSampleBindingError, TaskSampleBindings
 from tests.workspace.samples.test_task_sample_binding import root, setup, target
+from tests.assertions import require_value
 
 __all__ = ["setup", "target"]
 
@@ -23,14 +24,14 @@ def test_bind_and_close_commit_origin_with_workspace_root(setup, engine, target)
         assert session.scalar(select(WorkspaceSampleOrigin)) is None
 
     service.bind(**scope)
-    path = Path(root(engine))
+    path = Path(require_value(root(engine)))
     with Session(engine) as session:
         origin = session.scalar(select(WorkspaceSampleOrigin))
         workspace = session.scalar(select(Workspace))
-        assert origin.workspace_id == workspace.id
-        assert origin.task_id == target["task_pk"]
-        assert origin.root_path == workspace.root_path == str(path)
-        assert origin.created_at is not None
+        assert require_value(origin).workspace_id == require_value(workspace).id
+        assert require_value(origin).task_id == target["task_pk"]
+        assert require_value(origin).root_path == require_value(workspace).root_path == str(path)
+        assert require_value(origin).created_at is not None
 
     service.close(**scope)
     with Session(engine) as session:
@@ -42,7 +43,7 @@ def test_bind_and_close_commit_origin_with_workspace_root(setup, engine, target)
 def test_ordinary_project_directory_has_no_sample_origin(setup, engine, tmp_path):
     service, scope, _, _ = setup
     with Session(engine) as session, session.begin():
-        session.scalar(select(Workspace)).root_path = str(tmp_path)
+        require_value(session.scalar(select(Workspace))).root_path = str(tmp_path)
     with pytest.raises(TaskSampleBindingError) as caught:
         service.bind(**scope)
     assert caught.value.code == "task_sample_already_bound"
@@ -73,11 +74,11 @@ def test_lost_registration_with_mismatched_origin_stays_sealed(setup, engine, ch
     with Session(engine) as session, session.begin():
         origin = session.scalar(select(WorkspaceSampleOrigin))
         if change == "root":
-            origin.root_path = "/different"
+            require_value(origin).root_path = "/different"
         elif change == "task":
-            origin.task_id = session.scalar(select(Task.id).where(Task.external_id == "d" * 32))
+            setattr(require_value(origin), 'task_id', session.scalar(select(Task.id).where(Task.external_id == "d" * 32)))  # noqa: B010 -- 测试冻结属性或动态故障注入，需要运行时属性访问
         else:
-            session.scalar(select(Workspace)).root_path = None
+            require_value(session.scalar(select(Workspace))).root_path = None
     assert fresh.read_status(**scope).status == "sealed"
     with pytest.raises(TaskSampleBindingError), fresh.borrow(**scope):
         pytest.fail("lost registration must not regain execution access")
@@ -86,7 +87,7 @@ def test_lost_registration_with_mismatched_origin_stays_sealed(setup, engine, ch
 def test_ordinary_directory_without_origin_stays_missing(setup, engine, tmp_path):
     _, scope, _, _ = setup
     with Session(engine) as session, session.begin():
-        session.scalar(select(Workspace)).root_path = str(tmp_path)
+        require_value(session.scalar(select(Workspace))).root_path = str(tmp_path)
     assert TaskSampleBindings().read_status(**scope).status == "missing"
 
 
@@ -103,15 +104,15 @@ def test_other_task_in_sample_workspace_is_not_reported_missing(setup):
 def test_origin_mismatch_seals_borrow_and_refuses_close(setup, engine, change):
     service, scope, _, _ = setup
     service.bind(**scope)
-    path = Path(root(engine))
+    path = Path(require_value(root(engine)))
     with Session(engine) as session, session.begin():
         origin = session.scalar(select(WorkspaceSampleOrigin))
         if change == "root":
-            origin.root_path = "/different"
+            require_value(origin).root_path = "/different"
         elif change == "task":
-            origin.task_id = session.scalar(select(Task.id).where(Task.external_id == "d" * 32))
+            setattr(require_value(origin), 'task_id', session.scalar(select(Task.id).where(Task.external_id == "d" * 32)))  # noqa: B010 -- 测试冻结属性或动态故障注入，需要运行时属性访问
         elif change == "cleanup_pending":
-            origin.lifecycle_state = "cleanup_pending"
+            require_value(origin).lifecycle_state = "cleanup_pending"
         else:
             session.delete(origin)
     assert service.read_status(**scope).status == "sealed"
@@ -125,7 +126,7 @@ def test_origin_mismatch_seals_borrow_and_refuses_close(setup, engine, change):
 def test_source_task_deletion_rejected_until_normal_close(setup, engine, target):
     service, scope, _, _ = setup
     service.bind(**scope)
-    path = Path(root(engine))
+    path = Path(require_value(root(engine)))
     with Session(engine) as session:
         with pytest.raises(TaskSampleBoundError):
             delete_workspace_task(session, **scope)

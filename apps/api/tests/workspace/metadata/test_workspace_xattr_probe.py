@@ -31,7 +31,7 @@ def test_real_copy_reports_observations_without_values(files):
     assert all(item.set_accepted and item.readback == 'matched' and not item.matched_before for item in samples)
     assert set(asdict(result.attributes[0])) == {'name', 'matched_before', 'set_accepted', 'readback'}
     with pytest.raises(FrozenInstanceError):
-        result.visible_snapshot_equal = False
+        setattr(result, 'visible_snapshot_equal', False)  # noqa: B010 -- 测试冻结属性或动态故障注入，需要运行时属性访问
     # 只输出公开观察字段，绝不打印属性值或摘要。
     print('NATIVE_PROBE=' + json.dumps(asdict(result), ensure_ascii=False))
 

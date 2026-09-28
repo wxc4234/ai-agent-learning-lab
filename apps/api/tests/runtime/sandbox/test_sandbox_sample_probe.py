@@ -12,14 +12,16 @@ from app.services.runtime.sandbox import sandbox_sample as samples
 from tests.runtime.sandbox.test_sandbox_creation import CID
 from tests.runtime.sandbox.test_sandbox_sample import mounted_payload
 from tests.runtime.sandbox.test_sandbox_sample import sample_base as sample_base  # noqa: PLC0414 -- 显式重导出供 pytest 注册共用夹具。
+from typing import Any
+from tests.assertions import require_value
 
 
 @pytest.fixture
 def probe_module():
     source = Path(__file__).resolve().parents[5] / 'scripts' / 'verify_sandbox_sample.py'
     spec = importlib.util.spec_from_file_location('sample_probe_under_test', source)
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
+    module = importlib.util.module_from_spec(require_value(spec))
+    require_value(require_value(spec).loader).exec_module(module)
     return module
 
 
@@ -27,7 +29,7 @@ def probe_module():
 def test_probe_cleanup_requires_confirmed_container_absence(probe_module, sample_base, monkeypatch, failure):
     module = probe_module
     events = []
-    state = {'status': 'created'}
+    state: dict[str, Any] = {'status': 'created'}
     real_create = module.create_sandbox_sample
     real_cleanup = module.cleanup_sandbox_sample
 

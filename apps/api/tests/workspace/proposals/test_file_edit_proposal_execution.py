@@ -15,6 +15,7 @@ from app.services.workspace.proposals import file_edit_proposal_execution as ser
 from app.services.workspace.proposals import file_edit_proposal_preflight as preflight
 from tests.workspace.proposals import test_file_edit_proposal_query as query_tests
 from tests.workspace.metadata.metadata_support import plain_metadata
+from tests.assertions import require_value
 
 root = query_tests.root
 target = query_tests.target
@@ -32,14 +33,14 @@ def ready(saved, setup, engine, monkeypatch):
     for module in (service, application, preflight):
         monkeypatch.setattr(module, 'SessionLocal', factory)
     with Session(engine) as session, session.begin():
-        session.scalar(select(FileEditProposal)).status = 'approved'
+        require_value(session.scalar(select(FileEditProposal))).status = 'approved'
     return saved
 
 
 def state(engine):
     with Session(engine) as session:
         proposal = session.scalar(select(FileEditProposal))
-        return proposal.application_status, proposal.application_token
+        return require_value(proposal).application_status, require_value(proposal).application_token
 
 
 def mutate(engine, **values):
@@ -76,9 +77,9 @@ def test_real_success_private_receipt_closed_transactions_and_no_retry(
     assert set(asdict(result)) == {
         'proposal_id', 'file_status', 'application_status', 'code', 'cleanup_complete',
     }
-    assert state(engine)[1] not in repr(result) and str(file.parent) not in repr(result)
+    assert require_value(state(engine)[1]) not in repr(result) and str(file.parent) not in repr(result)
     with pytest.raises(FrozenInstanceError):
-        result.code = 'changed'
+        setattr(result, 'code', 'changed')  # noqa: B010 -- 测试冻结属性或动态故障注入，需要运行时属性访问
     again = service.execute_task_file_edit_proposal(**query)
     assert again.file_status == 'not_attempted' and len(calls) == 1
     assert state(engine)[0] == 'applied'
@@ -93,7 +94,7 @@ def test_claim_rejection_never_writes(ready, engine, target, monkeypatch, kind):
         query['proposal_id'] = 'missing'
     elif kind == 'binding':
         with Session(engine) as session, session.begin():
-            session.scalar(select(Workspace)).root_path = None
+            require_value(session.scalar(select(Workspace))).root_path = None
     else:
         mutate(engine, status=kind)
     monkeypatch.setattr(service, 'replace_workspace_text_file', forbid)
@@ -138,9 +139,9 @@ def test_recheck_after_preflight_blocks_observed_changes(ready, engine, target, 
             with Session(engine) as session, session.begin():
                 workspace = session.scalar(select(Workspace))
                 if kind == 'owner':
-                    workspace.user_id = target['other_id']
+                    require_value(workspace).user_id = target['other_id']
                 else:
-                    workspace.root_path = '/changed'
+                    require_value(workspace).root_path = '/changed'
         return result
     monkeypatch.setattr(service, 'check_task_file_edit_proposal', changed)
     monkeypatch.setattr(service, 'replace_workspace_text_file', forbid)
@@ -166,8 +167,8 @@ def test_result_mapping_preserves_file_evidence(ready, engine, monkeypatch, stat
 
 
 @pytest.mark.parametrize('result', [None, object(),
-    service.FileReplaceResult('invalid', 'bad', True),
-    service.FileReplaceResult('replaced', 'bad', 1)])
+    service.FileReplaceResult('invalid', 'bad', True),  # pyright: ignore[reportArgumentType] -- 反例故意构造不受支持的数据，保留运行时校验
+    service.FileReplaceResult('replaced', 'bad', 1)])  # pyright: ignore[reportArgumentType] -- 反例故意构造不受支持的数据，保留运行时校验
 def test_invalid_internal_result_is_uncertain(ready, engine, monkeypatch, result):
     monkeypatch.setattr(service, 'replace_workspace_text_file', lambda **args: result)
     receipt = service.execute_task_file_edit_proposal(**ready[0])

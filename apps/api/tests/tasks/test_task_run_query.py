@@ -13,6 +13,7 @@ from app.models import AgentRun, AgentRunEvent, Conversation, Workspace
 from app.repositories.workspace.workspace_repository import WorkspaceNotAccessibleError
 from app.services.tasks import task_run_query as service
 import tests.tasks.test_task_deletion_service as deletion_tests
+from tests.assertions import require_value
 
 
 # 共用同一套任务/会话归属数据，底层仍使用根 PostgreSQL 隔离夹具。
@@ -99,7 +100,7 @@ def test_cursor_is_boundary_not_resource_and_new_rows_need_refresh(engine, datab
     with Session(engine) as session, session.begin():
         session.delete(session.get(AgentRun, ids[-2]))
     new = seed(engine, target, 1)[0]
-    assert [item.run_id for item in read(target, before=int(first.next_cursor)).items] == ids[-3::-1]
+    assert [item.run_id for item in read(target, before=int(require_value(first.next_cursor))).items] == ids[-3::-1]
     assert read(target).items[0].run_id == new
     assert read(target, before=1).items == []
     assert read(target, before=service.MAX_RUN_ID).items[0].run_id == new
@@ -121,7 +122,7 @@ def test_filters_conversation_and_does_not_read_events_or_write(engine, database
     ids = seed(engine, target, 1)
     with Session(engine) as session, session.begin():
         sibling = session.scalar(select(Conversation).where(Conversation.external_id == 'e' * 32))
-        session.add(AgentRun(conversation_id=sibling.id, status='running'))
+        session.add(AgentRun(conversation_id=require_value(sibling).id, status='running'))
         session.add(AgentRunEvent(run_id=ids[0], event_type='PRIVATE', payload={'secret': 'PRIVATE'}))
     database[1].clear()
     result = read(target)
@@ -148,7 +149,7 @@ def test_authorize_even_without_runs(engine, database, target, kind):
             session.add(Workspace(external_id='f' * 32, name='其他项目', user_id=target['user_id']))
             overrides['workspace_id'] = 'f' * 32
         elif kind == 'foreign-conversation':
-            session.get(Conversation, target['conversation_pk']).user_id = target['other_id']
+            require_value(session.get(Conversation, target['conversation_pk'])).user_id = target['other_id']
         else:
             session.delete(session.get(Conversation, target['conversation_pk']))
     database[1].clear()
@@ -190,7 +191,7 @@ def test_invalid_persisted_duration_fails_and_closes_session(engine, database, t
     ids = seed(engine, target, 1)
     with Session(engine) as session, session.begin():
         row = session.get(AgentRun, ids[0])
-        row.finished_at = row.started_at - timedelta(seconds=1)
+        require_value(row).finished_at = require_value(row).started_at - timedelta(seconds=1)
     with pytest.raises(ValidationError):
         read(target)
     assert database[0][-1].closed

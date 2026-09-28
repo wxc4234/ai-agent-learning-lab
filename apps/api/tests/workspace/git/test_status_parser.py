@@ -76,9 +76,9 @@ def test_empty_output_and_immutable_snapshot():
     result = parse(b'')
     assert result.entries == () and result.byte_count == 0
     with pytest.raises(FrozenInstanceError):
-        result.byte_count = 1
+        setattr(result, 'byte_count', 1)  # noqa: B010 -- 测试冻结属性或动态故障注入，需要运行时属性访问
     with pytest.raises(FrozenInstanceError):
-        parse(b'?? x\0').entries[0].path = 'changed'
+        setattr(parse(b'?? x\0').entries[0], 'path', 'changed')  # noqa: B010 -- 测试冻结属性或动态故障注入，需要运行时属性访问
 
 
 def test_path_budget_uses_bytes_for_both_paths():

@@ -15,6 +15,7 @@ from app.services.tasks import task_deletion_service as deletion
 from app.services.workspace.directory import workspace_binding as binding
 from app.services.workspace.proposals import file_edit_proposal_application as application
 from tests.workspace.proposals import test_file_edit_proposal_application as source
+from tests.assertions import require_instance
 
 root = source.root
 target = source.target
@@ -50,7 +51,7 @@ def test_active_blocks_without_changes(ready, engine, root, state, operation):
         assert session.scalar(select(FileEditProposal.application_status)) == state
     assert file.read_bytes() == before
     # 同一规范路径不改变绑定，执行期间仍可重复调用。
-    assert mutate(engine, query, 'bind', root).root_path == str(root)
+    assert require_instance(mutate(engine, query, 'bind', root), binding.WorkspaceBindingResult).root_path == str(root)
 
 
 @pytest.mark.parametrize('state', ['idle', 'applied', 'not_applied'])
@@ -122,7 +123,7 @@ def test_real_lock_wait_orders_claim_and_mutation(ready, engine, root, monkeypat
         finally:
             release.set()
         if first == 'claim':
-            assert leader.result(timeout=5).application_status == 'running'
+            assert require_instance(leader.result(timeout=5), application.ProposalApplicationResult).application_status == 'running'
             with pytest.raises(ProposalApplicationBusyError):
                 follower.result(timeout=5)
         elif operation == 'delete':
@@ -132,4 +133,4 @@ def test_real_lock_wait_orders_claim_and_mutation(ready, engine, root, monkeypat
         else:
             with pytest.raises(binding.WorkspaceAlreadyBoundError):
                 leader.result(timeout=5)
-            assert follower.result(timeout=5).application_status == 'running'
+            assert require_instance(follower.result(timeout=5), application.ProposalApplicationResult).application_status == 'running'

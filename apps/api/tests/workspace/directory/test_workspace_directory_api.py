@@ -12,6 +12,7 @@ from app.models import User, Workspace
 from app.routers.workspace import directories as workspace
 import tests.workspace.directory.test_workspace_binding_api as binding
 from tests.local.test_local_mode import HEADERS, TOKEN
+from tests.assertions import require_value
 
 local_client = binding.local_client
 target = binding.target
@@ -117,7 +118,7 @@ def test_read_does_not_lock_or_wait_for_binding_writer(local_client, target, eng
     monkeypatch.setattr(workspace, 'SessionLocal', factory)
     with Session(engine) as writer:
         row = writer.scalar(select(Workspace).where(Workspace.external_id == target[0]).with_for_update())
-        row.root_path = '/not-committed'
+        require_value(row).root_path = '/not-committed'
         writer.flush()
         # 普通 MVCC 读取返回已提交的 NULL，不等待写锁或泄露未提交值。
         response = get(local_client, target)

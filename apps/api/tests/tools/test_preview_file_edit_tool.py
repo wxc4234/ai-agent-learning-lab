@@ -20,6 +20,9 @@ from app.tools.errors import SafeToolExecutionError
 from app.tools.registry import TOOL_REGISTRY, ToolContextRequiredError, model_tools_for_context, tools_for_execution
 from tests.model.test_model_decision import build_text_response, build_tool_response
 from tests.tools.test_read_file_tool import CONTEXT
+from openai import AsyncOpenAI
+from tests.assertions import require_instance
+from typing import cast
 
 
 ARGS = {"relative_path": "src/file.txt", "old_text": "old", "new_text": "new"}
@@ -65,8 +68,8 @@ def test_extra_fields_rejected(field):
 
 
 def test_schema_deletion_exact_bytes_and_whitespace():
-    schema = TOOL.as_model_tool()["function"]["parameters"]
-    assert set(schema["properties"]) == set(schema["required"]) == set(ARGS)
+    schema = require_instance(TOOL.as_model_tool()["function"], dict)["parameters"]
+    assert set(require_instance(schema["properties"], dict)) == set(require_instance(schema["required"], list)) == set(ARGS)
     assert schema["additionalProperties"] is False
     assert adapter.PreviewFileEditArguments(**(ARGS | {"new_text": ""})).new_text == ""
     exact = "😀" * (MAX_EDIT_TEXT_BYTES // 4)
@@ -99,12 +102,12 @@ def test_public_fields_and_context(monkeypatch, truncated):
     *[(WorkspaceFileError(code, "PRIVATE"), code) for code in (
         "file_read_unsupported", "file_not_regular", "file_too_large", "file_not_utf8_text", "file_changed",
     )],
-    (WorkspaceFileError("future_code", "PRIVATE"), "file_unavailable"),
+    (WorkspaceFileError("future_code", "PRIVATE"), "file_unavailable"),  # pyright: ignore[reportArgumentType] -- 反例故意构造不受支持的数据，保留运行时校验
     *[(EditPreviewError(code, "PRIVATE"), code) for code in (
         "invalid_edit_text", "edit_text_too_large", "empty_old_text", "edit_no_change",
         "edit_target_not_found", "edit_target_ambiguous", "edit_preview_too_many_lines",
     )],
-    (EditPreviewError("future_code", "PRIVATE"), "edit_preview_unavailable"),
+    (EditPreviewError("future_code", "PRIVATE"), "edit_preview_unavailable"),  # pyright: ignore[reportArgumentType] -- 反例故意构造不受支持的数据，保留运行时校验
 ])
 def test_safe_error_mapping(monkeypatch, error, code):
     def fail(**kwargs):
@@ -167,7 +170,7 @@ def test_model_preview_roundtrip(monkeypatch, kind):
 
     monkeypatch.setattr(adapter, "preview_task_file_replacement", generate)
     client = SimpleNamespace(chat=SimpleNamespace(completions=SimpleNamespace(create=create)))
-    maker = DeepSeekDecisionMaker(client=client, model="test", system_prompt="system", user_prompt="preview",
+    maker = DeepSeekDecisionMaker(client=cast(AsyncOpenAI, client), model="test", system_prompt="system", user_prompt="preview",
                                  tool_context=context, tool_definitions=definitions)
     outcome = asyncio.run(run_agent_loop(maker, tool_context=context, tool_definitions=definitions))
     assert outcome.answer == "仅生成预览，尚未写入"

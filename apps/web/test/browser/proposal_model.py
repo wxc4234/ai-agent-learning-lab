@@ -13,6 +13,8 @@ from app.services.runtime.agent.agent_runtime import FinalAnswer, ModelUsage, To
 from app.services.workspace.proposals.file_edit_proposal_service import get_task_file_edit_proposal
 
 
+
+
 def proposal_decision(prompt, observations):
     usage = ModelUsage(input_tokens=10, output_tokens=10, total_tokens=20)
     marker = next(name for name in ("success", "delete", "ambiguous", "truncated", "preview") if f"[proposal-{name}]" in prompt)
@@ -33,6 +35,9 @@ def proposal_decision(prompt, observations):
     return FinalAnswer(content=text, model_usage=usage)
 
 
+
+from tests.assertions import require_value
+
 def verify_proposal_rows(engine):
     # 浏览器证据只在隔离启动器中读取，不为生产应用增加测试HTTP接口。
     report = json.loads(Path("/private/tmp/agent-ui-proposal/output/playwright/evidence.json").read_text())
@@ -42,7 +47,7 @@ def verify_proposal_rows(engine):
         assert len(rows) == 3, "刷新不得新增提案；失败及纯预览不保存"
         for item in report:
             task = session.scalar(select(Task).where(Task.external_id == item["task_id"]))
-            proposals = [row for row in rows if row.task_id == task.id]
+            proposals = [row for row in rows if row.task_id == require_value(task).id]
             if item["marker"] in ("ambiguous", "preview"):
                 assert not proposals
                 continue
@@ -55,8 +60,8 @@ def verify_proposal_rows(engine):
             assert row.baseline_sha256 == item["result"]["baseline_sha256"]
             assert row.diff_truncated == (item["marker"] == "truncated")
             detail = get_task_file_edit_proposal(
-                user_id=task.workspace.user_id, workspace_id=task.workspace.external_id,
-                task_id=task.external_id, proposal_id=row.external_id,
+                user_id=require_value(task).workspace.user_id, workspace_id=require_value(task).workspace.external_id,
+                task_id=require_value(task).external_id, proposal_id=row.external_id,
             )
             assert detail.diff == row.diff and detail.proposed_sha256 == row.proposed_sha256
     print("PASS PostgreSQL: exactly 3 pending proposals, exact content/hashes, authorized query; preview/failure absent, reload no duplicates.", flush=True)

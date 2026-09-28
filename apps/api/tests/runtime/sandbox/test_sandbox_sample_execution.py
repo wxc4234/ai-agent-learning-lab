@@ -12,6 +12,7 @@ from tests.runtime.sandbox.test_sandbox_creation import CID, TOKEN, request
 from tests.runtime.sandbox.test_sandbox_execution import install, assert_no_owned_tasks
 from tests.runtime.sandbox.test_sandbox_sample import sample as sample  # noqa: PLC0414 -- pytest fixture export.
 from tests.runtime.sandbox.test_sandbox_sample import sample_base as sample_base  # noqa: PLC0414 -- pytest fixture export.
+from tests.assertions import require_instance
 
 
 def mount_inspect(monkeypatch, sample, *, break_on=None):
@@ -120,7 +121,7 @@ def test_sample_timeout_cancel_preserves_source_and_joins(monkeypatch, sample, c
                 await task
             assert caught.value.start_attempted and caught.value.stop_confirmed is stop_ok
             if not cancel:
-                assert caught.value.reason == 'timed_out'
+                assert require_instance(caught.value, service.SandboxExecutionUnconfirmed).reason == 'timed_out'
             assert sample.root.exists()
             assert lab.calls[-2:] == ['close', 'stop']
             assert_no_owned_tasks()

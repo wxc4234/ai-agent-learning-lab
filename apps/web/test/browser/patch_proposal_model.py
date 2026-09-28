@@ -12,6 +12,8 @@ from app.models import AgentRun, AgentRunEvent, FileEditProposal, Task
 from app.services.runtime.agent.agent_runtime import FinalAnswer, ModelUsage, ToolAction, ToolErrorObservation
 
 
+
+
 def patch_proposal_decision(prompt, observations):
     usage = ModelUsage(input_tokens=10, output_tokens=10, total_tokens=20)
     marker = next(name for name in ('success', 'delete', 'conflict', 'truncated', 'unconfirmed') if f'[patch-proposal-{name}]' in prompt)
@@ -28,6 +30,9 @@ def patch_proposal_decision(prompt, observations):
     return FinalAnswer(content='提案已保存，等待审批，文件尚未修改', model_usage=usage)
 
 
+
+from tests.assertions import require_value
+
 def verify_patch_proposal_rows(engine):
     report = json.loads(Path('/private/tmp/agent-ui-patch-proposal/output/playwright/evidence.json').read_text())
     with Session(engine) as session:
@@ -35,10 +40,10 @@ def verify_patch_proposal_rows(engine):
         assert len(rows) == 4 and len(report) == 5
         for item in report:
             task = session.scalar(select(Task).where(Task.external_id == item['task_id']))
-            proposals = [row for row in rows if row.task_id == task.id]
+            proposals = [row for row in rows if row.task_id == require_value(task).id]
             run = session.get(AgentRun, item['run_id'])
-            assert run.status == 'done'
-            events = list(session.scalars(select(AgentRunEvent).where(AgentRunEvent.run_id == run.id)))
+            assert require_value(run).status == 'done'
+            events = list(session.scalars(select(AgentRunEvent).where(AgentRunEvent.run_id == require_value(run).id)))
             assert sum(e.event_type == 'TOOL_CALL_START' for e in events) == 1
             failed = item['marker'] in ('conflict', 'unconfirmed')
             assert sum(e.event_type == 'TOOL_CALL_ERROR' for e in events) == int(failed)

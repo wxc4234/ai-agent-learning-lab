@@ -16,6 +16,7 @@ from app.services.workspace.samples.sample_execution_runtime import get_sample_b
 from app.services.workspace.samples.task_sample_binding import TaskSampleBindingError
 from tests.local.test_local_mode import HEADERS, local_client
 from tests.workspace.samples.test_task_sample_binding import setup, target
+from tests.assertions import require_value
 
 __all__ = ["local_client", "setup", "target"]
 
@@ -24,7 +25,7 @@ __all__ = ["local_client", "setup", "target"]
 def endpoint(local_client, setup, engine):
     bindings, scope, _, _ = setup
     with Session(engine) as session, session.begin():
-        session.get(User, scope["user_id"]).external_id = LOCAL_USER_ID
+        require_value(session.get(User, scope["user_id"])).external_id = LOCAL_USER_ID
     app.dependency_overrides[get_sample_bindings] = lambda: bindings
     try:
         url = (
@@ -56,9 +57,9 @@ def safe(response, expected, code=None):
 def evidence(engine):
     with Session(engine) as session:
         workspace = session.scalar(select(Workspace))
-        origin = session.get(WorkspaceSampleOrigin, workspace.id)
+        origin = session.get(WorkspaceSampleOrigin, require_value(workspace).id)
         return (
-            workspace.root_path,
+            require_value(workspace).root_path,
             None if origin is None else (
                 origin.workspace_id,
                 origin.task_id,
@@ -75,7 +76,7 @@ def evidence(engine):
 def leave_pending(bindings, scope, engine, monkeypatch):
     """只延迟本次物理清理；测试夹具退出时仍清理自有目录。"""
     bindings.bind(**scope)
-    path = Path(evidence(engine)[1][2])
+    path = Path(require_value(evidence(engine)[1])[2])
     with monkeypatch.context() as patch:
         patch.setattr(bindings._registry, "close", lambda _handle: False)
         with pytest.raises(TaskSampleBindingError) as caught:
@@ -137,10 +138,10 @@ def test_real_pending_read_only_snapshot(endpoint, setup, engine, monkeypatch, l
     if legacy:
         with Session(engine) as session, session.begin():
             origin = session.scalar(select(WorkspaceSampleOrigin))
-            origin.parent_dev = None
-            origin.parent_ino = None
-            origin.root_dev = None
-            origin.root_ino = None
+            require_value(origin).parent_dev = None
+            require_value(origin).parent_ino = None
+            require_value(origin).root_dev = None
+            require_value(origin).root_ino = None
     before = evidence(engine)
     sample_file = path / "example.txt"
     content_before = sample_file.read_bytes()
@@ -184,7 +185,7 @@ def test_real_pending_identity_or_path_change_is_only_observed(
     held = path.with_name(path.name + ".held")
     if change == "identity":
         with Session(engine) as session, session.begin():
-            session.scalar(select(WorkspaceSampleOrigin)).root_ino += 1
+            require_value(session.scalar(select(WorkspaceSampleOrigin))).root_ino = require_value(require_value(session.scalar(select(WorkspaceSampleOrigin))).root_ino) + 1
     else:
         path.rename(held)
     try:
@@ -217,7 +218,7 @@ def test_only_owned_source_task_can_read_classification(
     else:
         # 本机身份读取另一用户的项目，不能得到来源或目录分类。
         with Session(engine) as session, session.begin():
-            session.scalar(select(Workspace)).user_id = target["other_id"]
+            require_value(session.scalar(select(Workspace))).user_id = target["other_id"]
         before = evidence(engine)
 
     with monkeypatch.context() as patch:

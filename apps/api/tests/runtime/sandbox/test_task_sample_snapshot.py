@@ -16,6 +16,7 @@ from app.services.workspace.samples.task_sample_binding import TaskSampleBinding
 from tests.runtime.command.test_task_command_source import lab as lab  # noqa: PLC0414
 from tests.tasks.test_task_deletion_service import target as target  # noqa: PLC0414
 from tests.workspace.samples.test_task_sample_binding import setup as setup  # noqa: PLC0414
+from tests.assertions import require_value
 
 
 def create(lab, target, **changes):
@@ -26,7 +27,7 @@ def create(lab, target, **changes):
 
 def bound_root(engine):
     with Session(engine) as session:
-        return Path(session.scalar(select(Workspace.root_path)))
+        return Path(require_value(session.scalar(select(Workspace.root_path))))
 
 
 def test_snapshot_created_after_release_and_independent(lab, target, engine, monkeypatch):
@@ -50,7 +51,7 @@ def test_snapshot_created_after_release_and_independent(lab, target, engine, mon
         assert (root.stat().st_mode, path.stat().st_mode, path.stat().st_ino, path.stat().st_mtime_ns) == before
         with Session(engine) as session:
             origin = session.scalar(select(WorkspaceSampleOrigin))
-            assert origin.root_path == str(root) and origin.lifecycle_state == 'active'
+            assert require_value(origin).root_path == str(root) and require_value(origin).lifecycle_state == 'active'
         path.write_bytes(b'changed later')
         assert (snapshot.root / 'example.txt').read_bytes() == content
         bindings.close(**scope)

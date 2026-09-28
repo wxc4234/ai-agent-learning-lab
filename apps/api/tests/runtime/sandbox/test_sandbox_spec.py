@@ -109,7 +109,7 @@ def test_snapshot_is_immutable_and_detached_from_request():
     assert spec.argv[-2:] == ("/bin/echo", "before")
     assert isinstance(spec.argv, tuple)
     with pytest.raises(FrozenInstanceError):
-        spec.container_name = "changed"
+        setattr(spec, 'container_name', "changed")  # noqa: B010 -- 测试冻结属性或动态故障注入，需要运行时属性访问
     other = build(execution_token="b" * 32)
     assert spec.container_name != other.container_name
     assert spec.argv == build(CommandRequest(argv=["/bin/echo", "before"])).argv

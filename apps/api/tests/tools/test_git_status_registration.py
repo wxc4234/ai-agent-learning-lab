@@ -20,6 +20,12 @@ from app.tools.context import ToolExecutionContext
 from app.tools.errors import SafeToolExecutionError
 from app.tools.registry import TOOL_REGISTRY, ToolContextRequiredError, tools_for_execution
 from tests.model.test_model_decision import build_text_response, build_tool_response
+from app.services.auth.authentication_service import AuthenticatedUser
+from tests.assertions import require_value
+from app.services.runtime.agent.agent_runtime import ToolErrorObservation
+from openai import AsyncOpenAI
+from tests.assertions import require_instance
+from typing import cast
 
 CONTEXT = ToolExecutionContext(1, 'conversation', 'workspace', 'task')
 
@@ -65,10 +71,10 @@ def test_schema_and_bound_context_without_global_mutation(owner):
     executor = execution.bind_git_status_tool(CONTEXT)
     for context in (None, {}):
         with pytest.raises(ToolContextRequiredError):
-            tools_for_execution(context=context, git_status_executor=executor)
+            tools_for_execution(context=context, git_status_executor=executor)  # pyright: ignore[reportArgumentType] -- 故意越过静态签名，验证运行时拒绝非法输入
     tools = tools_for_execution(context=CONTEXT, git_status_executor=executor)
     tool = next(tool for tool in tools if tool.name == 'git_sample_status')
-    schema = tool.as_model_tool()['function']['parameters']
+    schema = require_instance(tool.as_model_tool()['function'], dict)['parameters']
     assert schema['properties'] == {} and schema['additionalProperties'] is False
     with pytest.raises(ToolContextRequiredError):
         tool.execute(tool.validate_arguments('{}'), context=replace(CONTEXT))
@@ -110,7 +116,7 @@ def test_model_roundtrip_and_runtime_boundary(owner, monkeypatch, kind):
             assert json.loads(raw)['source'] == 'task_git_sample'
         return build_text_response('样例状态已处理')
     model = DeepSeekDecisionMaker(
-        client=SimpleNamespace(chat=SimpleNamespace(completions=SimpleNamespace(create=create))),
+        client=cast(AsyncOpenAI, SimpleNamespace(chat=SimpleNamespace(completions=SimpleNamespace(create=create)))),
         model='test', messages=[{'role': 'user', 'content': 'read sample'}],
         tool_context=CONTEXT, tool_definitions=definitions,
     )
@@ -128,9 +134,9 @@ def test_model_roundtrip_and_runtime_boundary(owner, monkeypatch, kind):
         result = asyncio.run(scenario())
         observation = result.observations[0]
         if kind != 'success':
-            assert observation.code == ('invalid_tool_arguments' if kind == 'invalid' else 'tool_execution_failed')
+            assert require_instance(observation, ToolErrorObservation).code == ('invalid_tool_arguments' if kind == 'invalid' else 'tool_execution_failed')
             if kind != 'invalid':
-                assert observation.details == {
+                assert require_instance(observation, ToolErrorObservation).details == {
                     'missing': 'task_git_sample_unavailable', 'closed-app': 'task_git_sample_unavailable',
                     'moved': 'workspace_not_accessible', 'closed-request': 'task_git_sample_unavailable',
                     'private-error': 'git_status_unavailable',
@@ -160,7 +166,7 @@ def test_inflight_thread_stays_tracked_after_wait_ends(owner, monkeypatch, outco
             return build_tool_response(('git', 'git_sample_status', '{}'))
         return build_text_response('未确认完成')
     maker = DeepSeekDecisionMaker(
-        client=SimpleNamespace(chat=SimpleNamespace(completions=SimpleNamespace(create=create))),
+        client=cast(AsyncOpenAI, SimpleNamespace(chat=SimpleNamespace(completions=SimpleNamespace(create=create)))),
         model='test', messages=[{'role': 'user', 'content': 'read'}],
         tool_context=CONTEXT, tool_definitions=definitions,
     )
@@ -175,7 +181,7 @@ def test_inflight_thread_stays_tracked_after_wait_ends(owner, monkeypatch, outco
                     await task
             else:
                 result = await task
-                assert result.observations[0].code == 'tool_timeout'
+                assert require_instance(result.observations[0], ToolErrorObservation).code == 'tool_timeout'
             assert not finished.is_set()
             drain = asyncio.create_task(execution.threads.wait_closed())
             await asyncio.sleep(0)
@@ -211,11 +217,11 @@ def test_dependency_uses_request_application_manager(monkeypatch):
     async def scenario():
         dependency = owners.require_chat_execution(
             request=request, body=ChatRequest(session_id='conversation', prompt='test'),
-            current_user=SimpleNamespace(id=1),
+            current_user=AuthenticatedUser(id=1, external_id="u" * 32, username="fixture"),
         )
         try:
             execution = await anext(dependency)
-            assert execution.git_samples_provider() is get_git_samples(request)
+            assert require_value(execution.git_samples_provider)() is get_git_samples(request)
         finally:
             await dependency.aclose()
             await stop_git_samples(application)

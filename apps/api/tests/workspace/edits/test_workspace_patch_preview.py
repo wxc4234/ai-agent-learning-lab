@@ -16,6 +16,7 @@ from app.services.workspace.edits import workspace_patch_preview as service
 from app.services.workspace.edits.workspace_unified_patch import UnifiedPatchError
 from app.services.workspace.files.workspace_file import WorkspaceFileError, WorkspaceTextFile
 from tests.workspace.directory import test_workspace_path as path_tests
+from tests.assertions import require_value
 
 
 root = path_tests.root
@@ -62,9 +63,9 @@ def test_single_read_canonical_path_and_exact_baseline(monkeypatch, before, afte
     assert result.preview.diff.startswith('--- before\n+++ after\n')
     assert not result.preview.diff_truncated
     with pytest.raises(FrozenInstanceError):
-        result.baseline_sha256 = 'changed'
+        setattr(result, 'baseline_sha256', 'changed')  # noqa: B010 -- 测试冻结属性或动态故障注入，需要运行时属性访问
     with pytest.raises(FrozenInstanceError):
-        result.preview.updated_content = 'changed'
+        setattr(result.preview, 'updated_content', 'changed')  # noqa: B010 -- 测试冻结属性或动态故障注入，需要运行时属性访问
 
 
 @pytest.mark.parametrize('error', [
@@ -180,7 +181,7 @@ def test_real_rejections_preserve_source(engine, database, target, root, monkeyp
         expected = WorkspaceNotAccessibleError
     elif kind == 'unbound':
         with Session(engine) as session, session.begin():
-            session.scalar(select(Workspace)).root_path = None
+            require_value(session.scalar(select(Workspace))).root_path = None
     elif kind == 'outside':
         (root / 'link').symlink_to(root.parent, target_is_directory=True)
         relative = 'link'

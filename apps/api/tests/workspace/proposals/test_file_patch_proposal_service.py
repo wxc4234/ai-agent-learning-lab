@@ -12,6 +12,7 @@ from app.models import FileEditProposal
 from app.services.workspace.edits.workspace_unified_patch import UnifiedPatchError
 from app.services.workspace.proposals import file_edit_proposal_service as service
 from tests.workspace.proposals import test_file_edit_proposal_service as existing
+from tests.assertions import require_value
 
 root = existing.root
 target = existing.target
@@ -57,14 +58,14 @@ def test_saved_candidate_and_query_share_existing_protocol(patch_setup, engine, 
     assert result.proposed_sha256 == sha256(after.encode()).hexdigest()
     with Session(engine) as session:
         row = session.scalar(select(FileEditProposal))
-        assert row.external_id == result.proposal_id
-        assert row.bound_root == str(root)
-        assert row.relative_path == "src/中文 file.txt"
-        assert row.proposed_content == after
-        assert row.diff_truncated is (len(after) > 20000)
-        assert row.proposed_sha256 == result.proposed_sha256
-        assert row.baseline_sha256 == result.baseline_sha256
-        expected_diff = row.diff
+        assert require_value(row).external_id == result.proposal_id
+        assert require_value(row).bound_root == str(root)
+        assert require_value(row).relative_path == "src/中文 file.txt"
+        assert require_value(row).proposed_content == after
+        assert require_value(row).diff_truncated is (len(after) > 20000)
+        assert require_value(row).proposed_sha256 == result.proposed_sha256
+        assert require_value(row).baseline_sha256 == result.baseline_sha256
+        expected_diff = require_value(row).diff
     detail = service.get_task_file_edit_proposal(
         **{key: args[key] for key in ("user_id", "workspace_id", "task_id")},
         proposal_id=result.proposal_id,
@@ -106,11 +107,11 @@ def test_reauthorize_after_preview(patch_setup, engine, target, monkeypatch, kin
         # 文件访问已结束，在独立事务模拟并发资源变更。
         with Session(engine) as session, session.begin():
             if kind == "owner":
-                session.scalar(select(existing.Workspace)).user_id = target["other_id"]
+                require_value(session.scalar(select(existing.Workspace))).user_id = target["other_id"]
             elif kind == "conversation":
-                session.get(existing.Conversation, target["conversation_pk"]).user_id = target["other_id"]
+                require_value(session.get(existing.Conversation, target["conversation_pk"])).user_id = target["other_id"]
             elif kind == "binding":
-                session.scalar(select(existing.Workspace)).root_path = "/changed"
+                require_value(session.scalar(select(existing.Workspace))).root_path = "/changed"
         if kind == "deleted":
             with Session(engine) as session:
                 existing.delete_workspace_task(session, **{
@@ -138,7 +139,7 @@ def test_external_edit_does_not_replace_snapshot(patch_setup, engine, monkeypatc
     result = service.create_task_file_patch_proposal(**args)
     assert result.baseline_sha256 == sha256(b"old\n").hexdigest()
     with Session(engine) as session:
-        assert session.scalar(select(FileEditProposal)).proposed_content == "new\n"
+        assert require_value(session.scalar(select(FileEditProposal))).proposed_content == "new\n"
     assert file.read_bytes() == b"external editor"
 
 

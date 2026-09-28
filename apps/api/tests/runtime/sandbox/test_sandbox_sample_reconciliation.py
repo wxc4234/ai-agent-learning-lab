@@ -18,6 +18,7 @@ from tests.runtime.sandbox.test_sandbox_creation import CID, TOKEN, request
 from tests.runtime.sandbox.test_sandbox_sample import sample as sample  # noqa: PLC0414 -- pytest fixture export.
 from tests.runtime.sandbox.test_sandbox_sample import sample_base as sample_base  # noqa: PLC0414 -- pytest fixture export.
 from tests.runtime.sandbox.test_sandbox_stop import data
+from tests.assertions import require_value
 
 
 def recovery_for(sample, **changes):
@@ -50,6 +51,18 @@ def run(recovery):
     return asyncio.run(service.reconcile_sample_command(recovery=recovery))
 
 
+def test_discovery_without_identity_remains_unconfirmed(monkeypatch, sample):
+    async def missing_identity(**kwargs):
+        return SimpleNamespace(status='absent', identity=None)
+
+    monkeypatch.setattr(service, 'reconcile_sandbox_command', missing_identity)
+    result = run(recovery_for(sample, container_id=None, phase='creating'))
+    assert result.container_status == 'unconfirmed'
+    assert result.container_id is None and result.identity is None
+    assert result.id_source == 'unknown'
+    assert sample.root.exists()
+
+
 @pytest.mark.parametrize('status', ['created', 'running', 'exited'])
 @pytest.mark.parametrize('phase', ['creating', 'executing', 'adapting', 'cleaning_container', 'cleaning_sample'])
 def test_fresh_container_state_ignores_old_phase_and_flags(monkeypatch, sample, status, phase):
@@ -58,14 +71,14 @@ def test_fresh_container_state_ignores_old_phase_and_flags(monkeypatch, sample, 
     before = dict(samples._ACTIVE_SAMPLES)
     result = run(recovery)
     assert result.container_status == status and result.container_id == CID
-    assert result.id_source == 'record' and result.identity.container_id == CID
+    assert result.id_source == 'record' and require_value(result.identity).container_id == CID
     assert result.sample_status == 'identity_matches_record'
     assert result.recovery is recovery and recovery.command is None
     assert recovery.container_absent is True
     assert calls[-1] == ('container', 'inspect', CID) and len(calls) == 2
     assert samples._ACTIVE_SAMPLES == before
     with pytest.raises(FrozenInstanceError):
-        result.container_status = 'absent'
+        setattr(result, 'container_status', 'absent')  # noqa: B010 -- 测试冻结属性或动态故障注入，需要运行时属性访问
 
 
 def test_confirmed_absence_does_not_discover_same_name(monkeypatch, sample):
@@ -304,8 +317,7 @@ def test_current_query_never_rewrites_previous_command_result(monkeypatch, sampl
     from app.services.runtime.command.command_contracts import CommandResult
 
     install(monkeypatch, status='running')
-    command = CommandResult(status='exited', exit_code=7, oom_killed=False,
-                            daemon_error=False, stdout='previous output', duration_ms=1)
+    command = CommandResult.model_validate({'status': 'exited', 'exit_code': 7, 'oom_killed': False, 'daemon_error': False, 'stdout': 'previous output', 'duration_ms': 1})
     recovery = recovery_for(sample, command=command, stop_confirmed=True)
     result = run(recovery)
     assert result.container_status == 'running'

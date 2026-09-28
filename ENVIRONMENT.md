@@ -105,6 +105,12 @@ Git状态采集样例目前仅支持POSIX，固定可执行文件 `/usr/bin/git`
 
 选测时机、授权和范围遵循 [AGENTS.md](AGENTS.md#回归测试范围规则长期有效)。以下为选定单项后的命令示例，不是每课必跑清单；不要默认使用全量 pytest、整个领域脚本或全量 lint。
 
+全仓库类型维护：在根目录运行 `.venv/bin/python -m pyright --warnings`，在 `apps/web` 运行 `pnpm typecheck`。Python 使用 requirements 锁定的 Pyright 与根目录 [pyrightconfig.json](pyrightconfig.json)，覆盖后端、测试、浏览器 Python 夹具、根脚本和历史 Python 练习；排除依赖与生成产物，采用 basic 检查并启用弃用诊断。前端检查包含路由生成类型、源码和 TypeScript 测试。日常课程仍只按实际影响选测。
+
+测试类型边界：可空查询结果与联合类型使用 [运行时断言](apps/api/tests/assertions.py)，Pydantic 原始输入使用 `model_validate`。非法参数反例仅在具体调用行标注对应 Pyright 规则与原因；SDK 替身的 cast 只用于测试注入，不放宽生产契约或关闭整个文件的检查。历史迁移快照使用当时的表集合，升级到 head 的断言从迁移目录读取当前版本。
+
+保留的弃用兼容项：聊天输入框的 `keyCode === 229` 用于 IME 在 keydown 前结束 composition 的情况；直接删除可能在确认候选词时发送消息。[MDN 仍建议此项兼容判断](https://developer.mozilla.org/en-US/docs/Web/API/Element/keydown_event)，待目标浏览器行为验证后再移除，不以隐藏提示代替兼容处理。
+
 后端：在 `apps/api` 运行选定测试；可用 `-k` 或 `::用例名` 缩小到直接受影响用例。例如样例状态服务：
 
 ```bash

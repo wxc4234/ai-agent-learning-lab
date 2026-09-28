@@ -13,6 +13,10 @@ from sqlalchemy.exc import DBAPIError
 from app.database import Base
 from tests.migrations.test_database_readiness import migrate
 from tests.migrations.test_file_edit_proposal_migration import insert
+from psycopg import Error as PsycopgError
+from tests.assertions import require_instance
+from alembic.script import ScriptDirectory
+from tests.assertions import require_value
 
 
 @pytest.fixture
@@ -56,7 +60,7 @@ def test_no_lossy_downgrade(old, status):
         down(engine)
     with engine.connect() as c:
         assert c.scalar(text('SELECT application_status FROM file_edit_proposals')) == status
-        assert c.scalar(text('SELECT version_num FROM alembic_version')) == '60d32ae695cd'
+        assert c.scalar(text('SELECT version_num FROM alembic_version')) == ScriptDirectory(dir=str(Path(__file__).resolve().parents[2] / "migrations")).get_current_head()
 
 
 @pytest.mark.parametrize('state,token,decision', [
@@ -67,4 +71,4 @@ def test_database_constraints(old, state, token, decision):
     with pytest.raises(DBAPIError) as caught, old[0].begin() as c:
         c.execute(text('UPDATE file_edit_proposals SET application_status=:s, application_token=:t, status=:d'),
                   {'s': state, 't': token, 'd': decision})
-    assert caught.value.orig.sqlstate == '23514'
+    assert require_instance(require_value(caught.value.orig), PsycopgError).sqlstate == '23514'

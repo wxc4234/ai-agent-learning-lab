@@ -1,3 +1,4 @@
+from pathlib import Path
 """真实 PostgreSQL 恢复：停止证据、终态一致性、鉴权、提交失败。"""
 
 import json
@@ -19,6 +20,7 @@ from app.services.runtime.execution.conversation_execution_service import acquir
 from app.services.tasks.task_service import create_workspace_task, TaskCreationResultDeletedError
 from app.services.tasks.task_deletion_service import delete_workspace_task
 from tests.tasks import test_task_deletion_service as deletion_tests
+from tests.assertions import require_value
 
 target = deletion_tests.target
 assert_pair = deletion_tests.assert_pair
@@ -60,7 +62,7 @@ def test_uncertain_owner_never_released(engine, target, monkeypatch, kind):
         recover(target)
     with Session(engine) as session:
         assert session.get(ConversationExecutionSlot, target['conversation_pk']) is not None
-        assert session.get(AgentRun, run_id).status == 'running'
+        assert require_value(session.get(AgentRun, run_id)).status == 'running'
         assert session.scalar(select(AgentRunEvent.id)) is None
 
 
@@ -80,11 +82,12 @@ sys.stdin.read()
 '''
     with engine.connect() as conn:
         schema = conn.scalar(text('SELECT current_schema()'))
-    child = subprocess.Popen([sys.executable, '-c', script, str(target['user_id']), target['conversation_id']], stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True)
+    child = subprocess.Popen([sys.executable, '-c', script, str(target['user_id']), target['conversation_id']], stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True,
+                             cwd=Path(__file__).resolve().parents[3])
     try:
-        child.stdin.write(json.dumps([engine.url.render_as_string(hide_password=False), f'-csearch_path={schema}']) + '\n')
-        child.stdin.flush()
-        assert child.stdout.readline().strip() == 'acquired'
+        require_value(child.stdin).write(json.dumps([engine.url.render_as_string(hide_password=False), f'-csearch_path={schema}']) + '\n')
+        require_value(child.stdin).flush()
+        assert require_value(child.stdout).readline().strip() == 'acquired'
         with Session(engine) as session, session.begin():
             session.add(AgentRun(conversation_id=target['conversation_pk'], status='running', owner_host_id=host_identity(), owner_pid=child.pid))
         with pytest.raises(recovery.ExecutionRecoveryRefusedError):
@@ -97,7 +100,7 @@ sys.stdin.read()
         with Session(engine) as session:
             assert session.get(ConversationExecutionSlot, target['conversation_pk']) is None
             run = session.scalar(select(AgentRun))
-            assert run.status == 'aborted' and run.finished_at
+            assert require_value(run).status == 'aborted' and require_value(run).finished_at
             assert session.scalars(select(AgentRunEvent.event_type)).all() == ['RUN_ABORTED', 'EXECUTION_RECOVERED']
             session.rollback()
             acquire_conversation_execution(session, user_id=target['user_id'], session_id=target['conversation_id'])
@@ -107,8 +110,8 @@ sys.stdin.read()
         if child.poll() is None:
             child.kill()
         child.wait(timeout=5)
-        child.stdin.close()
-        child.stdout.close()
+        require_value(child.stdin).close()
+        require_value(child.stdout).close()
 
 
 def test_recovery_authorizes_before_process_probe(engine, target, monkeypatch):
@@ -134,7 +137,7 @@ def test_recovery_rollback_preserves_slot_and_run(engine, target, monkeypatch):
         event.remove(engine, 'before_cursor_execute', fail)
     with Session(engine) as session:
         assert session.get(ConversationExecutionSlot, target['conversation_pk'])
-        assert session.get(AgentRun, run_id).status == 'running'
+        assert require_value(session.get(AgentRun, run_id)).status == 'running'
         assert session.scalar(select(AgentRunEvent.id)) is None
 
 
@@ -143,8 +146,8 @@ def test_delete_history_and_keep_creation_tombstone(engine, target):
         created = create_workspace_task(session, user_id=target['user_id'], workspace_id=target['workspace_id'], title='历史', request_key='1' * 32)
         from app.models import Conversation
         conversation = session.scalar(select(Conversation).where(Conversation.external_id == created.conversation_id))
-        run = AgentRun(conversation_id=conversation.id, status='done', finished_at=datetime.now(timezone.utc))
-        session.add_all([run, Message(conversation_id=conversation.id, role='user', content='历史')])
+        run = AgentRun(conversation_id=require_value(conversation).id, status='done', finished_at=datetime.now(timezone.utc))
+        session.add_all([run, Message(conversation_id=require_value(conversation).id, role='user', content='历史')])
         session.flush()
         session.add(AgentRunEvent(run_id=run.id, event_type='RUN_FINISHED', payload={}))
         session.commit()
@@ -152,7 +155,7 @@ def test_delete_history_and_keep_creation_tombstone(engine, target):
         assert session.scalar(select(AgentRun.id)) is None
         assert session.scalar(select(Message.id)) is None
         assert session.scalar(select(AgentRunEvent.id)) is None
-        assert session.scalar(select(TaskCreationRequest)).task_id is None
+        assert require_value(session.scalar(select(TaskCreationRequest))).task_id is None
         session.rollback()
         with pytest.raises(TaskCreationResultDeletedError):
             create_workspace_task(session, user_id=target['user_id'], workspace_id=target['workspace_id'], title='历史', request_key='1' * 32)
@@ -186,7 +189,7 @@ def test_history_deletion_failure_rolls_back_all_records(engine, target, monkeyp
         event.remove(engine, 'before_cursor_execute', fail)
     assert_pair(engine, target)
     with Session(engine) as session:
-        assert session.get(AgentRun, run_id).status == 'done'
+        assert require_value(session.get(AgentRun, run_id)).status == 'done'
         assert session.scalar(select(AgentRunEvent.run_id)) == run_id
         assert session.scalar(select(Message.content)) == 'keep'
 
@@ -200,17 +203,17 @@ def test_run_without_slot_requires_its_own_dead_process_evidence(engine, target,
     monkeypatch.setattr(recovery, 'process_is_dead', lambda host, pid: host == host_identity() and pid == os.getpid())
     recover(target)
     with Session(engine) as session:
-        assert session.get(AgentRun, run_id).status == 'aborted'
+        assert require_value(session.get(AgentRun, run_id)).status == 'aborted'
         assert session.get(ConversationExecutionSlot, target['conversation_pk']) is None
 
 
 def test_dead_slot_does_not_authorize_unknown_run_owner(engine, target, monkeypatch):
     run_id = seed(engine, target, host_identity(), os.getpid())
     with Session(engine) as session, session.begin():
-        session.get(AgentRun, run_id).owner_pid = None
+        require_value(session.get(AgentRun, run_id)).owner_pid = None
     monkeypatch.setattr(recovery, 'process_is_dead', lambda host, pid: pid is not None)
     with pytest.raises(recovery.ExecutionRecoveryRefusedError):
         recover(target)
     with Session(engine) as session:
         assert session.get(ConversationExecutionSlot, target['conversation_pk'])
-        assert session.get(AgentRun, run_id).status == 'running'
+        assert require_value(session.get(AgentRun, run_id)).status == 'running'

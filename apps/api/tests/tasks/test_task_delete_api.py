@@ -11,6 +11,7 @@ from app.routers.workspace import tasks as workspace
 from tests.local.test_local_mode import HEADERS
 from tests.tasks.test_task_workspace import task
 import tests.workspace.directory.test_workspace_binding_api as binding
+from tests.assertions import require_value
 
 local_client = binding.local_client
 target = binding.target
@@ -47,11 +48,11 @@ def test_sample_source_task_returns_explicit_conflict(local_client, target, engi
     with Session(engine) as session, session.begin():
         workspace = session.scalar(select(Workspace).where(Workspace.external_id == target[0]))
         owner_task = session.scalar(select(Task).where(Task.external_id == created['external_id']))
-        workspace.root_path = '/isolated-sample'
+        require_value(workspace).root_path = '/isolated-sample'
         session.add(WorkspaceSampleOrigin(
-            workspace_id=workspace.id,
-            task_id=owner_task.id,
-            root_path=workspace.root_path,
+            workspace_id=require_value(workspace).id,
+            task_id=require_value(owner_task).id,
+            root_path=require_value(workspace).root_path,
         ))
     binding.safe(local_client.delete(path, headers=HEADERS), 409, 'task_sample_bound')
     assert_stored(engine, created)
@@ -125,7 +126,7 @@ def test_inaccessible_resources_share_404(local_client, target, engine, kind):
             session.add(other)
             session.flush()
             model, identifier = (Workspace, target[0]) if kind == 'foreign-project' else (Conversation, created['conversation_id'])
-            session.scalar(select(model).where(model.external_id == identifier)).user_id = other.id
+            require_value(session.scalar(select(model).where(model.external_id == identifier))).user_id = other.id
     binding.safe(local_client.delete(path, headers=HEADERS), 404, 'workspace_not_accessible')
     assert_stored(engine, created)
 
@@ -209,7 +210,7 @@ def test_execution_slot_returns_safe_conflict_and_preserves_task(local_client, t
     created, path = task(local_client, target)
     with Session(engine) as session, session.begin():
         conversation = session.scalar(select(Conversation).where(Conversation.external_id == created['conversation_id']))
-        conversation_pk = conversation.id
+        conversation_pk = require_value(conversation).id
         session.add(ConversationExecutionSlot(conversation_id=conversation_pk, owner_token='a' * 32))
         if status is not None:
             session.add(AgentRun(conversation_id=conversation_pk, status=status))
@@ -222,7 +223,7 @@ def test_execution_slot_returns_safe_conflict_and_preserves_task(local_client, t
     assert_stored(engine, created)
     with Session(engine) as session, session.begin():
         slot = session.get(ConversationExecutionSlot, conversation_pk)
-        assert slot.owner_token == 'a' * 32
+        assert require_value(slot).owner_token == 'a' * 32
         session.delete(slot)
     # 占用消失后仍需结束证据：空任务可删，这些缺 finished_at 的运行继续拒绝。
     response = local_client.delete(path, headers=HEADERS)

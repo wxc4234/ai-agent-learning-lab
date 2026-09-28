@@ -16,6 +16,7 @@ from app.services.workspace.directory.workspace_binding import (
 from app.services.workspace.samples.task_sample_binding import TaskSampleBindingError, TaskSampleBindings
 from app.services.workspace.samples.temporary_proposal_sample import TemporarySampleError
 from tests.workspace.samples.test_task_sample_binding import root, setup, target
+from tests.assertions import require_value
 
 __all__ = ["setup", "target"]
 
@@ -23,16 +24,16 @@ __all__ = ["setup", "target"]
 def test_normal_close_retains_pending_until_safe_file_cleanup(setup, engine, monkeypatch):
     service, scope, _, _ = setup
     service.bind(**scope)
-    path = Path(root(engine))
+    path = Path(require_value(root(engine)))
     original_close = service._registry.close
 
     def inspect_pending(handle):
         with Session(engine) as session:
             workspace = session.scalar(select(Workspace))
-            origin = session.get(WorkspaceSampleOrigin, workspace.id)
-            assert workspace.root_path is None
-            assert origin.lifecycle_state == "cleanup_pending"
-            assert origin.root_path == str(path)
+            origin = session.get(WorkspaceSampleOrigin, require_value(workspace).id)
+            assert require_value(workspace).root_path is None
+            assert require_value(origin).lifecycle_state == "cleanup_pending"
+            assert require_value(origin).root_path == str(path)
         assert path.exists()
         assert asdict(service.read_status(**scope)) == {
             "status": "sealed", "sealed_reason": "cleanup_pending",
@@ -54,17 +55,17 @@ def test_normal_close_retains_pending_until_safe_file_cleanup(setup, engine, mon
 def test_cleanup_failure_preserves_pending_and_blocks_rebinding(setup, engine, tmp_path):
     service, scope, _, _ = setup
     service.bind(**scope)
-    path = Path(root(engine))
+    path = Path(require_value(root(engine)))
     (path / "unknown").write_bytes(b"keep")
 
     with pytest.raises(TemporarySampleError):
         service.close(**scope)
     with Session(engine) as session:
         workspace = session.scalar(select(Workspace))
-        origin = session.get(WorkspaceSampleOrigin, workspace.id)
-        assert workspace.root_path is None
-        assert origin.lifecycle_state == "cleanup_pending"
-        assert origin.root_path == str(path)
+        origin = session.get(WorkspaceSampleOrigin, require_value(workspace).id)
+        assert require_value(workspace).root_path is None
+        assert require_value(origin).lifecycle_state == "cleanup_pending"
+        assert require_value(origin).root_path == str(path)
     assert path.exists()
     assert asdict(service.read_status(**scope)) == {
         "status": "sealed", "sealed_reason": "cleanup_pending",
@@ -97,7 +98,7 @@ def test_cleanup_failure_preserves_pending_and_blocks_rebinding(setup, engine, t
 def test_cleanup_not_confirmed_keeps_pending_evidence(setup, engine, monkeypatch, outcome):
     service, scope, _, _ = setup
     service.bind(**scope)
-    path = Path(root(engine))
+    path = Path(require_value(root(engine)))
 
     def not_confirmed(_handle):
         if outcome == "interrupted":
@@ -122,7 +123,7 @@ def test_cleanup_not_confirmed_keeps_pending_evidence(setup, engine, monkeypatch
 def test_final_record_commit_failure_never_reopens_old_binding(setup, engine, monkeypatch, timing):
     service, scope, tracked, _ = setup
     service.bind(**scope)
-    path = Path(root(engine))
+    path = Path(require_value(root(engine)))
     original_commit = tracked.commit
     commits = 0
 

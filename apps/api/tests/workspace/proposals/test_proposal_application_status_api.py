@@ -12,6 +12,8 @@ from app.routers.workspace import proposals as routes
 from app.services.workspace.proposals import file_edit_proposal_application_query as service
 from tests.local.test_local_mode import HEADERS
 from tests.workspace.proposals import test_file_edit_proposal_api as detail_tests
+from fastapi.routing import APIRoute
+from tests.assertions import require_value
 
 local_client = detail_tests.local_client
 saved = detail_tests.saved
@@ -45,9 +47,9 @@ def test_public_five_states_and_file_unchanged(local_client, ready, engine, stat
     path, file, proposal = ready
     with Session(engine) as session, session.begin():
         p = session.scalar(select(FileEditProposal))
-        p.status = 'approved'
-        p.application_status = state
-        p.application_token = None if state == 'idle' else '0123456789abcdef' * 2
+        require_value(p).status = 'approved'
+        require_value(p).application_status = state
+        require_value(p).application_token = None if state == 'idle' else '0123456789abcdef' * 2
     response = local_client.get(path + '/application-status', headers=HEADERS | {
         'X-User-ID': '9999', 'Cookie': 'agent_session=PRIVATE', 'Authorization': 'PRIVATE',
     })
@@ -132,7 +134,7 @@ def test_unknown_failure_and_serialization_have_specific_safe_code(local_client,
 def test_missing_file_and_changed_binding_are_queryable(local_client, ready, engine):
     ready[1].unlink()
     with Session(engine) as session, session.begin():
-        session.scalar(select(Workspace)).root_path = None
+        require_value(session.scalar(select(Workspace))).root_path = None
     safe(get(local_client, ready[0]), 200)
 
 
@@ -144,5 +146,5 @@ def test_openapi_contract_and_routes_are_unique(local_client):
     properties = schema['components']['schemas']['FileEditProposalApplicationStatusResponse']['properties']
     assert set(properties) == {'proposal_id', 'workspace_id', 'task_id', 'application_status'}
     assert properties['application_status']['enum'] == ['idle', 'running', 'applied', 'not_applied', 'uncertain']
-    keys = [(method, route.path) for route in routes.router.routes for method in route.methods]
+    keys = [(method, route.path) for route in routes.router.routes if isinstance(route, APIRoute) for method in route.methods or set()]
     assert len(keys) == len(set(keys))

@@ -25,6 +25,7 @@ from app.services.chat import chat_service
 from app.services.runtime.agent.agent_runtime import FinalAnswer
 from app.services.auth.login_session_service import issue_login_session
 from app.services.auth.registration_service import register_user
+from tests.assertions import require_value
 
 
 @pytest.fixture
@@ -35,9 +36,9 @@ def lab(engine, monkeypatch):
     identities = []
     for name in ("用户甲", "用户乙"):
         with Session(engine) as session:
-            register_user(session, RegisterRequest(username=name, password="Ownership-Test-2026!"))
+            register_user(session, RegisterRequest.model_validate({'username': name, 'password': "Ownership-Test-2026!"}))
         with Session(engine) as session:
-            identities.append(issue_login_session(session, LoginRequest(username=name, password="Ownership-Test-2026!")))
+            identities.append(issue_login_session(session, LoginRequest.model_validate({'username': name, 'password': "Ownership-Test-2026!"})))
     prompts = []
 
     class DecisionMaker:
@@ -93,7 +94,7 @@ def test_owner_reuses_history_and_other_user_is_denied_before_side_effects(lab, 
         assert '"RUN_FINISHED"' in response.text
     with Session(engine) as session:
         record = session.scalar(select(Conversation))
-        assert record.user_id == a.user.id
+        assert require_value(record).user_id == a.user.id
     before = counts(engine)
     cache_before = deepcopy(chat_service.conversations)
     rejected = send(client, b, path, "shared-id", "不应该执行")

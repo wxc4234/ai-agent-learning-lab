@@ -11,13 +11,17 @@ from sqlalchemy.orm import Session
 from app.database import Base
 from app.models import Conversation, Task, User, Workspace
 from tests.migrations.test_workspace_migration import load_migration, metadata_before_tasks
+from psycopg import Error as PsycopgError
+from sqlalchemy import Table
+from tests.assertions import require_instance
+from tests.assertions import require_value
 
 
 def metadata_at_task_revision():
     # 历史修订只比较当时的表，后续迁移由各自测试验证。
     snapshot = MetaData()
     for table in Base.metadata.sorted_tables:
-        if table.name not in {"task_creation_requests", "conversation_execution_slots"}:
+        if table.name in {"users", "conversations", "messages", "agent_runs", "agent_run_events", "login_sessions", "workspaces", "tasks"}:
             table.to_metadata(snapshot)
     # 历史修订不包含后续添加的执行进程字段；仅裁剪副本，不改当前 ORM。
     runs = snapshot.tables['agent_runs']
@@ -94,7 +98,7 @@ def test_database_rejects_invalid_associations(migrated, sql, sqlstate):
         connection.execute(text('UPDATE conversations SET task_id=1 WHERE id=1'))
     with pytest.raises(IntegrityError if sqlstate != '22001' else DataError) as caught, engine.begin() as connection:
         connection.execute(text(sql))
-    assert caught.value.orig.sqlstate == sqlstate
+    assert require_instance(require_value(caught.value.orig), PsycopgError).sqlstate == sqlstate
     with engine.connect() as connection:
         assert connection.execute(text('SELECT task_id FROM conversations ORDER BY id')).scalars().all() == [1, None]
 
@@ -111,12 +115,12 @@ def test_orm_relationships_commit_reload_and_legacy_creation(migrated):
         session.commit()
     with Session(engine) as session:
         task = session.scalar(select(Task).where(Task.external_id == 'orm-task'))
-        assert task.workspace.tasks == [task]
-        assert task.conversation.task is task
-        assert task.created_at.tzinfo is not None
-        assert session.scalar(select(Conversation).where(Conversation.external_id == 'old-client')).task is None
+        assert require_value(task).workspace.tasks == [task]
+        assert require_value(require_value(task).conversation).task is task
+        assert require_value(task).created_at.tzinfo is not None
+        assert require_value(session.scalar(select(Conversation).where(Conversation.external_id == 'old-client'))).task is None
         # 同名任务合法，只有独立标识唯一。
-        session.add(Task(external_id='same-title', title=task.title, workspace_id=1))
+        session.add(Task(external_id='same-title', title=require_value(task).title, workspace_id=1))
         session.commit()
 
 
@@ -125,11 +129,11 @@ def test_recover_empty_create_all_table_then_upgrade(migrated):
     # 重现开发启动器提前 create_all：新表已出现，但旧会话缺少关联列。
     with engine.begin() as connection, Operations.context(MigrationContext.configure(connection)):
         migration.downgrade()
-        Task.__table__.create(connection)
+        require_instance(Task.__table__, Table).create(connection)
     with engine.begin() as connection:
         connection.execute(text('LOCK TABLE tasks IN ACCESS EXCLUSIVE MODE'))
         assert connection.execute(text('SELECT count(*) FROM tasks')).scalar_one() == 0
-        Task.__table__.drop(connection)
+        require_instance(Task.__table__, Table).drop(connection)
         assert compare_metadata(MigrationContext.configure(connection), metadata_before_tasks()) == []
         with Operations.context(MigrationContext.configure(connection)):
             migration.upgrade()

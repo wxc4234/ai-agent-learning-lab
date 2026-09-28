@@ -11,6 +11,7 @@ from app.models import FileEditProposal, Workspace
 from app.repositories.workspace.file_edit_proposal_repository import read_owned_proposal_application_status
 from app.services.workspace.proposals import file_edit_proposal_application_query as service
 from tests.workspace.proposals import test_file_edit_proposal_query as query_tests
+from tests.assertions import require_value
 
 root = query_tests.root
 target = query_tests.target
@@ -31,9 +32,9 @@ def test_five_states_are_private_readonly_snapshots(ready, setup, engine, databa
     query, file, sessions = ready
     with Session(engine) as session, session.begin():
         row = session.scalar(select(FileEditProposal))
-        row.status = 'approved'
-        row.application_status = status
-        row.application_token = None if status == 'idle' else '0123456789abcdef' * 2
+        require_value(row).status = 'approved'
+        require_value(row).application_status = status
+        require_value(row).application_token = None if status == 'idle' else '0123456789abcdef' * 2
     before = file.read_bytes()
     statements = database[1]
     statements.clear()
@@ -51,11 +52,11 @@ def test_five_states_are_private_readonly_snapshots(ready, setup, engine, databa
     assert file.read_bytes() == before
     assert '0123456789abcdef' * 2 not in repr(result)
     with pytest.raises(FrozenInstanceError):
-        result.application_status = 'idle'
+        setattr(result, 'application_status', 'idle')  # noqa: B010 -- 测试冻结属性或动态故障注入，需要运行时属性访问
     with Session(engine) as session:
         row = session.scalar(select(FileEditProposal))
-        assert row.application_status == status
-        assert row.application_token == (None if status == 'idle' else '0123456789abcdef' * 2)
+        assert require_value(row).application_status == status
+        assert require_value(row).application_token == (None if status == 'idle' else '0123456789abcdef' * 2)
 
 
 @pytest.mark.parametrize('kind', [
@@ -88,7 +89,7 @@ def test_history_survives_binding_change_and_missing_file(ready, engine, binding
     before = service.get_task_file_edit_proposal_application_status(**ready[0])
     ready[1].unlink()
     with Session(engine) as session, session.begin():
-        session.scalar(select(Workspace)).root_path = binding
+        require_value(session.scalar(select(Workspace))).root_path = binding
     assert service.get_task_file_edit_proposal_application_status(**ready[0]) == before
     assert not ready[1].exists()
 
@@ -96,14 +97,14 @@ def test_history_survives_binding_change_and_missing_file(ready, engine, binding
 def test_repository_does_not_flush_unrelated_changes(ready, engine):
     with Session(engine) as session:
         workspace = session.scalar(select(Workspace))
-        workspace.name = 'not committed'
+        require_value(workspace).name = 'not committed'
         def forbidden(*args, **kwargs):
             pytest.fail('repository query must not autoflush')
         session.flush = forbidden
         row = read_owned_proposal_application_status(session, **ready[0])
         assert row['application_status'] == 'idle' and workspace in session.dirty
     with Session(engine) as session:
-        assert session.scalar(select(Workspace)).name != 'not committed'
+        assert require_value(session.scalar(select(Workspace))).name != 'not committed'
 
 
 def test_database_error_closes_session_without_inventing_state(ready, monkeypatch):
@@ -119,7 +120,7 @@ def test_second_query_observes_committed_state_without_cache(ready, engine):
     assert service.get_task_file_edit_proposal_application_status(**ready[0]).application_status == 'idle'
     with Session(engine) as session, session.begin():
         row = session.scalar(select(FileEditProposal))
-        row.status = 'approved'
-        row.application_status = 'running'
-        row.application_token = '0123456789abcdef' * 2
+        require_value(row).status = 'approved'
+        require_value(row).application_status = 'running'
+        require_value(row).application_token = '0123456789abcdef' * 2
     assert service.get_task_file_edit_proposal_application_status(**ready[0]).application_status == 'running'

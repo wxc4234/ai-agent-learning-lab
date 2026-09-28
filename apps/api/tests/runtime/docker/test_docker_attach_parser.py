@@ -168,7 +168,7 @@ def test_empty_stream_idempotence_and_post_finish_rejection():
     assert result.stdout.text == result.stderr.text == ""
     assert parser.finish() is result
     with pytest.raises(FrozenInstanceError):
-        result.stdout = result.stderr
+        setattr(result, 'stdout', result.stderr)  # noqa: B010 -- 测试冻结属性或动态故障注入，需要运行时属性访问
     for chunk in (b"", frame(1, b"late")):
         with pytest.raises(RuntimeError):
             parser.feed(chunk)

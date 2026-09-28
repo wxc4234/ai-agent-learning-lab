@@ -11,6 +11,7 @@ from app.services.runtime.sandbox import task_sample_command as service
 from tests.runtime.sandbox.test_sandbox_creation import request
 from tests.runtime.sandbox.test_sandbox_sample import sample_base as sample_base  # noqa: PLC0414
 from tests.runtime.sandbox.test_sandbox_sample_command import lab as lab  # noqa: PLC0414
+from tests.assertions import require_value
 
 
 @pytest.fixture
@@ -26,7 +27,7 @@ def factory(lab, monkeypatch):
 
 def run():
     return service.run_task_sample_command(
-        request=request(), user_id=1, conversation_id='conversation', bindings=None,
+        request=request(), user_id=1, conversation_id='conversation', bindings=None,  # pyright: ignore[reportArgumentType] -- 来源准备已由夹具替换，断言收到此占位值
     )
 
 
@@ -49,8 +50,8 @@ def test_failures_return_snapshot_and_stage_evidence(lab, factory, stage, cancel
     with pytest.raises(error_type) as caught:
         asyncio.run(run())
     recovery = caught.value.recovery
-    assert recovery.sample is lab.samples[0] and recovery.sample.root.exists()
-    assert (recovery.sample.root / 'example.txt').read_bytes() == b'task content\n'
+    assert recovery.sample is lab.samples[0] and require_value(recovery.sample).root.exists()
+    assert (require_value(recovery.sample).root / 'example.txt').read_bytes() == b'task content\n'
     assert recovery.create_attempted and not recovery.sample_cleaned
     assert (recovery.container_id is None) == (stage == 'create')
     assert (recovery.command is not None) == (stage in ('inspect_cleanup', 'remove', 'absent', 'cleanup_sample'))
@@ -99,7 +100,7 @@ def test_repeated_cancel_waits_for_preparation_and_keeps_evidence(lab, monkeypat
         assert recovery.phase == 'preparing' and not recovery.create_attempted
         assert lab.calls == []
         if outcome == 'snapshot':
-            assert recovery.sample is lab.samples[0] and recovery.sample.root.exists()
+            assert recovery.sample is lab.samples[0] and require_value(recovery.sample).root.exists()
         elif outcome == 'partial':
             assert recovery.sample is None and recovery.sample_root == sample_base / 'partial'
             assert recovery.sample_token == 'partial'
@@ -116,7 +117,7 @@ def test_invalid_command_never_prepares(lab, monkeypatch):
     invalid.argv = ['relative-command']
     with pytest.raises(ValueError):
         asyncio.run(service.run_task_sample_command(
-            request=invalid, user_id=1, conversation_id='conversation', bindings=None,
+            request=invalid, user_id=1, conversation_id='conversation', bindings=None,  # pyright: ignore[reportArgumentType] -- 故意越过静态签名，验证运行时拒绝非法输入
         ))
     assert lab.calls == []
 

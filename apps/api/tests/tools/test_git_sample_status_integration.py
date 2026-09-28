@@ -11,6 +11,7 @@ from app.tools.context import ToolExecutionContext
 from app.tools.errors import SafeToolExecutionError
 from app.tools.git_sample_status import make_git_sample_status_executor
 from tests.workspace.git import test_task_git_samples as existing
+from tests.assertions import require_value
 
 setup = existing.setup
 target = existing.target
@@ -49,7 +50,7 @@ def test_actual_rejection_never_creates_or_falls_back(setup, target, engine, kin
         query_scope['user_id'] = target['other_id']
     elif kind == 'changed-owner':
         with Session(engine) as session, session.begin():
-            session.scalar(select(Workspace)).user_id = target['other_id']
+            require_value(session.scalar(select(Workspace))).user_id = target['other_id']
     elif kind == 'closed':
         manager.close(**scope)
     execute = make_git_sample_status_executor(manager)

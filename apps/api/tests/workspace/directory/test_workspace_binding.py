@@ -18,6 +18,7 @@ from app.repositories.workspace.workspace_repository import (
 )
 from app.services.workspace.directory import workspace_binding as service
 from app.services.workspace.directory.workspace_directory import WorkspaceDirectoryError
+from tests.assertions import require_value
 
 
 @pytest.fixture
@@ -61,7 +62,7 @@ def test_success_is_committed_detached_and_repeatable(engine, setup_binding, exp
     assert result.external_id == "workspace" and result.name == "项目"
     assert result.root_path == str(first.resolve())
     with pytest.raises(FrozenInstanceError):
-        result.root_path = "changed"
+        setattr(result, 'root_path', "changed")  # noqa: B010 -- 测试冻结属性或动态故障注入，需要运行时属性访问
 
 
 def test_different_directory_rejected_and_original_preserved(engine, setup_binding):
@@ -128,7 +129,7 @@ def test_existing_transaction_is_untouched(engine, setup_binding, kind):
         transaction = session.get_transaction()
         with pytest.raises(RuntimeError, match="无活动事务"):
             bind(session, owner, first)
-        assert session.get_transaction() is transaction and transaction.is_active
+        assert session.get_transaction() is transaction and require_value(transaction).is_active
         session.commit()
     assert stored(engine) is None
 
@@ -157,7 +158,7 @@ def test_lock_query_refreshes_stale_identity_and_does_not_flush(engine, setup_bi
         session.commit()
         with Session(engine) as writer:
             bind(writer, owner, first)
-        assert cached.root_path is None
+        assert require_value(cached).root_path is None
         pending = User(external_id="pending-not-flushed")
         session.add(pending)
         record = require_owned_workspace_for_update(session, user_id=owner, workspace_id="workspace")

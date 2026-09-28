@@ -12,7 +12,6 @@ from typing import NoReturn
 
 import pytest
 from fastapi.testclient import TestClient
-from httpx import Response
 from pydantic import SecretStr
 from sqlalchemy import select, text
 from sqlalchemy.engine import Engine
@@ -29,6 +28,7 @@ from app.schemas import RegisterRequest
 from app.services.auth import login_session_resolver
 from app.services.auth.authentication_service import AuthenticatedUser
 from app.services.auth.registration_service import register_user
+from httpx2 import Response
 
 
 PASSWORD = "Current-User-2026!"

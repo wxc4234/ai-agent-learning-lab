@@ -19,6 +19,9 @@ from app.tools.errors import SafeToolExecutionError
 from app.tools.registry import TOOL_REGISTRY, model_tools_for_context
 from tests.model.test_model_decision import build_text_response, build_tool_response
 from tests.tools.test_read_file_tool import CONTEXT
+from openai import AsyncOpenAI
+from tests.assertions import require_instance
+from typing import cast
 
 
 @pytest.mark.parametrize("value", [None, True, 12, "", "x" * 4097, [], {}])
@@ -48,9 +51,9 @@ def test_defaults_identity_and_result(monkeypatch, truncated):
     assert captured == [{"user_id": CONTEXT.user_id, "workspace_id": CONTEXT.workspace_id,
                          "task_id": CONTEXT.task_id, "relative_path": "."}]
     assert result == {"relative_path": ".", "entries": [{"name": "中文", "kind": "symlink"}], "truncated": truncated}
-    schema = tool.as_model_tool()["function"]["parameters"]
-    assert set(schema["properties"]) == {"relative_path"}
-    assert schema["properties"]["relative_path"]["default"] == "."
+    schema = require_instance(tool.as_model_tool()["function"], dict)["parameters"]
+    assert set(require_instance(schema["properties"], dict)) == {"relative_path"}
+    assert require_instance(schema, dict)["properties"]["relative_path"]["default"] == "."
     assert schema["additionalProperties"] is False
 
 
@@ -63,7 +66,7 @@ def test_defaults_identity_and_result(monkeypatch, truncated):
         "directory_listing_unsupported", "directory_listing_not_found", "directory_listing_not_directory",
         "directory_listing_access_denied", "directory_listing_changed", "directory_listing_unavailable",
     )],
-    (WorkspaceListingError("future-code", "PRIVATE"), "directory_listing_unavailable"),
+    (WorkspaceListingError("future-code", "PRIVATE"), "directory_listing_unavailable"),  # pyright: ignore[reportArgumentType] -- 反例故意构造不受支持的数据，保留运行时校验
 ])
 def test_safe_failure_mapping(monkeypatch, error, expected):
     def fail(**kwargs):
@@ -114,7 +117,7 @@ def test_model_discovers_then_reads_or_observes_failure(monkeypatch, kind):
     monkeypatch.setattr(read_file, "read_task_text_file", read)
     provided = None if kind == "no-context" else CONTEXT
     client = SimpleNamespace(chat=SimpleNamespace(completions=SimpleNamespace(create=create)))
-    maker = DeepSeekDecisionMaker(client=client, model="test", system_prompt="system", user_prompt="inspect", tool_context=provided)
+    maker = DeepSeekDecisionMaker(client=cast(AsyncOpenAI, client), model="test", system_prompt="system", user_prompt="inspect", tool_context=provided)
     result = asyncio.run(run_agent_loop(maker, tool_context=provided))
     assert all(tools == model_tools_for_context(provided) for tools in requests)
     if kind == "success":

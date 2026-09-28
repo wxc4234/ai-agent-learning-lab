@@ -7,6 +7,7 @@ import anyio
 import pytest
 
 from app.services.runtime.execution.execution_budget import ExecutionBudget, ExecutionCapacityExceededError
+from anyio.lowlevel import checkpoint
 
 
 @pytest.mark.parametrize("capacity", [True, False, 0, -1, 1.5, "2", None, [], {}])
@@ -39,9 +40,9 @@ def test_full_rejects_without_release_and_capacity_can_be_reused(capacity):
 def test_properties_readonly_and_instances_independent():
     first, second = ExecutionBudget(capacity=1), ExecutionBudget(capacity=1)
     with pytest.raises(AttributeError):
-        first.capacity = 2
+        setattr(first, 'capacity', 2)  # noqa: B010 -- 测试冻结属性或动态故障注入，需要运行时属性访问
     with pytest.raises(AttributeError):
-        first.in_use = 2
+        setattr(first, 'in_use', 2)  # noqa: B010 -- 测试冻结属性或动态故障注入，需要运行时属性访问
 
     async def scenario():
         with first.reserve(), second.reserve():
@@ -127,7 +128,7 @@ def test_anyio_cancel_returns_capacity():
         with anyio.CancelScope() as scope:
             with budget.reserve():
                 scope.cancel()
-                await anyio.lowlevel.checkpoint()
+                await checkpoint()
         assert scope.cancelled_caught
         assert budget.in_use == 0
 

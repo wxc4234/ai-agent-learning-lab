@@ -104,7 +104,7 @@ def test_failed_shutdown_retains_sealed_owner_and_other_resources_close(failure)
                     class FailedCleanup:
                         def __exit__(self, *args):
                             raise OSError('cleanup unconfirmed')
-                    binding.lifetime = FailedCleanup()
+                    setattr(binding, 'lifetime', FailedCleanup())  # noqa: B010 -- 测试冻结属性或动态故障注入，需要运行时属性访问
         try:
             assert root.exists()
             assert application.state.git_samples.manager is manager

@@ -19,7 +19,8 @@ from app.services.runtime.agent import tool_execution_context
 from app.services.workspace.directory import workspace_path
 from app.services.workspace.proposals import file_edit_proposal_service as proposals
 from tests.chat import test_chat_tool_context as chat_tests
-from tests.model.test_model_decision import build_text_response, build_tool_response
+from tests.model.response_stream import build_text_response, build_tool_response
+from tests.assertions import require_value
 
 
 target = chat_tests.target
@@ -38,7 +39,7 @@ def test_chat_patch_proposal_events_and_persistence(engine, target, tmp_path, mo
     original = b'old\n'
     path.write_bytes(original)
     with Session(engine) as session, session.begin():
-        session.scalar(select(Workspace)).root_path = None if kind == 'unbound' else str(root)
+        require_value(session.scalar(select(Workspace))).root_path = None if kind == 'unbound' else str(root)
     old = 'wrong' if kind == 'conflict' else 'old'
     args = {'relative_path': 'file.txt', 'patch': f'--- a/file.txt\n+++ b/file.txt\n@@ -1 +1 @@\n-{old}\n+new\n'}
     if kind == 'invalid':
@@ -82,7 +83,7 @@ def test_chat_patch_proposal_events_and_persistence(engine, target, tmp_path, mo
     assert create.call_count == 2
     assert sum(item['type'] == 'TOOL_CALL_START' for item in events) == 1
     with Session(engine) as session:
-        assert session.get(AgentRun, run_id).status == 'done'
+        assert require_value(session.get(AgentRun, run_id)).status == 'done'
         stored = session.scalars(select(AgentRunEvent).where(AgentRunEvent.run_id == run_id)).all()
         assert sum(event.event_type == expected for event in stored) == 1
         messages = session.scalars(select(Message).where(Message.conversation_id == target['conversation_pk']).order_by(Message.id)).all()
@@ -90,7 +91,7 @@ def test_chat_patch_proposal_events_and_persistence(engine, target, tmp_path, mo
         assert session.scalar(select(func.count()).select_from(FileEditProposal)) == (1 if kind in ('success', 'unconfirmed') else 0)
         if kind in ('success', 'unconfirmed'):
             proposal = session.scalar(select(FileEditProposal))
-            assert proposal.status == 'pending' and proposal.proposed_content == 'new\n'
-            assert proposal.proposed_sha256 == sha256(b'new\n').hexdigest()
+            assert require_value(proposal).status == 'pending' and require_value(proposal).proposed_content == 'new\n'
+            assert require_value(proposal).proposed_sha256 == sha256(b'new\n').hexdigest()
             if kind == 'success':
-                assert public['proposal_id'] == proposal.external_id
+                assert public['proposal_id'] == require_value(proposal).external_id

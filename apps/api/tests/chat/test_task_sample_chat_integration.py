@@ -28,10 +28,11 @@ from tests.tasks.test_task_deletion_service import target as target  # noqa: PLC
 from tests.workspace.samples.test_task_sample_binding import setup as setup  # noqa: PLC0414
 from tests.runtime.sandbox.test_sandbox_sample import sample_base as sample_base  # noqa: PLC0414
 from tests.runtime.sandbox import test_sandbox_sample_command as command_fixtures
+from tests.model.response_stream import build_text_response, build_tool_response
+from tests.assertions import require_value
 
 docker_lab = command_fixtures.lab
 from tests.runtime.sandbox.test_sandbox_creation import request
-from tests.model.test_model_decision import build_text_response, build_tool_response
 
 
 @pytest.mark.parametrize('outcome', ['success', 'nonzero', 'cleanup', 'busy_after_ready', 'moved_after_recheck'])
@@ -53,12 +54,12 @@ def test_route_stream_task_command_persistence_and_close(setup, docker_lab, engi
                 alternative = Task(external_id='f' * 32, title='moved', workspace=session.scalar(select(Workspace)))
                 session.add(alternative)
                 session.flush()
-                session.get(Conversation, target['conversation_pk']).task_id = alternative.id
+                require_value(session.get(Conversation, target['conversation_pk'])).task_id = alternative.id
             try:
                 return original(**kwargs)
             finally:
                 with Session(engine) as session, session.begin():
-                    session.get(Conversation, target['conversation_pk']).task_id = target['task_pk']
+                    require_value(session.get(Conversation, target['conversation_pk'])).task_id = target['task_pk']
         if outcome == 'busy_after_ready':
             with bindings.borrow(**scope), pytest.raises(TaskSampleBindingError) as caught:
                 original(**kwargs)
@@ -87,33 +88,33 @@ def test_route_stream_task_command_persistence_and_close(setup, docker_lab, engi
     async def scenario():
         response = await route.chat_stream(owner)
         try:
-            events = [json.loads(line) async for line in response.body_iterator]
+            events = [json.loads(line if isinstance(line, str) else bytes(line)) async for line in response.body_iterator]
             assert events[-1]['type'] == 'RUN_FINISHED'
             expected = 'TOOL_CALL_RESULT' if outcome in ('success', 'nonzero') else 'TOOL_CALL_ERROR'
             assert any(item['type'] == expected for item in events)
         finally:
             await owner.close()
             git_manager.shutdown()
-        return owner.creation.result()
+        return require_value(owner.creation).result()
     run_id = asyncio.run(scenario())
-    stored = owner.task_sample_recovery_store.get(
+    stored = require_value(owner.task_sample_recovery_store).get(
         user_id=target['user_id'], conversation_id=target['conversation_id'], run_id=run_id,
     )
     assert stored is owner.sample_scope and owner.command_scope is None
-    record = stored.journal.records[0]
+    record = require_value(stored).journal.records[0]
     assert record.status == ('completed' if outcome in ('success', 'nonzero') else 'unconfirmed')
     assert bindings.read_status(**scope).status == 'ready'
     if outcome in ('busy_after_ready', 'moved_after_recheck'):
-        assert docker_lab.calls == [] and not record.recovery.create_attempted
+        assert docker_lab.calls == [] and not require_value(record.recovery).create_attempted
     elif outcome == 'cleanup':
-        assert record.recovery.sample is docker_lab.samples[0] and record.recovery.sample.root.exists()
+        assert require_value(record.recovery).sample is docker_lab.samples[0] and require_value(require_value(record.recovery).sample).root.exists()
     else:
-        assert json.loads(record.command_json)['exit_code'] == (7 if outcome == 'nonzero' else 0)
+        assert json.loads(require_value(record.command_json))['exit_code'] == (7 if outcome == 'nonzero' else 0)
     tool = next(item['function'] for item in create.call_args.kwargs['tools'] if item['function']['name'] == 'run_command')
     assert '/workspace/example.txt' in tool['description']
     assert set(tool['parameters']['properties']) == {'argv', 'working_directory'}
     with Session(engine) as session:
-        assert session.get(AgentRun, run_id).status == 'done'
+        assert require_value(session.get(AgentRun, run_id)).status == 'done'
         assert session.scalar(select(Workspace.root_path)) is not None
         types = session.scalars(select(AgentRunEvent.event_type).where(AgentRunEvent.run_id == run_id)).all()
         assert ('TOOL_CALL_RESULT' if outcome in ('success', 'nonzero') else 'TOOL_CALL_ERROR') in types

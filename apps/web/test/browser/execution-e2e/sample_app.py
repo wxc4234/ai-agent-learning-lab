@@ -23,6 +23,11 @@ from app.services.workspace.proposals.file_edit_proposal_decision import decide_
 original_lifespan = app.router.lifespan_context
 
 
+
+
+
+from tests.assertions import require_value
+
 @asynccontextmanager
 async def lifespan(application):
     async with original_lifespan(application):
@@ -77,17 +82,17 @@ async def lifespan(application):
                 assert binding.state == 'uncertain' and not binding.busy
                 with SessionLocal() as session:
                     workspace = session.scalar(select(Workspace).where(Workspace.external_id == workspace_id))
-                    origin = session.get(WorkspaceSampleOrigin, workspace.id)
+                    origin = session.get(WorkspaceSampleOrigin, require_value(workspace).id)
                     source_task_id = session.scalar(select(Task.id).where(Task.external_id == task_id))
-                    assert workspace.root_path is None
+                    assert require_value(workspace).root_path is None
                     assert origin is not None and origin.task_id == source_task_id
                     assert origin.root_path == root and origin.lifecycle_state == 'cleanup_pending'
                 assert bindings._registry.close(binding.handle)
                 with SessionLocal() as session:
                     workspace = session.scalar(select(Workspace).where(Workspace.external_id == workspace_id))
-                    origin = session.get(WorkspaceSampleOrigin, workspace.id)
+                    origin = session.get(WorkspaceSampleOrigin, require_value(workspace).id)
                     source_task_id = session.scalar(select(Task.id).where(Task.external_id == task_id))
-                    assert workspace.root_path is None
+                    assert require_value(workspace).root_path is None
                     assert origin is not None and origin.task_id == source_task_id
                     assert origin.root_path == root and origin.lifecycle_state == 'cleanup_pending'
                     session.delete(origin)
@@ -104,10 +109,10 @@ async def lifespan(application):
                     with SessionLocal() as session, session.begin():
                         row = session.scalar(select(FileEditProposal).where(FileEditProposal.external_id == proposal.proposal_id))
                         workspace = session.scalar(select(Workspace).where(Workspace.external_id == workspace_id))
-                        assert row.application_status == 'applied'
-                        assert workspace.root_path == root
+                        assert require_value(row).application_status == 'applied'
+                        assert require_value(workspace).root_path == root
                         assert (Path(root) / 'example.txt').read_bytes() == b'new\n'
-                        workspace.root_path = None
+                        require_value(workspace).root_path = None
                     bindings._registry.close(binding.handle)
                     mode = 'sealed-test-cleanup'
             Path(os.environ['EXECUTION_CLEANUP']).write_text(mode)

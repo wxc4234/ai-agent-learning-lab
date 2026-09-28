@@ -13,6 +13,7 @@ from app.repositories.chat.conversation_repository import ConversationNotAccessi
 from app.services.runtime.agent import tool_execution_context as service
 from app.tools.context import ToolExecutionContext
 from tests.tasks import test_task_deletion_service as task_fixtures
+from tests.assertions import require_value
 
 
 # 复用已提交的用户、项目、任务和会话，底层仍使用根目录隔离数据库夹具。
@@ -85,11 +86,11 @@ def test_full_ownership_required_in_both_modes(engine, database, target, monkeyp
         elif kind == "wrong-user":
             overrides["user_id"] = target["other_id"]
         elif kind == "foreign-conversation":
-            session.get(Conversation, target["conversation_pk"]).user_id = target["other_id"]
+            require_value(session.get(Conversation, target["conversation_pk"])).user_id = target["other_id"]
         elif kind == "foreign-workspace":
-            session.scalar(select(Workspace)).user_id = target["other_id"]
+            require_value(session.scalar(select(Workspace))).user_id = target["other_id"]
         else:
-            session.get(Conversation, target["conversation_pk"]).task_id = None
+            require_value(session.get(Conversation, target["conversation_pk"])).task_id = None
     database[1].clear()
     with pytest.raises(ConversationNotAccessibleError) as caught:
         load(target, **overrides)
@@ -101,7 +102,7 @@ def test_full_ownership_required_in_both_modes(engine, database, target, monkeyp
 @pytest.mark.parametrize("root_path", [None, "/nonexistent-context-test-directory"])
 def test_binding_and_filesystem_do_not_determine_context(engine, database, target, root_path):
     with Session(engine) as session, session.begin():
-        session.scalar(select(Workspace)).root_path = root_path
+        require_value(session.scalar(select(Workspace))).root_path = root_path
     result = load(target)
     assert result.task_id == target["task_id"]
     assert result.workspace_id == target["workspace_id"]
@@ -153,5 +154,5 @@ def test_real_database_failure_propagates_and_closes(database, target, monkeypat
     monkeypatch.setattr(service, "SessionLocal", lambda: session)
     with pytest.raises(DBAPIError):
         load(target)
-    assert session.closed
+    assert getattr(session, "closed")  # noqa: B009 -- 夹具Session动态记录关闭证据
     assert not session.in_transaction()

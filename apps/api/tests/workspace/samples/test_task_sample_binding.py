@@ -13,6 +13,7 @@ from app.models import Conversation, FileEditProposal, Workspace, WorkspaceSampl
 from app.services.workspace.samples import task_sample_binding as m
 from app.services.workspace.samples import temporary_proposal_sample as lifecycle
 from tests.tasks.test_task_deletion_service import target
+from tests.assertions import require_value
 
 __all__ = ['target']
 
@@ -32,7 +33,7 @@ def setup(engine, target, tmp_path, monkeypatch):
             self.closed = True
     monkeypatch.setattr(m, 'SessionLocal', sessionmaker(bind=engine, class_=Tracked))
     with Session(engine) as session, session.begin():
-        session.scalar(select(Workspace)).root_path = None
+        require_value(session.scalar(select(Workspace))).root_path = None
     service = m.TaskSampleBindings()
     scope = {key: target[key] for key in ('user_id', 'workspace_id', 'task_id')}
     yield service, scope, Tracked, sessions
@@ -53,7 +54,7 @@ def root(engine):
 def test_real_binding_borrow_reauthorize_and_close(setup, engine, tmp_path):
     service, scope, _, sessions = setup
     service.bind(**scope)
-    path = Path(root(engine))
+    path = Path(require_value(root(engine)))
     assert path.parent == tmp_path and path.is_dir()
     with service.borrow(**scope) as sample:
         assert sample.root == path
@@ -71,15 +72,15 @@ def test_real_binding_borrow_reauthorize_and_close(setup, engine, tmp_path):
 def test_bind_persists_verified_directory_identities_with_source(setup, engine):
     service, scope, _, _ = setup
     service.bind(**scope)
-    path = Path(root(engine))
+    path = Path(require_value(root(engine)))
     parent_info = path.parent.stat(follow_symlinks=False)
     root_info = path.stat(follow_symlinks=False)
 
     with service.borrow(**scope) as sample, Session(engine) as session:
         origin = session.scalar(select(WorkspaceSampleOrigin))
-        assert origin.root_path == str(sample.root) == str(path)
-        assert (origin.parent_dev, origin.parent_ino) == sample.parent_identity
-        assert (origin.root_dev, origin.root_ino) == sample.root_identity
+        assert require_value(origin).root_path == str(sample.root) == str(path)
+        assert (require_value(origin).parent_dev, require_value(origin).parent_ino) == sample.parent_identity
+        assert (require_value(origin).root_dev, require_value(origin).root_ino) == sample.root_identity
         assert sample.parent_identity == (parent_info.st_dev, parent_info.st_ino)
         assert sample.root_identity == (root_info.st_dev, root_info.st_ino)
 
@@ -97,9 +98,9 @@ def test_initial_authorization_before_creation(setup, engine, target, tmp_path, 
     else:
         with Session(engine) as session, session.begin():
             if kind == 'conversation':
-                session.get(Conversation, target['conversation_pk']).user_id = target['other_id']
+                require_value(session.get(Conversation, target['conversation_pk'])).user_id = target['other_id']
             else:
-                session.scalar(select(Workspace)).root_path = '/existing'
+                require_value(session.scalar(select(Workspace))).root_path = '/existing'
     with pytest.raises((m.TaskSampleBindingError, WorkspaceNotAccessibleError)):
         service.bind(**scope)
     assert list(tmp_path.iterdir()) == [] and service._bindings == {}
@@ -109,15 +110,15 @@ def test_initial_authorization_before_creation(setup, engine, target, tmp_path, 
 def test_borrow_rechecks_database_and_preserves_directory(setup, engine, target, change):
     service, scope, _, _ = setup
     service.bind(**scope)
-    path = Path(root(engine))
+    path = Path(require_value(root(engine)))
     with Session(engine) as session, session.begin():
         workspace = session.scalar(select(Workspace))
         if change == 'owner':
-            workspace.user_id = target['other_id']
+            require_value(workspace).user_id = target['other_id']
         elif change == 'conversation':
-            session.get(Conversation, target['conversation_pk']).user_id = target['other_id']
+            require_value(session.get(Conversation, target['conversation_pk'])).user_id = target['other_id']
         else:
-            workspace.root_path = '/different'
+            require_value(workspace).root_path = '/different'
     with pytest.raises((m.TaskSampleBindingError, WorkspaceNotAccessibleError)), service.borrow(**scope):
         pytest.fail('changed')
     assert path.exists()
@@ -128,7 +129,7 @@ def test_borrow_rechecks_database_and_preserves_directory(setup, engine, target,
 def test_other_scope_cannot_borrow_or_close(setup, target, engine):
     service, scope, _, _ = setup
     service.bind(**scope)
-    path = Path(root(engine))
+    path = Path(require_value(root(engine)))
     for changed in ({**scope, 'user_id': target['other_id']}, {**scope, 'task_id': 'd' * 32}):
         with pytest.raises(m.TaskSampleBindingError), service.borrow(**changed):
             pytest.fail('wrong scope')
@@ -191,7 +192,7 @@ def test_second_authorization_rejects_concurrent_binding(setup, engine, tmp_path
     def changed():
         handle = create()
         with Session(engine) as session, session.begin():
-            session.scalar(select(Workspace)).root_path = '/external'
+            require_value(session.scalar(select(Workspace))).root_path = '/external'
         return handle
     monkeypatch.setattr(service._registry, 'create', changed)
     with pytest.raises(m.TaskSampleBindingError):
@@ -202,7 +203,7 @@ def test_second_authorization_rejects_concurrent_binding(setup, engine, tmp_path
 def test_borrow_interruption_keeps_bound_directory(setup, engine):
     service, scope, _, _ = setup
     service.bind(**scope)
-    path = Path(root(engine))
+    path = Path(require_value(root(engine)))
     error = KeyboardInterrupt()
     with pytest.raises(KeyboardInterrupt) as caught, service.borrow(**scope):
         raise error
@@ -214,15 +215,15 @@ def test_borrow_interruption_keeps_bound_directory(setup, engine):
 def test_close_cleanup_failure_leaves_unbound_and_invalid(setup, engine):
     service, scope, _, _ = setup
     service.bind(**scope)
-    path = Path(root(engine))
+    path = Path(require_value(root(engine)))
     (path / 'unknown').write_bytes(b'keep')
     with pytest.raises(lifecycle.TemporarySampleError):
         service.close(**scope)
     assert root(engine) is None and path.exists()
     with Session(engine) as session:
         origin = session.scalar(select(WorkspaceSampleOrigin))
-        assert origin.lifecycle_state == 'cleanup_pending'
-        assert origin.root_path == str(path)
+        assert require_value(origin).lifecycle_state == 'cleanup_pending'
+        assert require_value(origin).root_path == str(path)
     with pytest.raises(m.TaskSampleBindingError), service.borrow(**scope):
         pytest.fail('cleanup failed')
 

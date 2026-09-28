@@ -14,6 +14,7 @@ from tests.runtime.sandbox.test_sandbox_creation import request
 from tests.runtime.sandbox.test_sandbox_sample import sample_base as sample_base  # noqa: PLC0414
 from tests.runtime.sandbox.test_sandbox_sample_command import lab as lab  # noqa: PLC0414
 from tests.runtime.sandbox.test_task_sample_command import factory as factory  # noqa: PLC0414
+from tests.assertions import require_value
 
 
 @pytest.fixture
@@ -62,7 +63,7 @@ def test_full_failure_evidence_saved_before_propagation(lab, factory, journal, s
     assert record.recovery.container_id == caught.value.recovery.container_id
     if record.recovery.command is not None:
         with pytest.raises(ValidationError):
-            caught.value.recovery.command.stdout = 'exception changed'
+            require_value(caught.value.recovery.command).stdout = 'exception changed'
         with pytest.raises(ValidationError):
             record.recovery.command.stdout = 'returned record changed'
         assert journal.records[0].recovery.command.stdout == '你好\n'
@@ -153,7 +154,7 @@ def test_bad_indices_do_not_change_pending_record(journal, index):
 @pytest.mark.parametrize('change', ['status', 'completed_without_result', 'recovery_type', 'mismatch'])
 def test_invalid_terminal_rejected_atomically(journal, change):
     journal.reserve(request())
-    kwargs = {'status': 'unconfirmed'}
+    kwargs: dict[str, object] = {'status': 'unconfirmed'}
     if change == 'status':
         kwargs['status'] = 'invalid'
     elif change == 'completed_without_result':

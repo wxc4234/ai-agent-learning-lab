@@ -13,6 +13,7 @@ from tests.local.test_local_mode import HEADERS, TOKEN
 from tests.tasks.test_task_workspace import task
 from tests.tasks.test_task_run_query import seed
 import tests.workspace.directory.test_workspace_binding_api as binding
+from tests.assertions import require_value
 
 local_client = binding.local_client
 target = binding.target
@@ -133,7 +134,7 @@ def test_inaccessible_empty_task(local_client, target, engine, kind):
             session.add(owner)
             session.flush()
             model, identifier = (Workspace, target[0]) if kind == 'foreign-project' else (Conversation, created['conversation_id'])
-            session.scalar(select(model).where(model.external_id == identifier)).user_id = owner.id
+            require_value(session.scalar(select(model).where(model.external_id == identifier))).user_id = owner.id
     binding.safe(local_client.get(path + '/runs', headers=HEADERS), 404, 'workspace_not_accessible')
 
 

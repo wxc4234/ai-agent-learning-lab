@@ -15,6 +15,7 @@ from app.services.runtime.sandbox.sandbox_command_result import build_command_re
 from app.tools import run_command as tool
 from app.tools.errors import SafeToolExecutionError
 from tests.runtime.sandbox.test_sandbox_command_result import execution
+from tests.assertions import require_instance
 
 
 async def invoke_command(**kwargs):
@@ -62,7 +63,7 @@ def test_safe_mapping_preserves_internal_recovery(monkeypatch, phase, reason, ha
     monkeypatch.setattr(tool, "run_sandbox_command", execute)
     with pytest.raises(SafeToolExecutionError) as caught:
         asyncio.run(invoke_command(argv=["/bin/true"]))
-    assert caught.value.code == expected and caught.value.recovery is recovery
+    assert caught.value.code == expected and require_instance(caught.value, tool.CommandToolExecutionError).recovery is recovery
     assert "PRIVATE" not in str(caught.value) and "PRIVATE" not in caught.value.message
     assert caught.value.__suppress_context__
 
@@ -79,7 +80,7 @@ def test_invalid_input_never_executes(monkeypatch, kwargs):
     monkeypatch.setattr(tool, "run_sandbox_command", forbidden)
     with pytest.raises(tool.CommandToolExecutionError) as caught:
         asyncio.run(invoke_command(**kwargs))
-    assert caught.value.code == "command_request_rejected" and caught.value.recovery is None
+    assert caught.value.code == "command_request_rejected" and require_instance(caught.value, tool.CommandToolExecutionError).recovery is None
 
 
 def test_unknown_error_is_safe(monkeypatch):

@@ -125,6 +125,8 @@ def test_cancellation_while_waiting_preserves_reader_ownership(prefix):
         entered = asyncio.Event()
 
         class WaitingReader(asyncio.StreamReader):
+            # CPython内部缓冲仅用于测试等待时机；不会作为生产读取协议。
+            _buffer: bytearray
             async def read(self, n=-1):
                 if not self._buffer:
                     entered.set()

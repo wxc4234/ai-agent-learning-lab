@@ -1,7 +1,7 @@
 """最小 Agent Loop：决策、工具执行、观察与终止条件。"""
 
 import asyncio
-from collections.abc import AsyncIterator, Awaitable, Callable, Sequence
+from collections.abc import AsyncGenerator, Awaitable, Callable, Sequence
 from dataclasses import dataclass, field
 from contextlib import aclosing
 from time import perf_counter_ns
@@ -127,7 +127,7 @@ class ModelTextDelta:
 
 @runtime_checkable
 class StreamingDecisionMaker(Protocol):
-    def stream_decisions(self, observations: tuple[AgentObservation, ...]) -> AsyncIterator[ModelTextDelta | AgentDecision]: ...
+    def stream_decisions(self, observations: tuple[AgentObservation, ...]) -> AsyncGenerator[ModelTextDelta | AgentDecision, None]: ...
 
 
 
@@ -268,7 +268,7 @@ async def stream_agent_loop(
     execution_threads: ExecutionThreads | None = None,
     tool_context: ToolExecutionContext | None = None,
     tool_definitions: tuple[ToolDefinition, ...] | None = None,
-) -> AsyncIterator[AgentLoopEvent]:
+) -> AsyncGenerator[AgentLoopEvent, None]:
     """逐步执行 Agent Loop，并在关键节点产生领域事件。"""
 
     # 执行开始时取得独立查找表，不在不同请求之间共享绑定执行器。

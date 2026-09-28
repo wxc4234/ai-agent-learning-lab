@@ -18,14 +18,15 @@ from app.routers.chat import chat, chat_execution
 from app.schemas import LoginRequest, RegisterRequest
 from app.services.auth.login_session_service import issue_login_session
 from app.services.auth.registration_service import register_user
+from tests.assertions import require_value
 
 
 @pytest.fixture
 def authenticated_chat(engine, monkeypatch, execution_stub):
     with Session(engine) as session:
-        register_user(session, RegisterRequest(username="聊天测试", password="Chat-Test-2026!"))
+        register_user(session, RegisterRequest.model_validate({'username': "聊天测试", 'password': "Chat-Test-2026!"}))
     with Session(engine) as session:
-        issued = issue_login_session(session, LoginRequest(username="聊天测试", password="Chat-Test-2026!"))
+        issued = issue_login_session(session, LoginRequest.model_validate({'username': "聊天测试", 'password': "Chat-Test-2026!"}))
     sessions = []
 
     class TrackedSession(Session):
@@ -78,10 +79,10 @@ def test_real_session_authentication(authenticated_chat, engine, path, state):
             ))
             now = datetime.now(UTC)
             if state == "expired":
-                record.created_at = now - timedelta(hours=2)
-                record.expires_at = now - timedelta(hours=1)
+                require_value(record).created_at = now - timedelta(hours=2)
+                require_value(record).expires_at = now - timedelta(hours=1)
             else:
-                record.revoked_at = now
+                require_value(record).revoked_at = now
             session.commit()
     cookie = {"missing": None, "malformed": "short", "unknown": "x" * 43}.get(state, token)
     headers = {"Origin": "http://localhost:3000"}

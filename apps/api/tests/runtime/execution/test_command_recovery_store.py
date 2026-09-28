@@ -14,6 +14,8 @@ from app.services.runtime.execution.execution_threads import ExecutionThreads
 from app.services.runtime.sandbox.command_recovery_journal import CommandRecoveryJournalUnavailable
 from app.services.runtime.command.command_contracts import CommandRequest
 from app.tools.run_command import CommandToolExecutionError
+from app.services.auth.authentication_service import AuthenticatedUser
+from tests.assertions import require_value
 
 
 def acquire(store, run_id=1, **kwargs):
@@ -89,7 +91,7 @@ def test_request_close_preserves_or_releases_application_owned_scope(monkeypatch
         assert await execution.execute_command(argv=["/bin/true"]) == "result"
         assert await execution.execute_command(argv=["/bin/true"]) == "result"
         scope = execution.command_scope
-        assert calls == [scope.journal, scope.journal]
+        assert calls == [require_value(scope).journal, require_value(scope).journal]
         await execution.close()
         with pytest.raises(CommandToolExecutionError):
             await execution.execute_command(argv=["/bin/true"])
@@ -168,7 +170,6 @@ def test_application_store_lifecycle(monkeypatch, failure):
 @pytest.mark.parametrize("configured", [True, False])
 def test_dependency_injects_application_store_or_refuses_missing(monkeypatch, configured):
     from contextlib import asynccontextmanager
-    from types import SimpleNamespace
     from starlette.requests import Request
     from app.services.runtime.execution.execution_budget import ExecutionBudget
 
@@ -192,7 +193,7 @@ def test_dependency_injects_application_store_or_refuses_missing(monkeypatch, co
         dependency = chat.require_chat_execution(
             request=Request({"type": "http", "app": application}),
             body=ChatRequest(session_id="session", prompt="hello"),
-            current_user=SimpleNamespace(id=1),
+            current_user=AuthenticatedUser(id=1, external_id="u" * 32, username="fixture"),
         )
         try:
             if configured:

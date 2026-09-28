@@ -6,6 +6,7 @@ from pathlib import Path
 import platform
 import re
 import subprocess
+import sys
 from functools import lru_cache
 
 
@@ -26,7 +27,7 @@ def host_identity() -> str | None:
         elif system == 'Linux':
             identity = Path('/etc/machine-id').read_text().strip()
             identity += ':' + os.readlink('/proc/self/ns/pid')
-        elif system == 'Windows':
+        elif sys.platform == 'win32':
             import winreg
             with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, r'SOFTWARE\Microsoft\Cryptography') as key:
                 identity = winreg.QueryValueEx(key, 'MachineGuid')[0]

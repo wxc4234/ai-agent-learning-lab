@@ -124,7 +124,7 @@ def test_finish_is_idempotent_and_rejects_late_writes(chunk):
     assert buffer.finish() is result
     assert result.text == "before"
     with pytest.raises(FrozenInstanceError):
-        result.text = "changed"
+        setattr(result, 'text', "changed")  # noqa: B010 -- 测试冻结属性或动态故障注入，需要运行时属性访问
 
 
 def test_two_streams_keep_separate_budgets_and_map_to_contract():
@@ -139,10 +139,6 @@ def test_two_streams_keep_separate_budgets_and_map_to_contract():
     assert out.text == "abc" and err.text == "错误"
     assert out.capture_truncated and not out.display_truncated
     assert not err.capture_truncated and err.display_truncated
-    result = CommandResult(
-        status="exited", exit_code=1, duration_ms=0,
-        stdout=out.text, stderr=err.text,
-        stdout_truncated=out.truncated, stderr_truncated=err.truncated,
-    )
+    result = CommandResult.model_validate({'status': "exited", 'exit_code': 1, 'duration_ms': 0, 'stdout': out.text, 'stderr': err.text, 'stdout_truncated': out.truncated, 'stderr_truncated': err.truncated})
     assert CommandResult.model_validate_json(result.model_dump_json()) == result
     assert result.stdout_truncated and result.stderr_truncated

@@ -1,3 +1,4 @@
+from typing import Any
 """自建样例只读 bind 实机验收；不接 Task、Workspace 或模型工具。
 
 从仓库根目录运行：PYTHONPATH=apps/api .venv/bin/python scripts/verify_sandbox_sample.py
@@ -119,6 +120,8 @@ def reject_response_mutations(*, text, sample, command, token, container_id):
     return [name for name, _ in mutations]
 
 
+from tests.assertions import require_value
+
 async def main():
     sample = create_sandbox_sample()
     token = uuid4().hex
@@ -129,7 +132,7 @@ async def main():
     create_attempted = False
     spec = None
     primary_error = None
-    result = {'execution_token': token, 'source': str(sample.root)}
+    result: dict[str, Any] = {'execution_token': token, 'source': str(sample.root)}
     # 先输出本轮定位信息，即使 daemon 失联也能保留人工恢复入口。
     print(json.dumps(result), flush=True)
     try:
@@ -200,7 +203,7 @@ async def main():
                 if container_id is None:
                     # 只恢复归属一致、仍 created 的对象；未知状态保留现场。
                     recovered = recover_created_sandbox_identity(
-                        inspect_stdout=await inspect_sandbox_container(execution_token=token), spec=spec,
+                        inspect_stdout=await inspect_sandbox_container(execution_token=token), spec=require_value(spec),
                     )
                     container_id = recovered.container_id
                 stopped = await stop_and_confirm_sandbox(

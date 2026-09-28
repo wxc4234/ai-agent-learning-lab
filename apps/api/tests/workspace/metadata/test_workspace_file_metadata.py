@@ -108,7 +108,7 @@ def test_target_readback_mismatch(opened, plain_metadata, monkeypatch):
     expected = m.read_file_metadata(opened[0])
     monkeypatch.setattr(m.os, 'fchmod', lambda *args: None)
     with pytest.raises(m.FileMetadataError, match='changed'):
-        m.copy_file_metadata(*opened, expected)
+        m.copy_file_metadata(opened[0], opened[1], expected)
 
 
 @pytest.mark.parametrize('phase', ['read', 'copy', 'before', 'after'])

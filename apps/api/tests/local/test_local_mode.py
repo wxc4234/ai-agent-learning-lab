@@ -16,6 +16,7 @@ from app.routers.chat import chat_execution
 from app.models import User, Workspace
 from app.routers.workspace import directories, projects, tasks
 from app.services.auth.local_identity import LOCAL_USER_ID, resolve_local_identity
+from tests.assertions import require_value
 
 TOKEN = "a" * 64
 HEADERS = {"X-Local-Runtime-Token": TOKEN, "Origin": "http://localhost:3000"}
@@ -53,8 +54,8 @@ def test_local_identity_stable_and_does_not_adopt_registered_user(local_client, 
     assert "set-cookie" not in response.headers
     with Session(engine) as session:
         local = session.scalar(select(User).where(User.external_id == LOCAL_USER_ID))
-        assert session.scalar(select(Workspace.user_id)) == local.id
-        assert local.username is None and local.password_hash is None
+        assert session.scalar(select(Workspace.user_id)) == require_value(local).id
+        assert require_value(local).username is None and require_value(local).password_hash is None
         assert session.scalar(select(func.count()).select_from(User)) == 2
 
 
@@ -96,4 +97,4 @@ def test_existing_transaction_is_not_rolled_back(engine):
 @pytest.mark.parametrize("token", ["", "short", "x" * 64])
 def test_local_configuration_requires_token(token):
     with pytest.raises(ValueError):
-        Settings(APP_MODE="local", LOCAL_RUNTIME_TOKEN=token)
+        Settings(APP_MODE="local", LOCAL_RUNTIME_TOKEN=token)  # pyright: ignore[reportCallIssue] -- BaseSettings环境加载及别名由运行时解析

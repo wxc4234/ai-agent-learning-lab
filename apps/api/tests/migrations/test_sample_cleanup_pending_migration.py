@@ -12,6 +12,9 @@ from sqlalchemy.exc import DBAPIError
 
 from app.database import Base
 from tests.migrations.test_database_readiness import migrate
+from psycopg import Error as PsycopgError
+from tests.assertions import require_instance
+from tests.assertions import require_value
 
 
 @pytest.fixture
@@ -79,4 +82,4 @@ def test_database_rejects_unknown_cleanup_state(upgraded):
         connection.execute(text(
             "UPDATE workspace_sample_origins SET lifecycle_state = 'unknown'"
         ))
-    assert caught.value.orig.sqlstate == "23514"
+    assert require_instance(require_value(caught.value.orig), PsycopgError).sqlstate == "23514"

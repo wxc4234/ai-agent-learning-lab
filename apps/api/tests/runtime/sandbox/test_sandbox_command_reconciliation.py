@@ -12,6 +12,7 @@ from app.services.runtime.sandbox import sandbox_command_reconciliation as servi
 from app.services.runtime.sandbox.sandbox_command import SandboxCommandRecovery
 from tests.runtime.sandbox.test_sandbox_creation import CID, TOKEN, request
 from tests.runtime.sandbox.test_sandbox_stop import data
+from tests.assertions import require_value
 
 
 RECOVERY = SandboxCommandRecovery(execution_token=TOKEN, container_name=f"agent-sandbox-{TOKEN}",
@@ -50,11 +51,11 @@ def test_current_state_not_inferred_from_phase(monkeypatch, status, phase):
     calls = install(monkeypatch, status=status)
     recovery = replace(RECOVERY, phase=phase, stop_confirmed=True)
     result = run(recovery)
-    assert result.status == status and result.identity.container_id == CID
+    assert result.status == status and require_value(result.identity).container_id == CID
     assert result.recovery is recovery and recovery.stop_confirmed is True
     assert len(calls) == 2 and calls[-1] == ("container", "inspect", CID)
     with pytest.raises(FrozenInstanceError):
-        result.status = "absent"
+        setattr(result, 'status', "absent")  # noqa: B010 -- 测试冻结属性或动态故障注入，需要运行时属性访问
 
 
 def test_absent_only_from_successful_list(monkeypatch):
@@ -79,7 +80,7 @@ def test_unknown_id_reuses_created_only_reconciliation(monkeypatch, status):
     calls = install(monkeypatch, status=status)
     recovery = replace(RECOVERY, phase="creating", container_id=None)
     if status == "created":
-        assert run(recovery).identity.container_id == CID
+        assert require_value(run(recovery).identity).container_id == CID
         assert len(calls) == 2
     else:
         with pytest.raises(service.SandboxCommandReconciliationUnconfirmed):
@@ -170,8 +171,8 @@ def test_invalid_input_types_and_mutated_request(monkeypatch, kind):
         command.argv.clear()
     with pytest.raises((TypeError, ValueError)):
         asyncio.run(service.reconcile_sandbox_command(
-            request={} if kind == "request" else command,
-            recovery={} if kind == "recovery" else RECOVERY,
+            request={} if kind == "request" else command,  # pyright: ignore[reportArgumentType] -- 故意越过静态签名，验证运行时拒绝非法输入
+            recovery={} if kind == "recovery" else RECOVERY,  # pyright: ignore[reportArgumentType] -- 故意越过静态签名，验证运行时拒绝非法输入
         ))
     assert not calls
 

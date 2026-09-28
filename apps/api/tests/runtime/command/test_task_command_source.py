@@ -14,6 +14,7 @@ from app.services.runtime.command import task_command_source as service
 from app.services.workspace.samples.task_sample_binding import TaskSampleBindingError
 from tests.workspace.samples.test_task_sample_binding import setup as setup  # noqa: PLC0414
 from tests.tasks.test_task_deletion_service import target as target  # noqa: PLC0414
+from tests.assertions import require_value
 
 
 @pytest.fixture
@@ -48,7 +49,7 @@ def test_owned_source_exclusive_readonly_and_scoped(lab, target, engine):
     assert bindings.read_status(**scope).status == 'ready'
     assert (path / 'example.txt').read_bytes() == before
     with Session(engine) as session:
-        assert session.scalar(select(WorkspaceSampleOrigin)).lifecycle_state == 'active'
+        assert require_value(session.scalar(select(WorkspaceSampleOrigin))).lifecycle_state == 'active'
         assert session.scalar(select(Workspace.root_path)) == str(path)
     with borrow(lab, target) as again:
         assert again.root == path
@@ -78,11 +79,11 @@ def test_binding_changed_after_ready_is_rejected(lab, target, engine, kind):
     assert bindings.read_status(**scope).status == 'ready'
     with Session(engine) as session, session.begin():
         if kind == 'root':
-            session.scalar(select(Workspace)).root_path = '/changed'
+            require_value(session.scalar(select(Workspace))).root_path = '/changed'
         elif kind == 'origin':
             session.delete(session.scalar(select(WorkspaceSampleOrigin)))
         else:
-            session.scalar(select(WorkspaceSampleOrigin)).lifecycle_state = 'cleanup_pending'
+            require_value(session.scalar(select(WorkspaceSampleOrigin))).lifecycle_state = 'cleanup_pending'
     with pytest.raises(TaskSampleBindingError), borrow(lab, target):
         pytest.fail('stale ready')
     binding = next(iter(bindings._bindings.values()))
@@ -116,7 +117,7 @@ def test_conversation_moved_between_load_and_borrow(lab, target, engine, monkeyp
                 sibling = Task(external_id='f' * 32, title='迁移目标', workspace=session.scalar(select(Workspace)))
                 session.add(sibling)
                 session.flush()
-                session.get(Conversation, target['conversation_pk']).task_id = sibling.id
+                require_value(session.get(Conversation, target['conversation_pk'])).task_id = sibling.id
             yield sample
     monkeypatch.setattr(bindings, 'borrow', move)
     with pytest.raises(service.TaskCommandSourceUnavailable), borrow(lab, target):
@@ -135,7 +136,7 @@ def test_forked_view_refuses_path(lab, target, monkeypatch):
 @pytest.mark.parametrize('field', ['root_path', 'workspace_id', 'task_id'])
 def test_no_independent_source_selection(field):
     with pytest.raises(TypeError), service.borrow_task_command_source(
-        user_id=1, conversation_id='c' * 32, bindings=None, **{field: '/untrusted'},
+        user_id=1, conversation_id='c' * 32, bindings=None, **{field: '/untrusted'},  # pyright: ignore[reportArgumentType] -- 故意越过静态签名，验证运行时拒绝非法输入
     ):
         pytest.fail('untrusted selection')
 
@@ -162,7 +163,7 @@ def test_other_workspace_owner_is_rejected_before_borrow(lab, target, engine):
     bindings, scope, _ = lab
     bindings.bind(**scope)
     with Session(engine) as session, session.begin():
-        session.scalar(select(Workspace)).user_id = target['other_id']
+        require_value(session.scalar(select(Workspace))).user_id = target['other_id']
     with pytest.raises(ConversationNotAccessibleError), borrow(lab, target):
         pytest.fail('foreign workspace')
     binding = next(iter(bindings._bindings.values()))

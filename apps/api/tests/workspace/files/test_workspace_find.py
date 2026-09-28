@@ -15,6 +15,7 @@ from app.services.workspace.files import workspace_find as service
 from app.services.workspace.directory.workspace_path import WorkspacePathError
 from tests.workspace.files import test_workspace_listing as listing_tests
 from tests.workspace.directory import test_workspace_path as path_tests
+from tests.assertions import require_value
 
 
 # 复用真实描述符/迭代器清理跟踪和根 PostgreSQL 隔离夹具。
@@ -70,7 +71,7 @@ def test_nested_basename_only_sorted_and_independent(directory, resources, monke
     assert find("missing").paths == ()
     assert find("missing").scanned_entries == 7
     with pytest.raises(FrozenInstanceError):
-        result.truncated = True
+        setattr(result, 'truncated', True)  # noqa: B010 -- 测试冻结属性或动态故障注入，需要运行时属性访问
 
 
 @pytest.mark.parametrize("count", [0, 1, 50, 51, 70])
@@ -282,7 +283,7 @@ def test_authorization_and_path_checks_precede_scan(engine, database, target, ro
         args["user_id"] = target["other_id"]
     elif kind == "unbound":
         with Session(engine) as session, session.begin():
-            session.scalar(select(Workspace)).root_path = None
+            require_value(session.scalar(select(Workspace))).root_path = None
     elif kind == "outside":
         (root / "link").symlink_to(root.parent, target_is_directory=True)
         relative = "link"

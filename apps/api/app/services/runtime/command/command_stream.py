@@ -2,6 +2,8 @@
 
 import asyncio
 
+from app.services.runtime.command.byte_reader import AsyncByteReader
+
 from app.services.runtime.command.command_contracts import (
     MAX_CAPTURE_BYTES_PER_STREAM,
     MAX_OUTPUT_CHARACTERS_PER_STREAM,
@@ -17,7 +19,7 @@ COMMAND_OUTPUT_READ_BYTES = 4096
 
 
 async def drain_command_output(
-    reader: asyncio.StreamReader,
+    reader: AsyncByteReader,
     *,
     max_capture_bytes: int = MAX_CAPTURE_BYTES_PER_STREAM,
     max_output_characters: int = MAX_OUTPUT_CHARACTERS_PER_STREAM,

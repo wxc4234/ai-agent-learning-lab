@@ -8,7 +8,7 @@ import pytest
 from app.services.chat import chat_service as service
 from app.services.model.model_decision import ModelDecisionError
 from app.services.runtime.agent.agent_runtime import ModelTextDelta, FinalAnswer, ModelUsage
-from tests.chat.test_chat_stream import standalone_stream_owner, never_receive_cancellation  # noqa: F401
+from tests.chat.test_chat_stream import standalone_stream_owner, never_receive_cancellation, standalone_stream_reply  # noqa: F401 -- 导入autouse资源收尾夹具
 
 
 @pytest.mark.parametrize('outcome', ['done', 'error', 'cancel'])
@@ -46,7 +46,7 @@ def test_partial_text_is_live_but_only_complete_turn_is_saved(monkeypatch, outco
     monkeypatch.setattr(service, 'finish_agent_run', lambda *args: finished.append(args))
 
     async def run():
-        stream = service.stream_chat_reply(user_id=1, session_id='s', prompt='q', run_id=1)
+        stream = standalone_stream_reply(user_id=1, session_id='s', prompt='q', run_id=1)
         assert json.loads(await anext(stream))['type'] == 'TEXT_MESSAGE_START'
         first = json.loads(await anext(stream))
         assert first['chunk'] == '**你' and not saved and not recorded

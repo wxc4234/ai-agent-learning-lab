@@ -35,7 +35,7 @@ def test_create_borrow_close_and_stale_handle(registry, tmp_path):
         registry.close(handle)
 
 
-@pytest.mark.parametrize('handle', [None, 'arbitrary', m.SampleHandle('unknown'), m.SampleHandle(123)])
+@pytest.mark.parametrize('handle', [None, 'arbitrary', m.SampleHandle('unknown'), m.SampleHandle(123)])  # pyright: ignore[reportArgumentType] -- 反例故意构造不受支持的数据，保留运行时校验
 def test_unknown_handles_never_create_or_touch_paths(registry, tmp_path, handle):
     with pytest.raises(m.SampleRegistryError), registry.borrow(handle):
         pytest.fail('unknown')

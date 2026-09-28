@@ -14,6 +14,7 @@ from app.services.runtime.sandbox import sandbox_cleanup as service
 from app.services.runtime.command.command_contracts import CommandRequest
 from tests.runtime.sandbox.test_sandbox_creation import CID, TOKEN, request
 from tests.runtime.sandbox.test_sandbox_stop import data
+from tests.assertions import require_instance
 
 
 def payload():
@@ -60,7 +61,7 @@ def test_exited_cleanup_uses_full_id_and_not_exit_success(monkeypatch, exit_code
             ("container", "ls", "--all", "--quiet", "--no-trunc", "--filter", f"id={CID}"),
         ]
         with pytest.raises(FrozenInstanceError):
-            result.container_id = "b" * 64
+            setattr(result, 'container_id', "b" * 64)  # noqa: B010 -- 测试冻结属性或动态故障注入，需要运行时属性访问
     asyncio.run(scenario())
 
 
@@ -185,7 +186,7 @@ def test_cancel_retains_identity_and_delete_attempt_without_followups(monkeypatc
                 await task
             assert isinstance(caught.value, asyncio.CancelledError)
             assert caught.value.container_id == CID and caught.value.execution_token == TOKEN
-            assert caught.value.delete_attempted is (stage != "inspect")
+            assert require_instance(caught.value, service.SandboxCleanupCancelled).delete_attempted is (stage != "inspect")
             assert finished.is_set() and calls[-1][1] == stage
         finally:
             task.cancel()
@@ -266,7 +267,7 @@ def test_real_exited_cleanup_and_uncertain_results(monkeypatch, failure):
                     await service.cleanup_exited_sandbox(**options)
                 assert caught.value.container_id == identity.container_id
                 if failure == "cancel_after_remove":
-                    assert caught.value.delete_attempted
+                    assert require_instance(caught.value, service.SandboxCleanupCancelled).delete_attempted
             else:
                 assert (await service.cleanup_exited_sandbox(**options)).container_id == identity.container_id
             assert removals == [identity.container_id]

@@ -20,6 +20,9 @@ from app.tools.errors import SafeToolExecutionError
 from app.tools.registry import TOOL_REGISTRY, model_tools_for_context
 from tests.model.test_model_decision import build_text_response, build_tool_response
 from tests.tools.test_read_file_tool import CONTEXT
+from openai import AsyncOpenAI
+from tests.assertions import require_instance
+from typing import cast
 
 
 @pytest.mark.parametrize("field,value", [
@@ -69,9 +72,9 @@ def test_identity_result_and_truncation(monkeypatch, empty, truncated):
     assert result == {"relative_path": "notes.txt", "query": "needle", "truncated": truncated,
                       "matches": [] if empty else [{"line_number": 8, "column_number": 101, "snippet": "needle",
                                                     "snippet_start_column": 101, "snippet_truncated": True}]}
-    schema = tool.as_model_tool()["function"]["parameters"]
-    assert set(schema["required"]) == {"relative_path", "query"}
-    assert set(schema["properties"]) == {"relative_path", "query"}
+    schema = require_instance(tool.as_model_tool()["function"], dict)["parameters"]
+    assert set(require_instance(schema["required"], list)) == {"relative_path", "query"}
+    assert set(require_instance(schema["properties"], dict)) == {"relative_path", "query"}
 
 
 @pytest.mark.parametrize("error,code", [
@@ -130,7 +133,7 @@ def test_model_discovers_searches_and_answers_with_line_number(monkeypatch, kind
     monkeypatch.setattr(list_directory, "list_task_directory", listing)
     monkeypatch.setattr(adapter, "search_task_text_file", search)
     client = SimpleNamespace(chat=SimpleNamespace(completions=SimpleNamespace(create=create)))
-    maker = DeepSeekDecisionMaker(client=client, model="test", system_prompt="system", user_prompt="search", tool_context=provided)
+    maker = DeepSeekDecisionMaker(client=cast(AsyncOpenAI, client), model="test", system_prompt="system", user_prompt="search", tool_context=provided)
     result = asyncio.run(run_agent_loop(maker, tool_context=provided))
     if kind == "success":
         assert result.answer == "位于第7行"

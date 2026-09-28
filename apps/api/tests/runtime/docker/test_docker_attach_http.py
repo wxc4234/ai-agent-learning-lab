@@ -208,7 +208,7 @@ def test_external_cancellation_is_not_converted_to_handshake_error(immediate):
                 if immediate:
                     return b"x" if self.calls < 100 else b""
                 try:
-                    await asyncio.Future()
+                    return await asyncio.Future[bytes]()
                 finally:
                     self.cancelled = True
 
@@ -290,7 +290,7 @@ def test_request_does_not_accept_caller_policy_overrides(extra):
 
 def test_request_is_keyword_only():
     with pytest.raises(TypeError):
-        service.build_docker_attach_request("a" * 64)
+        service.build_docker_attach_request("a" * 64)  # pyright: ignore[reportCallIssue] -- 故意越过静态签名，验证运行时拒绝非法输入
 
 
 def test_request_has_no_io_or_environment_target_override(monkeypatch):

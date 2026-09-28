@@ -25,11 +25,18 @@ from tests.runtime.sandbox.test_sandbox_creation import request
 from tests.runtime.sandbox.test_sandbox_sample import sample_base as sample_base  # noqa: PLC0414
 from tests.runtime.sandbox.test_sandbox_sample_command import lab as lab  # noqa: PLC0414
 from tests.model.test_model_decision import build_text_response, build_tool_response
+from typing import Literal
+from app.services.runtime.agent.agent_runtime import ToolErrorObservation
+from app.services.runtime.agent.agent_runtime import ToolObservation
+from openai import AsyncOpenAI
+from tests.assertions import require_instance
+from typing import cast
+from tests.assertions import require_value
 
 CONTEXT = ToolExecutionContext(1, 'conversation', 'workspace', 'task')
 
 
-async def make_owner(monkeypatch, status='ready'):
+async def make_owner(monkeypatch, status: Literal['missing', 'busy', 'sealed', 'ready']='ready'):
     bindings = TaskSampleBindings()
     monkeypatch.setattr(bindings, 'read_status', lambda **kwargs: TaskSampleStatus(status, None))
     monkeypatch.setattr(owners, 'load_tool_execution_context', lambda **kwargs: CONTEXT)
@@ -46,6 +53,23 @@ async def make_owner(monkeypatch, status='ready'):
     return owner
 
 
+def test_lost_sample_binding_rejected_before_authorization_or_acquire(monkeypatch):
+    async def scenario():
+        owner = await make_owner(monkeypatch)
+        owner.sample_bindings = None
+        monkeypatch.setattr(owners, 'load_tool_execution_context',
+                            lambda **kwargs: pytest.fail('must reject before database access'))
+        try:
+            with pytest.raises(SafeToolExecutionError) as caught:
+                await owner.execute_task_command(context=CONTEXT, argv=['/bin/true'])
+            assert caught.value.code == 'command_recovery_unavailable'
+            assert owner.sample_scope is None
+        finally:
+            await owner.close()
+
+    asyncio.run(scenario())
+
+
 @pytest.mark.parametrize('status', ['ready', 'missing', 'busy', 'sealed'])
 def test_capability_profile_does_not_mutate_global_registry(monkeypatch, status):
     async def scenario():
@@ -60,8 +84,8 @@ def test_capability_profile_does_not_mutate_global_registry(monkeypatch, status)
             assert bool(commands) is (status in ('ready', 'missing'))
             if commands:
                 schema = commands[0].as_model_tool()['function']
-                assert ('/workspace/example.txt' in schema['description']) is (status == 'ready')
-                assert set(schema['parameters']['properties']) == {'argv', 'working_directory'}
+                assert ('/workspace/example.txt' in require_instance(schema, dict)['description']) is (status == 'ready')
+                assert set(require_instance(require_instance(schema, dict)['parameters']['properties'], dict)) == {'argv', 'working_directory'}
                 arguments = commands[0].validate_arguments(json.dumps({'argv': request().argv}))
                 with pytest.raises(ToolContextRequiredError):
                     await commands[0].execute_async(arguments, context=replace(CONTEXT))
@@ -89,7 +113,7 @@ def test_controlled_model_executes_snapshot_and_close_retains_records(lab, monke
     async def scenario():
         owner = await make_owner(monkeypatch)
         binding = await owner.bind_command_tool(CONTEXT)
-        definitions = tools_for_execution(context=CONTEXT, command_executor=binding.executor, sample_snapshot=True)
+        definitions = tools_for_execution(context=CONTEXT, command_executor=require_value(binding).executor, sample_snapshot=True)
         if outcome == 'timeout':
             import app.services.runtime.sandbox.sandbox_sample_command as lifecycle
             async def blocked(**kwargs):
@@ -101,7 +125,7 @@ def test_controlled_model_executes_snapshot_and_close_retains_records(lab, monke
             build_text_response('done'),
         ])
         client = SimpleNamespace(chat=SimpleNamespace(completions=SimpleNamespace(create=create)))
-        model = DeepSeekDecisionMaker(client=client, model='test', messages=[{'role': 'user', 'content': 'test'}],
+        model = DeepSeekDecisionMaker(client=cast(AsyncOpenAI, client), model='test', messages=[{'role': 'user', 'content': 'test'}],
                                       tool_context=CONTEXT, tool_definitions=definitions)
         try:
             if outcome == 'cancel':
@@ -111,20 +135,20 @@ def test_controlled_model_executes_snapshot_and_close_retains_records(lab, monke
                 result = await run_agent_loop(model, tool_context=CONTEXT, tool_definitions=definitions)
                 observation = result.observations[0]
                 if outcome in ('success', 'nonzero'):
-                    assert json.loads(observation.result)['exit_code'] == (7 if outcome == 'nonzero' else 0)
+                    assert json.loads(require_instance(observation, ToolObservation).result)['exit_code'] == (7 if outcome == 'nonzero' else 0)
                 else:
-                    assert observation.code in ('tool_execution_failed', 'tool_timeout')
+                    assert require_instance(observation, ToolErrorObservation).code in ('tool_execution_failed', 'tool_timeout')
                 assert 'PRIVATE' not in str(observation)
-            record = owner.sample_scope.journal.records[0]
+            record = require_value(owner.sample_scope).journal.records[0]
             assert record.status == {'success': 'completed', 'nonzero': 'completed', 'cleanup': 'unconfirmed',
                                      'cancel': 'cancelled', 'timeout': 'cancelled', 'stale_ready': 'unconfirmed'}[outcome]
             assert owner.command_scope is None
         finally:
             await owner.close()
-        scope = owner.task_sample_recovery_store.get(user_id=1, conversation_id='conversation', run_id=10)
+        scope = require_value(owner.task_sample_recovery_store).get(user_id=1, conversation_id='conversation', run_id=10)
         assert scope is owner.sample_scope
         with pytest.raises(SafeToolExecutionError):
-            await binding.executor(argv=request().argv)
+            await require_value(binding).executor(argv=request().argv)
     asyncio.run(scenario())
 
 
@@ -150,7 +174,7 @@ def test_no_fallback_on_context_or_status_failure(lab, monkeypatch, failure):
                 else:
                     owner._command_closed = True
                 with pytest.raises(SafeToolExecutionError):
-                    await binding.executor(argv=request().argv)
+                    await require_value(binding).executor(argv=request().argv)
             assert lab.samples == [] and lab.calls == []
             assert owner.command_scope is None and owner.sample_scope is None
         finally:
@@ -161,17 +185,17 @@ def test_no_fallback_on_context_or_status_failure(lab, monkeypatch, failure):
 def test_close_failure_still_seals_and_preserves_sample_scope(monkeypatch):
     async def scenario():
         owner = await make_owner(monkeypatch)
-        scope = owner.task_sample_recovery_store.acquire(user_id=1, conversation_id='conversation', run_id=10)
+        scope = require_value(owner.task_sample_recovery_store).acquire(user_id=1, conversation_id='conversation', run_id=10)
         owner.sample_scope = scope
         index = scope.journal.reserve(request())
         scope.journal.finish(index, status='unconfirmed')
         class BrokenStream:
             async def aclose(self):
                 raise RuntimeError('close failed')
-        owner.stream = BrokenStream()
+        setattr(owner, 'stream', BrokenStream())  # noqa: B010 -- 测试冻结属性或动态故障注入，需要运行时属性访问
         with pytest.raises(RuntimeError):
             await owner.close()
-        assert owner.task_sample_recovery_store.get(user_id=1, conversation_id='conversation', run_id=10) is scope
+        assert require_value(owner.task_sample_recovery_store).get(user_id=1, conversation_id='conversation', run_id=10) is scope
         from app.services.runtime.sandbox.task_sample_command_journal import TaskSampleJournalUnavailable
         with pytest.raises(TaskSampleJournalUnavailable):
             scope.journal.reserve(request())

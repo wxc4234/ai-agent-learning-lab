@@ -15,6 +15,7 @@ from tests.runtime.sandbox.test_sandbox_command_result import execution
 from tests.runtime.sandbox.test_sandbox_sample import mounted_payload
 from tests.runtime.sandbox.test_sandbox_sample import sample_base as sample_base  # noqa: PLC0414 -- pytest fixture export.
 from tests.runtime.sandbox.test_sandbox_stop import data as state_payload
+from tests.assertions import require_value
 
 
 @pytest.fixture
@@ -113,7 +114,7 @@ def test_success_and_nonzero_preserve_result_and_order(lab, code):
     assert result.cleanup.container_id == CID
     assert result.sample_cleaned and not lab.samples[-1].root.parent.exists()
     with pytest.raises(FrozenInstanceError):
-        result.sample_cleaned = False
+        setattr(result, 'sample_cleaned', False)  # noqa: B010 -- 测试冻结属性或动态故障注入，需要运行时属性访问
 
 
 @pytest.mark.parametrize('stage,phase', [
@@ -142,10 +143,10 @@ def test_failures_keep_source_and_known_evidence(lab, stage, phase, cancel):
     if stage != 'prepare':
         assert recovery.sample is lab.samples[-1]
         assert recovery.sample_root == lab.samples[-1].root
-        assert recovery.sample_root.exists()
+        assert require_value(recovery.sample_root).exists()
     assert lab.calls.count('create') <= 1
     with pytest.raises(FrozenInstanceError):
-        recovery.phase = 'preparing'
+        setattr(recovery, 'phase', 'preparing')  # noqa: B010 -- 测试冻结属性或动态故障注入，需要运行时属性访问
 
 
 @pytest.mark.parametrize('start,stop', [(False, False), (True, False), (True, True)])
@@ -163,7 +164,7 @@ def test_execution_failure_keeps_stop_facts_without_deleting(lab, start, stop, r
     assert recovery.start_attempted is start and recovery.stop_confirmed is stop
     assert recovery.execution_reason == (None if reason == 'cancelled' else reason)
     assert recovery.command is None and not recovery.delete_attempted
-    assert recovery.sample.root.exists()
+    assert require_value(recovery.sample).root.exists()
     assert 'remove' not in lab.calls and 'cleanup_sample' not in lab.calls
 
 
@@ -174,7 +175,7 @@ def test_cleanup_requires_fresh_identity_exited_and_absence(lab, failure):
     lab.absence = failure != 'not_absent'
     with pytest.raises(service.SampleCommandUnconfirmed) as caught:
         asyncio.run(service.run_sample_sandbox_command(request=request()))
-    assert caught.value.recovery.command.succeeded
+    assert require_value(caught.value.recovery.command).succeeded
     assert not caught.value.recovery.container_absent
     assert 'cleanup_sample' not in lab.calls
     assert ('remove' in lab.calls) is (failure == 'not_absent')
@@ -202,7 +203,7 @@ def test_spec_recheck_failure_keeps_precreate_source(lab, monkeypatch):
     with pytest.raises(service.SampleCommandUnconfirmed) as caught:
         asyncio.run(service.run_sample_sandbox_command(request=request()))
     assert not caught.value.recovery.create_attempted
-    assert caught.value.recovery.sample.root.exists()
+    assert require_value(caught.value.recovery.sample).root.exists()
     assert lab.calls == ['prepare']
 
 
@@ -215,12 +216,12 @@ def test_partial_sample_creation_preserves_owned_site(sample_base, monkeypatch):
     recovery = caught.value.recovery
     assert recovery.phase == 'preparing' and not recovery.create_attempted
     assert recovery.sample is None and recovery.sample_token is not None
-    assert recovery.sample_root.parent.exists()
+    assert require_value(recovery.sample_root).parent.exists()
     # 私有 pytest 目录中的故障现场由用例显式核对后清理。
-    assert recovery.sample_root.parent.parent == sample_base
-    (recovery.sample_root / samples.SAMPLE_FILENAME).unlink()
-    recovery.sample_root.rmdir()
-    recovery.sample_root.parent.rmdir()
+    assert require_value(recovery.sample_root).parent.parent == sample_base
+    (require_value(recovery.sample_root) / samples.SAMPLE_FILENAME).unlink()
+    require_value(recovery.sample_root).rmdir()
+    require_value(recovery.sample_root).parent.rmdir()
 
 
 @pytest.mark.parametrize('stage', ['create', 'execute', 'remove', 'absent'])
@@ -243,7 +244,7 @@ def test_actual_task_cancel_waits_for_operation_finally(lab, monkeypatch, stage)
             with pytest.raises(service.SampleCommandCancelled) as caught:
                 await task
             assert settled.is_set() and task.cancelled()
-            assert caught.value.recovery.sample.root.exists()
+            assert require_value(caught.value.recovery.sample).root.exists()
             assert not caught.value.recovery.sample_cleaned
         finally:
             task.cancel()
@@ -281,7 +282,7 @@ def test_result_adaptation_failure_retains_stop_without_fabricating_command(lab,
     assert recovery.phase == 'adapting'
     assert recovery.start_attempted and recovery.stop_confirmed
     assert recovery.command is None and not recovery.delete_attempted
-    assert recovery.sample.root.exists() and 'remove' not in lab.calls
+    assert require_value(recovery.sample).root.exists() and 'remove' not in lab.calls
 
 
 def test_invalid_create_receipt_keeps_token_and_source(lab, monkeypatch):
@@ -293,5 +294,5 @@ def test_invalid_create_receipt_keeps_token_and_source(lab, monkeypatch):
     recovery = caught.value.recovery
     assert recovery.create_attempted and recovery.container_id is None
     assert len(recovery.execution_token) == 32
-    assert recovery.sample.root.exists()
+    assert require_value(recovery.sample).root.exists()
     assert 'inspect_create' not in lab.calls and 'remove' not in lab.calls

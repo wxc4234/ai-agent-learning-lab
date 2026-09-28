@@ -52,7 +52,7 @@ def test_success_identity_and_no_input_mutation():
     assert identity.image == APPROVED_SANDBOX_IMAGE
     assert json.dumps(data) == before
     with pytest.raises(FrozenInstanceError):
-        identity.container_id = "b" * 64
+        setattr(identity, 'container_id', "b" * 64)  # noqa: B010 -- 测试冻结属性或动态故障注入，需要运行时属性访问
 
 
 @pytest.mark.parametrize("field", ["User", "WorkingDir", "Entrypoint", "Cmd", "Env",

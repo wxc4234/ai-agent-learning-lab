@@ -68,10 +68,10 @@ def test_only_live_object_handle(kind):
         value = replace(sample) if kind == 'copied' else sample.root if kind == 'path' else sample
         if kind != 'closed':
             with pytest.raises(capture.GitStatusCaptureError):
-                capture.collect_sample_git_status(value)
+                capture.collect_sample_git_status(value)  # pyright: ignore[reportArgumentType] -- 故意越过静态签名，验证运行时拒绝非法输入
     if kind == 'closed':
         with pytest.raises(capture.GitStatusCaptureError):
-            capture.collect_sample_git_status(value)
+            capture.collect_sample_git_status(value)  # pyright: ignore[reportArgumentType] -- 故意越过静态签名，验证运行时拒绝非法输入
 
 
 @pytest.mark.parametrize('kind', ['config', 'gitfile', 'symlink', 'missing', 'commondir', 'alternates'])
@@ -170,6 +170,27 @@ def test_spawn_failure_is_safe(sample, monkeypatch):
     with pytest.raises(capture.GitStatusCaptureError) as caught:
         capture.collect_sample_git_status(sample)
     assert caught.value.code == 'git_status_unavailable' and 'PRIVATE' not in str(caught.value)
+
+
+@pytest.mark.parametrize('missing_stream', ['stdout', 'stderr'])
+def test_missing_pipe_is_rejected_and_process_reaped(sample, monkeypatch, missing_stream):
+    original = subprocess.Popen
+    children = []
+
+    def spawn(argv, **kwargs):
+        # 模拟执行器未提供所需管道；仍启动真实进程验证失败后的回收。
+        kwargs[missing_stream] = subprocess.DEVNULL
+        process = original((sys.executable, '-c', 'import time; time.sleep(30)'), **kwargs)
+        children.append(process)
+        return process
+
+    monkeypatch.setattr(capture.subprocess, 'Popen', spawn)
+    with pytest.raises(capture.GitStatusCaptureError) as caught:
+        capture.collect_sample_git_status(sample)
+    assert caught.value.code == 'git_status_unavailable'
+    assert len(children) == 1 and children[0].poll() is not None
+    for stream in (children[0].stdout, children[0].stderr):
+        assert stream is None or stream.closed
 
 
 @pytest.mark.parametrize('failure', [KeyboardInterrupt, OSError])

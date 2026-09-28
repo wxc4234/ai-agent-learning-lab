@@ -14,6 +14,10 @@ from app.database import Base
 from app.models import FileEditProposal
 from tests.migrations.test_database_readiness import migrate
 from tests.migrations.test_file_edit_proposal_migration import insert
+from psycopg import Error as PsycopgError
+from tests.assertions import require_instance
+from alembic.script import ScriptDirectory
+from tests.assertions import require_value
 
 
 @pytest.fixture
@@ -56,7 +60,7 @@ def test_downgrade_refuses_to_erase_decisions(historical, decision):
     with pytest.raises(RuntimeError, match="不能无损回退"):
         downgrade(engine)
     with engine.connect() as connection:
-        assert connection.scalar(text("SELECT version_num FROM alembic_version")) == "60d32ae695cd"
+        assert connection.scalar(text("SELECT version_num FROM alembic_version")) == ScriptDirectory(dir=str(Path(__file__).resolve().parents[2] / "migrations")).get_current_head()
         assert dict(connection.execute(text("SELECT * FROM file_edit_proposals")).mappings().one()) == {**before, "status": decision, "application_status": "idle", "application_token": None}
         assert compare_metadata(MigrationContext.configure(connection), Base.metadata) == []
 
@@ -79,6 +83,6 @@ def test_migrated_constraints(historical, status, truncated, valid):
     else:
         with pytest.raises(DBAPIError) as caught:
             update()
-        assert caught.value.orig.sqlstate == "23514"
+        assert require_instance(require_value(caught.value.orig), PsycopgError).sqlstate == "23514"
         with engine.connect() as connection:
             assert connection.scalar(select(FileEditProposal.status)) == "pending"

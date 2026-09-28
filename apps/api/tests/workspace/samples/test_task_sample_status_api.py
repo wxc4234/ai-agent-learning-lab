@@ -16,6 +16,7 @@ from app.services.workspace.samples.task_sample_binding import TaskSampleBinding
 from app.services.workspace.samples.temporary_proposal_sample import TemporarySampleError
 from tests.local.test_local_mode import HEADERS, local_client
 from tests.workspace.samples.test_task_sample_binding import setup, target
+from tests.assertions import require_value
 
 __all__ = ['local_client', 'setup', 'target']
 
@@ -24,7 +25,7 @@ __all__ = ['local_client', 'setup', 'target']
 def endpoint(local_client, setup, engine):
     bindings, scope, _, _ = setup
     with Session(engine) as session, session.begin():
-        session.get(User, scope['user_id']).external_id = LOCAL_USER_ID
+        require_value(session.get(User, scope['user_id'])).external_id = LOCAL_USER_ID
     app.dependency_overrides[get_sample_bindings] = lambda: bindings
     try:
         yield local_client, f"/workspaces/{scope['workspace_id']}/tasks/{scope['task_id']}/sample-status"
@@ -85,7 +86,7 @@ def test_cleanup_pending_reports_sealed_over_http(endpoint, setup, engine):
     bindings, scope, _, _ = setup
     bindings.bind(**scope)
     with Session(engine) as session:
-        path = Path(session.scalar(select(Workspace.root_path)))
+        path = Path(require_value(session.scalar(select(Workspace.root_path))))
     (path / 'unknown').write_bytes(b'keep')
     with pytest.raises(TemporarySampleError):
         bindings.close(**scope)
@@ -103,7 +104,7 @@ def test_pending_reason_is_hidden_from_sibling_task(endpoint, setup, engine):
     bindings, scope, _, _ = setup
     bindings.bind(**scope)
     with Session(engine) as session:
-        path = Path(session.scalar(select(Workspace.root_path)))
+        path = Path(require_value(session.scalar(select(Workspace.root_path))))
     (path / 'unknown').write_bytes(b'keep')
     with pytest.raises(TemporarySampleError):
         bindings.close(**scope)
@@ -144,7 +145,7 @@ def test_missing_registration_still_requires_ownership(endpoint, setup, target, 
         with factory() as session, session.begin():
             from app.models import Workspace
             from sqlalchemy import select
-            session.scalar(select(Workspace)).user_id = target['other_id']
+            require_value(session.scalar(select(Workspace))).user_id = target['other_id']
     else:
         url = url.replace(setup[1][kind + '_id'], 'f' * 32)
     safe(client.get(url, headers=HEADERS), 404, 'workspace_not_accessible')

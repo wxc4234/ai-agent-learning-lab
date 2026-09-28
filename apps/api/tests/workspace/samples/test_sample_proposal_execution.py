@@ -17,6 +17,7 @@ from app.services.workspace.proposals import file_edit_proposal_decision as deci
 from app.services.workspace.directory import workspace_path
 from app.services.workspace.samples.task_sample_binding import TaskSampleBindingError, TaskSampleBindings
 from tests.workspace.samples.test_task_sample_binding import setup, target
+from tests.assertions import require_value
 
 __all__ = ['setup', 'target']
 
@@ -32,7 +33,7 @@ def ready(setup, engine, monkeypatch):
     identity = {**scope, 'proposal_id': created.proposal_id}
     decision.decide_task_file_edit_proposal(**identity, decision='approved')
     with Session(engine) as session:
-        path = Path(session.scalar(select(Workspace.root_path)))
+        path = Path(require_value(session.scalar(select(Workspace.root_path))))
     return bindings, scope, identity, path
 
 
@@ -78,11 +79,11 @@ def test_invalid_scope_never_enters_executor(ready, target, engine, monkeypatch,
         with Session(engine) as session, session.begin():
             proposal = session.scalar(select(FileEditProposal))
             if kind == 'path':
-                proposal.relative_path = 'other.txt'
+                require_value(proposal).relative_path = 'other.txt'
             elif kind == 'bound_root':
-                proposal.bound_root = '/other'
+                require_value(proposal).bound_root = '/other'
             else:
-                proposal.status = 'pending'
+                require_value(proposal).status = 'pending'
     monkeypatch.setattr(gate, 'execute_task_file_edit_proposal', lambda **kwargs: pytest.fail('must not execute'))
     with pytest.raises((TaskSampleBindingError, gate.SampleExecutionError, WorkspaceNotAccessibleError)):
         gate.execute_sample_proposal(bindings, **args)
@@ -120,8 +121,8 @@ def test_database_root_switch_cannot_redirect_execution(ready, engine, tmp_path,
     (other / 'example.txt').write_bytes(b'old\n')
     def mutate():
         with Session(engine) as session, session.begin():
-            session.scalar(select(Workspace)).root_path = str(other)
-            session.scalar(select(FileEditProposal)).bound_root = str(other)
+            require_value(session.scalar(select(Workspace))).root_path = str(other)
+            require_value(session.scalar(select(FileEditProposal))).bound_root = str(other)
     module = gate if phase == 'before_claim' else execution
     name = 'execute_task_file_edit_proposal' if phase == 'before_claim' else 'check_task_file_edit_proposal'
     original = getattr(module, name)

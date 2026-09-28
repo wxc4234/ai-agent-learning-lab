@@ -21,8 +21,9 @@ from app.services.runtime.agent.agent_runtime import AgentLoopCompleted, AgentLo
 from app.services.runtime.execution.execution_threads import ExecutionThreads
 from app.services.workspace.directory import workspace_path
 from app.tools.context import ToolExecutionContext
-from tests.model.test_model_decision import build_text_response, build_tool_response
 from tests.tasks import test_task_deletion_service as task_fixtures
+from tests.model.response_stream import build_text_response, build_tool_response
+from tests.assertions import require_value
 
 
 target = task_fixtures.target
@@ -168,7 +169,7 @@ def test_real_context_file_and_persistence(engine, target, tmp_path, monkeypatch
     directory = tmp_path.resolve()
     (directory / "notes.txt").write_text("真实项目内容\n", encoding="utf-8")
     with Session(engine) as session, session.begin():
-        session.scalar(select(Workspace)).root_path = str(directory) if bound else None
+        require_value(session.scalar(select(Workspace))).root_path = str(directory) if bound else None
     run_id = run_repository.create_agent_run(user_id=target["user_id"], session_id=target["conversation_id"])
     create = AsyncMock(side_effect=[
         build_tool_response(("file-call", "read_text_file", '{"relative_path":"notes.txt"}')),
@@ -188,7 +189,7 @@ def test_real_context_file_and_persistence(engine, target, tmp_path, monkeypatch
         assert content["error"]["details"] == "workspace_directory_unbound"
     assert str(directory) not in observation["content"]
     with Session(engine) as session:
-        assert session.get(AgentRun, run_id).status == "done"
+        assert require_value(session.get(AgentRun, run_id)).status == "done"
         messages = session.scalars(select(Message).where(Message.conversation_id == target["conversation_pk"]).order_by(Message.id)).all()
         assert [(message.role, message.content) for message in messages] == [("user", "read"), ("assistant", "已处理")]
         types = session.scalars(select(AgentRunEvent.event_type).where(AgentRunEvent.run_id == run_id)).all()

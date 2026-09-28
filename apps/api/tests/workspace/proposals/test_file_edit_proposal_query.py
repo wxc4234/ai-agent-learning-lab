@@ -12,6 +12,7 @@ from app.repositories.workspace.workspace_repository import WorkspaceNotAccessib
 from app.services.tasks.task_deletion_service import delete_workspace_task
 from app.services.workspace.proposals import file_edit_proposal_service as service
 from tests.workspace.proposals import test_file_edit_proposal_service as save_tests
+from tests.assertions import require_value
 
 root = save_tests.root
 target = save_tests.target
@@ -49,7 +50,7 @@ def test_public_snapshot_uses_one_select_and_closes_session(saved, database, mon
     assert "bound_root" not in sql and "proposed_content" not in sql
     assert file.read_bytes() == original
     with pytest.raises(FrozenInstanceError):
-        result.status = "approved"
+        setattr(result, 'status', "approved")  # noqa: B010 -- 测试冻结属性或动态故障注入，需要运行时属性访问
 
 
 @pytest.mark.parametrize("kind", [
@@ -71,11 +72,11 @@ def test_all_inaccessible_resources_use_same_safe_error(saved, engine, target, k
             session.add(Workspace(external_id="different", user_id=target["user_id"], name="其他"))
             query["workspace_id"] = "different"
         elif kind == "foreign-conversation":
-            session.get(Conversation, target["conversation_pk"]).user_id = target["other_id"]
+            require_value(session.get(Conversation, target["conversation_pk"])).user_id = target["other_id"]
         elif kind == "missing-conversation":
             session.delete(session.get(Conversation, target["conversation_pk"]))
         elif kind == "changed-owner":
-            session.scalar(select(Workspace)).user_id = target["other_id"]
+            require_value(session.scalar(select(Workspace))).user_id = target["other_id"]
     if kind == "deleted-task":
         with Session(engine) as session:
             delete_workspace_task(session, **{key: query[key] for key in ("user_id", "workspace_id", "task_id")})
@@ -90,7 +91,7 @@ def test_saved_review_survives_file_deletion_and_binding_change(saved, engine, m
     before = service.get_task_file_edit_proposal(**query)
     file.unlink()
     with Session(engine) as session, session.begin():
-        session.scalar(select(Workspace)).root_path = None
+        require_value(session.scalar(select(Workspace))).root_path = None
     monkeypatch.setattr(service, "preview_task_file_replacement", lambda **kwargs: pytest.fail("must not regenerate"))
     assert service.get_task_file_edit_proposal(**query) == before
     assert not file.exists()
@@ -105,10 +106,10 @@ def test_truncated_diff_is_returned_exactly_without_private_content(setup, engin
     )
     with Session(engine) as session:
         row = session.scalar(select(FileEditProposal))
-        assert result.diff == row.diff and result.diff_truncated
+        assert result.diff == require_value(row).diff and result.diff_truncated
         assert len(result.diff) == 16384
-        assert result.baseline_sha256 == row.baseline_sha256
-        assert result.proposed_sha256 == row.proposed_sha256
+        assert result.baseline_sha256 == require_value(row).baseline_sha256
+        assert result.proposed_sha256 == require_value(row).proposed_sha256
     assert "x" * 20000 not in repr(asdict(result))
     assert file.read_text() == "old"
 
@@ -117,11 +118,11 @@ def test_repository_does_not_flush_or_commit_callers_pending_changes(saved, engi
     query, _, _ = saved
     with Session(engine, autoflush=True) as session:
         task = session.get(Task, target["task_pk"])
-        task.title = "uncommitted"
+        require_value(task).title = "uncommitted"
         row = read_owned_file_edit_proposal(session, **query)
         assert row["proposal_id"] == query["proposal_id"] and task in session.dirty
         with Session(engine) as reader:
-            assert reader.get(Task, target["task_pk"]).title == "空任务"
+            assert require_value(reader.get(Task, target["task_pk"])).title == "空任务"
         session.rollback()
 
 

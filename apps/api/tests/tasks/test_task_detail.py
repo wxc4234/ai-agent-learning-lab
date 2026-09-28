@@ -13,6 +13,7 @@ from app.services.tasks import task_workspace
 from tests.local.test_local_mode import HEADERS
 import tests.workspace.directory.test_workspace_binding_api as binding
 from tests.tasks.test_task_workspace import task
+from tests.assertions import require_value
 
 local_client = binding.local_client
 target = binding.target
@@ -61,7 +62,7 @@ def test_inaccessible_resources_share_404(local_client, target, engine, kind):
                 row = session.scalar(select(Workspace).where(Workspace.external_id == target[0]))
             else:
                 row = session.scalar(select(Conversation).where(Conversation.external_id == created['conversation_id']))
-            row.user_id = owner.id
+            require_value(row).user_id = owner.id
     response = local_client.get(path, headers=HEADERS)
     binding.safe(response, 404, 'workspace_not_accessible')
 
@@ -105,7 +106,7 @@ def test_service_is_read_only_and_result_survives_close(local_client, target, en
     monkeypatch.setattr(task_workspace, 'SessionLocal', factory)
     event.listen(engine, 'before_cursor_execute', capture)
     try:
-        result = task_workspace.task_detail(user_id, target[0], created['external_id'])
+        result = task_workspace.task_detail(require_value(user_id), target[0], created['external_id'])
         assert len(sessions) == 1 and sessions[0].closed_by_service
         before_serialization = len(statements)
         assert result.model_dump(mode='json')['task'] == created

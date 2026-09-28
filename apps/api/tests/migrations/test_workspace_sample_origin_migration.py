@@ -12,6 +12,9 @@ from sqlalchemy.exc import DBAPIError
 
 from app.database import Base
 from tests.migrations.test_database_readiness import migrate
+from psycopg import Error as PsycopgError
+from tests.assertions import require_instance
+from tests.assertions import require_value
 
 
 @pytest.fixture
@@ -79,4 +82,4 @@ def test_database_rejects_invalid_origin(upgraded, workspace_id, task_id, root_p
             "task_id": task_id,
             "root_path": root_path,
         })
-    assert caught.value.orig.sqlstate == state
+    assert require_instance(require_value(caught.value.orig), PsycopgError).sqlstate == state

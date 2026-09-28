@@ -1,5 +1,4 @@
 import assert from 'node:assert/strict';
-import { createHash } from 'node:crypto';
 import { mkdir, mkdtemp, realpath, readFile, writeFile, rm } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 const { chromium } = createRequire(import.meta.url)(process.env.PLAYWRIGHT_MODULE || 'playwright');
@@ -23,12 +22,6 @@ const page = await browser.newPage({ viewport: { width: 1366, height: 900 } });
 page.setDefaultTimeout(30000);
 const errors = [];
 page.on('pageerror', error => errors.push(error.message));
-let posts = 0;
-let detailGets = 0;
-page.on('request', request => {
-    if (request.method() === 'GET' && request.url().includes('/file-edit-proposals/')) detailGets++;
-    if (request.method() === 'POST' && request.url().endsWith('/api/chat/stream')) posts++;
-});
 async function setup(name, bound) {
     const response = await page.request.post(`${base}/api/workspaces`, { headers: { Origin: base }, data: { name } });
     assert.equal(response.status(), 201);

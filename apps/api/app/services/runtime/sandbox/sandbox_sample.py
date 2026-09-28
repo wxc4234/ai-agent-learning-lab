@@ -8,7 +8,7 @@ import tempfile
 from contextlib import contextmanager, ExitStack
 from dataclasses import dataclass, field
 from pathlib import Path
-from collections.abc import Iterator
+from collections.abc import Generator
 from typing import Literal
 from uuid import uuid4
 
@@ -101,7 +101,7 @@ def _open_directory_without_links(path: Path) -> int:
 @contextmanager
 def _checked_sample_directories(
     sample: SandboxSample,
-) -> Iterator[tuple[int, int]]:
+) -> Generator[tuple[int, int], None, None]:
     """核对登记、路径和持有的描述符，再交给内部操作使用。"""
 
     if (

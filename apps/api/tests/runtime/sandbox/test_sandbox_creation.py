@@ -65,7 +65,7 @@ def test_success_order_real_builder_parser_and_frozen_identity(monkeypatch):
         assert identity.execution_token == TOKEN
         assert identity.image == APPROVED_SANDBOX_IMAGE
         with pytest.raises(FrozenInstanceError):
-            identity.container_id = "c" * 64
+            setattr(identity, 'container_id', "c" * 64)  # noqa: B010 -- 测试冻结属性或动态故障注入，需要运行时属性访问
     run(scenario)
 
 
@@ -86,7 +86,7 @@ def test_preflight_failure_never_calls_docker(monkeypatch, kind):
         else:
             command.argv.clear()
         with pytest.raises((ValueError, TypeError)):
-            await service.create_and_confirm_sandbox(request=command, execution_token=token)
+            await service.create_and_confirm_sandbox(request=command, execution_token=token)  # pyright: ignore[reportArgumentType] -- 故意越过静态签名，验证运行时拒绝非法输入
         assert calls == []
     run(scenario)
 
@@ -191,7 +191,7 @@ def test_create_adapter_rejects_wrong_prefix(monkeypatch, argv):
 def test_create_adapter_rejects_wrong_type():
     async def scenario():
         with pytest.raises(TypeError):
-            await client.create_sandbox_container(spec={})
+            await client.create_sandbox_container(spec={})  # pyright: ignore[reportArgumentType] -- 故意越过静态签名，验证运行时拒绝非法输入
     run(scenario)
 
 

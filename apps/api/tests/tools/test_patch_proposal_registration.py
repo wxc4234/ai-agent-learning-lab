@@ -15,6 +15,9 @@ from app.tools import create_file_patch_proposal as adapter
 from app.tools.registry import TOOL_REGISTRY, ToolContextRequiredError, model_tools_for_context, tools_for_execution
 from tests.model.test_model_decision import build_text_response, build_tool_response
 from tests.tools.test_preview_file_patch_tool import ARGS, CONTEXT
+from openai import AsyncOpenAI
+from typing import cast
+from tests.assertions import require_value
 
 
 @pytest.mark.parametrize('context', [None, {}, 'forged'])
@@ -65,7 +68,7 @@ def test_controlled_model_consumes_safe_observation(monkeypatch, kind):
 
     monkeypatch.setattr(adapter, 'create_task_file_patch_proposal', generate)
     client = SimpleNamespace(chat=SimpleNamespace(completions=SimpleNamespace(create=create)))
-    maker = DeepSeekDecisionMaker(client=client, model='test', system_prompt='system', user_prompt='请保存补丁提案',
+    maker = DeepSeekDecisionMaker(client=cast(AsyncOpenAI, client), model='test', system_prompt='system', user_prompt='请保存补丁提案',
                                  tool_context=context, tool_definitions=definitions)
     result = asyncio.run(run_agent_loop(maker, tool_context=context, tool_definitions=definitions))
     assert len(turns) == 2 and result.answer == '提案请求已处理，未写入文件'
@@ -79,7 +82,7 @@ def test_controlled_model_consumes_safe_observation(monkeypatch, kind):
             assert observation.code == 'unknown_tool'
         elif kind == 'invalid':
             assert observation.code == 'invalid_tool_arguments'
-            assert all('input' not in item and 'ctx' not in item for item in json.loads(observation.details))
+            assert all('input' not in item and 'ctx' not in item for item in json.loads(require_value(observation.details)))
         else:
             assert observation.details == ('patch_context_mismatch' if kind == 'conflict' else 'proposal_save_unconfirmed')
     if calls:

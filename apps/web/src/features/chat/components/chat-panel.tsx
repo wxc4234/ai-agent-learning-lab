@@ -923,6 +923,8 @@ function TaskChat() {
                             autoFocus
                             onKeyDown={(event) => {
                                 // 中文输入法确认候选词不能触发发送；Shift+Enter 保留换行。
+                                // 保留已弃用的229兼容判断：部分IME在keydown前结束composition。
+                                // https://developer.mozilla.org/en-US/docs/Web/API/Element/keydown_event
                                 if (
                                     event.key === "Enter" &&
                                     !event.shiftKey &&

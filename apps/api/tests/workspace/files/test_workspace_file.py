@@ -68,7 +68,7 @@ def test_text_and_exact_limit(file, descriptors, data):
     assert result.relative_path == "sample.txt"
     assert descriptors[0] and not descriptors[1]
     with pytest.raises(FrozenInstanceError):
-        result.content = "changed"
+        setattr(result, 'content', "changed")  # noqa: B010 -- 测试冻结属性或动态故障注入，需要运行时属性访问
 
 
 @pytest.mark.parametrize("data,code", [

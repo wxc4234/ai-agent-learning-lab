@@ -75,7 +75,7 @@ def test_real_binary_empty_unicode_and_descriptor_unchanged(source):
     assert os.lseek(fd, 0, os.SEEK_CUR) == 3 and path.read_bytes() == b'original'
     assert 'PRIVATE' not in repr(result) and 'com.example' not in repr(result)
     with pytest.raises(FrozenInstanceError):
-        result[0].value = b'changed'
+        setattr(result[0], 'value', b'changed')  # noqa: B010 -- 测试冻结属性或动态故障注入，需要运行时属性访问
 
 
 @pytest.mark.parametrize('values', [{}, {b'a': b''}, {b'z': b'last', b'a': b'first'}])

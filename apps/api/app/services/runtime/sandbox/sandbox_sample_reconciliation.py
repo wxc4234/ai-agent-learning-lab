@@ -112,9 +112,16 @@ async def reconcile_sample_command(*, recovery: SampleCommandRecovery) -> Sample
             id_source="record" if known_id is not None else "unknown",
             identity=None, sample_status=sample_status,
         )
+    # 发现路径必须拿到身份；无法确认时保持unknown，不能解引用缺失证据。
+    if known_id is None and result.identity is None:
+        return SampleCommandSnapshot(
+            recovery=recovery, container_status="unconfirmed", container_id=None,
+            id_source="unknown", identity=None, sample_status=sample_status,
+        )
+    discovered_id = result.identity.container_id if result.identity is not None else None
     return SampleCommandSnapshot(
         recovery=recovery, container_status=result.status,
-        container_id=known_id if known_id is not None else result.identity.container_id,
+        container_id=known_id if known_id is not None else discovered_id,
         id_source="record" if known_id is not None else "discovered",
         identity=result.identity, sample_status=sample_status,
     )

@@ -18,7 +18,8 @@ from app.services.chat import chat_service as service
 from app.services.runtime.agent import tool_execution_context
 from app.services.workspace.directory import workspace_path
 from tests.chat import test_chat_tool_context as chat_tests
-from tests.model.test_model_decision import build_text_response, build_tool_response
+from tests.model.response_stream import build_text_response, build_tool_response
+from tests.assertions import require_value
 
 
 target = chat_tests.target
@@ -37,7 +38,7 @@ def test_chat_patch_events_and_persistence(engine, target, tmp_path, monkeypatch
     original = b'old\n'
     path.write_bytes(original)
     with Session(engine) as session, session.begin():
-        session.scalar(select(Workspace)).root_path = None if kind == 'unbound' else str(root)
+        require_value(session.scalar(select(Workspace))).root_path = None if kind == 'unbound' else str(root)
     old = 'wrong' if kind == 'conflict' else 'old'
     args = {'relative_path': 'file.txt', 'patch': f'--- a/file.txt\n+++ b/file.txt\n@@ -1 +1 @@\n-{old}\n+new\n'}
     create = AsyncMock(side_effect=[build_tool_response(('patch', 'preview_file_patch', json.dumps(args))), build_text_response('补丁仅供预览')])
@@ -61,7 +62,7 @@ def test_chat_patch_events_and_persistence(engine, target, tmp_path, monkeypatch
     else:
         assert public['error']['details'] == ('patch_context_mismatch' if kind == 'conflict' else 'workspace_directory_unbound')
     with Session(engine) as session:
-        assert session.get(AgentRun, run_id).status == 'done'
+        assert require_value(session.get(AgentRun, run_id)).status == 'done'
         stored = session.scalars(select(AgentRunEvent).where(AgentRunEvent.run_id == run_id)).all()
         assert sum(event.event_type == expected for event in stored) == 1
         messages = session.scalars(select(Message).where(Message.conversation_id == target['conversation_pk']).order_by(Message.id)).all()

@@ -14,6 +14,9 @@ from app.services.workspace.proposals import file_edit_proposal_service as servi
 from app.services.workspace.edits.workspace_edit_preview import EditPreviewError
 from app.services.workspace.directory.workspace_path import WorkspacePathError
 from tests.workspace.directory import test_workspace_path as path_tests
+from psycopg import Error as PsycopgError
+from tests.assertions import require_instance
+from tests.assertions import require_value
 
 root = path_tests.root
 target = path_tests.target
@@ -57,21 +60,21 @@ def test_committed_snapshot_is_private_immutable_and_file_unchanged(setup, engin
     assert len(sessions) == 2 and all(session.closed for session in sessions)
     with Session(engine) as session:
         row = session.scalar(select(FileEditProposal))
-        assert row.external_id == result.proposal_id and len(result.proposal_id) == 32
-        assert row.bound_root == str(root)
-        assert row.relative_path == "src/中文 file.txt"
-        assert row.proposed_content.encode() == original.replace(b"old", b"new")
-        assert row.baseline_sha256 == sha256(original).hexdigest()
-        assert row.proposed_sha256 == sha256(row.proposed_content.encode()).hexdigest()
-        assert row.diff and not row.diff_truncated
-        assert row.status == result.status == "pending"
+        assert require_value(row).external_id == result.proposal_id and len(result.proposal_id) == 32
+        assert require_value(row).bound_root == str(root)
+        assert require_value(row).relative_path == "src/中文 file.txt"
+        assert require_value(row).proposed_content.encode() == original.replace(b"old", b"new")
+        assert require_value(row).baseline_sha256 == sha256(original).hexdigest()
+        assert require_value(row).proposed_sha256 == sha256(require_value(row).proposed_content.encode()).hexdigest()
+        assert require_value(row).diff and not require_value(row).diff_truncated
+        assert require_value(row).status == result.status == "pending"
         assert result.created_at.tzinfo is not None
     assert set(asdict(result)) == {
         "proposal_id", "workspace_id", "task_id", "relative_path", "status",
         "baseline_sha256", "proposed_sha256", "diff_truncated", "created_at",
     }
     with pytest.raises(FrozenInstanceError):
-        result.status = "approved"
+        setattr(result, 'status', "approved")  # noqa: B010 -- 测试冻结属性或动态故障注入，需要运行时属性访问
     assert file.read_bytes() == original
 
 
@@ -92,10 +95,10 @@ def test_empty_content_and_truncated_diff_keep_exact_proposed_content(setup, eng
     result = service.create_task_file_edit_proposal(**{**args, "new_text": new_text})
     with Session(engine) as session:
         row = session.scalar(select(FileEditProposal))
-        assert row.proposed_content == new_text
-        assert row.proposed_sha256 == sha256(new_text.encode()).hexdigest()
-        assert row.diff_truncated is bool(new_text)
-        assert result.diff_truncated == row.diff_truncated
+        assert require_value(row).proposed_content == new_text
+        assert require_value(row).proposed_sha256 == sha256(new_text.encode()).hexdigest()
+        assert require_value(row).diff_truncated is bool(new_text)
+        assert result.diff_truncated == require_value(row).diff_truncated
     assert file.read_bytes() == b"old"
 
 
@@ -109,7 +112,7 @@ def test_initial_rejection_saves_nothing(setup, engine, target, kind):
         args["task_id"] = "missing"
     elif kind == "unbound":
         with Session(engine) as session, session.begin():
-            session.scalar(select(Workspace)).root_path = None
+            require_value(session.scalar(select(Workspace))).root_path = None
         expected = WorkspacePathError
     else:
         file.write_bytes(b"old old")
@@ -131,11 +134,11 @@ def test_reauthorizes_after_io_and_retains_same_read_snapshot(setup, engine, tar
         result = original_preview(**kwargs)
         with Session(engine) as session, session.begin():
             if kind == "owner":
-                session.scalar(select(Workspace)).user_id = target["other_id"]
+                require_value(session.scalar(select(Workspace))).user_id = target["other_id"]
             elif kind == "conversation":
-                session.get(Conversation, target["conversation_pk"]).user_id = target["other_id"]
+                require_value(session.get(Conversation, target["conversation_pk"])).user_id = target["other_id"]
             elif kind == "binding":
-                session.scalar(select(Workspace)).root_path = "/changed"
+                require_value(session.scalar(select(Workspace))).root_path = "/changed"
         if kind == "deleted":
             with Session(engine) as session:
                 delete_workspace_task(session, **{key: args[key] for key in ("user_id", "workspace_id", "task_id")})
@@ -201,7 +204,7 @@ def test_uncommitted_save_blocks_delete_and_rollback_releases_lock(setup, engine
         with pytest.raises(DBAPIError) as caught, engine.begin() as connection:
             connection.execute(text("SET LOCAL lock_timeout = '100ms'"))
             connection.execute(text("DELETE FROM tasks WHERE id=:id"), {"id": row.task_id})
-        assert caught.value.orig.sqlstate == "55P03"
+        assert require_instance(require_value(caught.value.orig), PsycopgError).sqlstate == "55P03"
         raise RuntimeError("rollback saved proposal")
 
     monkeypatch.setattr(service, "insert_file_edit_proposal", verify_lock)
@@ -228,7 +231,7 @@ def test_uncommitted_deletion_blocks_save_then_rollback_allows_save(setup, engin
             saving.execute(text("SET LOCAL lock_timeout = '100ms'"))
             with pytest.raises(DBAPIError) as caught:
                 lock_owned_proposal_task(saving, **{key: args[key] for key in ("user_id", "workspace_id", "task_id")})
-            assert caught.value.orig.sqlstate == "55P03"
+            assert require_instance(require_value(caught.value.orig), PsycopgError).sqlstate == "55P03"
         deleting.rollback()
     service.create_task_file_edit_proposal(**args)
     assert count(engine) == 1

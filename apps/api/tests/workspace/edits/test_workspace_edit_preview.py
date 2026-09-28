@@ -30,7 +30,7 @@ def test_exact_replacement_and_byte_counts(content, old, new, expected):
     assert result.diff.startswith("--- before\n+++ after\n@@ ")
     assert not result.diff_truncated
     with pytest.raises(FrozenInstanceError):
-        result.updated_content = "mutated"
+        setattr(result, 'updated_content', "mutated")  # noqa: B010 -- 测试冻结属性或动态故障注入，需要运行时属性访问
 
 
 @pytest.mark.parametrize("field", ["content", "old_text", "new_text"])

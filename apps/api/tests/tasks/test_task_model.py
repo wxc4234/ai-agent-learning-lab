@@ -4,6 +4,8 @@ from sqlalchemy import inspect
 from sqlalchemy.orm import configure_mappers
 
 from app.models import Conversation, Task, Workspace
+from sqlalchemy import Table
+from tests.assertions import require_instance
 
 
 def test_task_relationships_pair_with_the_correct_models():
@@ -27,6 +29,6 @@ def test_legacy_conversation_can_omit_task_but_task_requires_workspace():
     assert column.default is None
     assert column.server_default is None
     assert {key.target_fullname for key in column.foreign_keys} == {"tasks.id"}
-    assert any(index.unique and list(index.columns.keys()) == ["task_id"] for index in Conversation.__table__.indexes)
+    assert any(index.unique and list(index.columns.keys()) == ["task_id"] for index in require_instance(Conversation.__table__, Table).indexes)
     assert not Task.__table__.c.workspace_id.nullable
     assert {key.target_fullname for key in Task.__table__.c.workspace_id.foreign_keys} == {"workspaces.id"}

@@ -19,6 +19,7 @@ from app.routers.runtime import runs
 from app.schemas import LoginRequest, RegisterRequest
 from app.services.auth.login_session_service import issue_login_session
 from app.services.auth.registration_service import register_user
+from tests.assertions import require_value
 
 
 @pytest.fixture
@@ -29,9 +30,9 @@ def lab(engine, monkeypatch):
     identities = []
     for name in ("运行甲", "运行乙"):
         with Session(engine) as session:
-            register_user(session, RegisterRequest(username=name, password="Run-Ownership-2026!"))
+            register_user(session, RegisterRequest.model_validate({'username': name, 'password': "Run-Ownership-2026!"}))
         with Session(engine) as session:
-            identities.append(issue_login_session(session, LoginRequest(username=name, password="Run-Ownership-2026!")))
+            identities.append(issue_login_session(session, LoginRequest.model_validate({'username': name, 'password': "Run-Ownership-2026!"})))
     owner, other = identities
     run_id = repository.create_agent_run(user_id=owner.user.id, session_id="owned-run")
     published = AsyncMock()
@@ -86,10 +87,10 @@ def test_invalid_authentication_has_no_effect(lab, engine, operation, credential
         with Session(engine) as session, session.begin():
             record = session.scalar(select(LoginSession).where(LoginSession.user_id == owner.user.id))
             if credential == "revoked":
-                record.revoked_at = datetime.now(timezone.utc)
+                require_value(record).revoked_at = datetime.now(timezone.utc)
             else:
-                record.created_at = datetime.now(timezone.utc) - timedelta(hours=2)
-                record.expires_at = datetime.now(timezone.utc) - timedelta(hours=1)
+                require_value(record).created_at = datetime.now(timezone.utc) - timedelta(hours=2)
+                require_value(record).expires_at = datetime.now(timezone.utc) - timedelta(hours=1)
     if operation == "read":
         response = client.get(f"/runs/{run_id}", headers=request_headers)
     else:
@@ -107,7 +108,7 @@ def test_owner_cancel_commits_before_publish_and_is_idempotent(lab, engine, reas
     async def check_committed(published_id, published_reason):
         assert (published_id, published_reason) == (run_id, reason)
         with Session(engine) as session:
-            assert session.get(AgentRun, run_id).status == state
+            assert require_value(session.get(AgentRun, run_id)).status == state
         assert snapshot(run_id, owner)["events"][-1]["event_type"] == terminal
 
     published.side_effect = check_committed
@@ -220,8 +221,8 @@ def test_terminal_writers_wait_for_lock_and_preserve_winner(lab, engine, operati
                 assert entered.wait(5), "writer never attempted a read"
                 with pytest.raises(FutureTimeout):
                     future.result(timeout=0.15)
-                run.status = "error"
-                run.finished_at = datetime.now(timezone.utc)
+                require_value(run).status = "error"
+                require_value(run).finished_at = datetime.now(timezone.utc)
                 holder.add(AgentRunEvent(run_id=run_id, event_type="RUN_ERROR", payload={"reason": "winner"}))
                 holder.commit()
                 assert future.result(timeout=5) is (False if operation == "cancel" else None)

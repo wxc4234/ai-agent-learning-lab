@@ -14,6 +14,10 @@ from app.database import Base
 from app.models import FileEditProposal
 from tests.migrations.test_database_readiness import migrate
 from tests.migrations.test_task_creation_request_migration import snapshot
+from psycopg import Error as PsycopgError
+from sqlalchemy import Table
+from tests.assertions import require_instance
+from tests.assertions import require_value
 
 
 @pytest.fixture
@@ -36,7 +40,7 @@ def insert(connection, **overrides):
         "relative_path": "src/file.txt", "baseline_sha256": "b" * 64,
         "proposed_sha256": "c" * 64, "proposed_content": "", "diff": "review", "diff_truncated": False,
     }
-    connection.execute(FileEditProposal.__table__.insert().values(**{**values, **overrides}))
+    connection.execute(require_instance(FileEditProposal.__table__, Table).insert().values(**{**values, **overrides}))
 
 
 def test_round_trip_and_metadata(migrated):
@@ -74,7 +78,7 @@ def test_round_trip_and_metadata(migrated):
 def test_constraints_on_migrated_schema(migrated, overrides, state):
     with pytest.raises(DBAPIError) as caught, migrated[0].begin() as connection:
         insert(connection, **overrides)
-    assert caught.value.orig.sqlstate == state
+    assert require_instance(require_value(caught.value.orig), PsycopgError).sqlstate == state
 
 
 def test_limits_uniqueness_and_cascade(migrated):
@@ -84,7 +88,7 @@ def test_limits_uniqueness_and_cascade(migrated):
                relative_path="x" * 4096, bound_root="x" * 4096)
     with pytest.raises(DBAPIError) as caught, engine.begin() as connection:
         insert(connection)
-    assert caught.value.orig.sqlstate == "23505"
+    assert require_instance(require_value(caught.value.orig), PsycopgError).sqlstate == "23505"
     with engine.begin() as connection:
         connection.execute(text("DELETE FROM tasks WHERE id=1"))
     with engine.connect() as connection:

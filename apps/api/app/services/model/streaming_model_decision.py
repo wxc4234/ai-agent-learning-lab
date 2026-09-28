@@ -1,6 +1,6 @@
 """逐片段转发公开文本，完整聚合 Tool Calling 后才产生可执行决策。"""
 
-from collections.abc import AsyncIterator
+from collections.abc import AsyncGenerator
 from time import perf_counter_ns
 
 from openai.types.chat import ChatCompletion
@@ -10,7 +10,7 @@ from app.services.runtime.agent.agent_runtime import AgentDecision, AgentObserva
 
 
 class StreamingDeepSeekDecisionMaker(DeepSeekDecisionMaker):
-    async def stream_decisions(self, observations: tuple[AgentObservation, ...]) -> AsyncIterator[ModelTextDelta | AgentDecision]:
+    async def stream_decisions(self, observations: tuple[AgentObservation, ...]) -> AsyncGenerator[ModelTextDelta | AgentDecision, None]:
         self._append_new_observations(observations)
         started = perf_counter_ns()
         stream = await self._client.chat.completions.create(
@@ -64,14 +64,14 @@ class StreamingDeepSeekDecisionMaker(DeepSeekDecisionMaker):
                 raise ModelDecisionError("模型流缺少完整终态", reason="incomplete_response")
             if has_tool and (not tool["id"] or not tool["function"]["name"]):
                 raise ModelDecisionError("工具标识不完整")
-            response = ChatCompletion(
-                id="assembled", object="chat.completion", created=0, model=self._model,
-                usage=usage,
-                choices=[{"index": 0, "finish_reason": finish, "message": {
+            response = ChatCompletion.model_validate({
+                "id": "assembled", "object": "chat.completion", "created": 0, "model": self._model,
+                "usage": usage,
+                "choices": [{"index": 0, "finish_reason": finish, "message": {
                     "role": "assistant", "content": "".join(texts) or None,
                     "tool_calls": [tool] if has_tool else None,
                 }}],
-            )
+            })
             decision = self._parse_response(response, max(0, (perf_counter_ns() - started) // 1_000_000))
         finally:
             # 正常结束、解析失败及取消均关闭上游连接；不自动重试模型/工具。

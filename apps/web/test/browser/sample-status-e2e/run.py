@@ -22,8 +22,13 @@ HERE = Path(__file__).resolve().parent
 SAMPLE_APP = HERE.parent / 'execution-e2e'
 sys.path.insert(0, str(API))
 spec = importlib.util.spec_from_file_location('isolated_fixtures', API / 'tests/conftest.py')
-fixtures = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(fixtures)
+
+from tests.assertions import require_value
+
+fixtures = importlib.util.module_from_spec(require_value(spec))
+require_value(require_value(spec).loader).exec_module(fixtures)
+
+
 
 
 def port():
@@ -160,14 +165,14 @@ try:
             with Session(engine) as session:
                 proposal = session.scalar(select(FileEditProposal).where(FileEditProposal.external_id == fixture['proposal_id']))
                 source_workspace = session.scalar(select(Workspace).where(Workspace.external_id == fixture['workspace_id']))
-                origin = session.get(WorkspaceSampleOrigin, source_workspace.id)
+                origin = session.get(WorkspaceSampleOrigin, require_value(source_workspace).id)
                 source_task_id = session.scalar(select(Task.id).where(Task.external_id == fixture['task_id']))
                 assert origin is not None and origin.task_id == source_task_id
                 assert origin.root_path == fixture['root']
                 assert origin.lifecycle_state == ('cleanup_pending' if cleanup_pending else 'active')
-                assert source_workspace.root_path == (None if cleanup_pending else fixture['root'])
+                assert require_value(source_workspace).root_path == (None if cleanup_pending else fixture['root'])
                 before_database = (
-                    proposal.status, proposal.application_status, source_workspace.root_path,
+                    require_value(proposal).status, require_value(proposal).application_status, require_value(source_workspace).root_path,
                     origin.task_id, origin.root_path, origin.lifecycle_state,
                 )
 
@@ -197,10 +202,10 @@ try:
                 'import Fixture from "./task-fixture"; '
                 'export default function Page(){return <Fixture {...' + json.dumps(task_scope) + '} />;}'
             )
-            start([shutil.which('node'), str(WEB / 'node_modules/next/dist/bin/next'),
+            start([require_value(shutil.which('node')), str(WEB / 'node_modules/next/dist/bin/next'),
                    'dev', '--webpack', '--hostname', '127.0.0.1', '--port', str(web_port)], web, 'web')
             ready(base, token, processes)
-            subprocess.run([shutil.which('node'), str(HERE / 'verify.mjs')],
+            subprocess.run([require_value(shutil.which('node')), str(HERE / 'verify.mjs')],
                            cwd=WEB, env=env, check=True, timeout=120)
 
             # GET链路不能改变样例、Workspace绑定、持久待办或提案数据库状态。
@@ -211,16 +216,16 @@ try:
             with Session(engine) as session:
                 proposal = session.scalar(select(FileEditProposal).where(FileEditProposal.external_id == fixture['proposal_id']))
                 workspace = session.scalar(select(Workspace).where(Workspace.external_id == fixture['workspace_id']))
-                origin = session.get(WorkspaceSampleOrigin, workspace.id)
-                assert proposal.status == 'approved' and proposal.application_status == 'idle'
+                origin = session.get(WorkspaceSampleOrigin, require_value(workspace).id)
+                assert require_value(proposal).status == 'approved' and require_value(proposal).application_status == 'idle'
                 assert origin is not None
                 assert (
-                    proposal.status, proposal.application_status, workspace.root_path,
+                    require_value(proposal).status, require_value(proposal).application_status, require_value(workspace).root_path,
                     origin.task_id, origin.root_path, origin.lifecycle_state,
                 ) == before_database
                 ordinary_workspace = session.scalar(select(Workspace).where(Workspace.external_id == missing_workspace_id))
-                assert ordinary_workspace.root_path == str(ordinary)
-                assert session.get(WorkspaceSampleOrigin, ordinary_workspace.id) is None
+                assert require_value(ordinary_workspace).root_path == str(ordinary)
+                assert session.get(WorkspaceSampleOrigin, require_value(ordinary_workspace).id) is None
             report = json.loads((output / 'browser.json').read_text())
         finally:
             for process in reversed(processes):
@@ -236,8 +241,8 @@ try:
         assert not Path(fixture['root']).exists()
         with Session(engine) as session:
             workspace = session.scalar(select(Workspace).where(Workspace.external_id == fixture['workspace_id']))
-            assert workspace.root_path is None
-            assert session.get(WorkspaceSampleOrigin, workspace.id) is None
+            assert require_value(workspace).root_path is None
+            assert session.get(WorkspaceSampleOrigin, require_value(workspace).id) is None
         api_log = (output / 'api.log').read_text()
         assert f'GET /workspaces/{fixture["workspace_id"]}/tasks/{fixture["task_id"]}/sample-status' in api_log
         assert f'GET /workspaces/{fixture["workspace_id"]}/tasks/{sibling_task_id}/sample-status' in api_log

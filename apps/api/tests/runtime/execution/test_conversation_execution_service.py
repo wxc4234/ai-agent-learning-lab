@@ -16,6 +16,8 @@ from app.repositories.chat.conversation_repository import ConversationNotAccessi
 from app.services.runtime.execution import conversation_execution_service as service
 from app.services.tasks.task_service import create_workspace_task
 from tests.tasks.test_task_deletion_service import wait_for_database_block
+from tests.assertions import require_instance
+from tests.assertions import require_value
 
 
 @pytest.fixture
@@ -58,7 +60,7 @@ def test_success_busy_release_reacquire_and_stale_release(engine, target, expire
         assert first.session_id == target[1] and first.acquired_at.tzinfo is not None
         assert len(first.owner_token) == 32 and UUID(hex=first.owner_token).version == 4
         with pytest.raises(FrozenInstanceError):
-            first.owner_token = 'f' * 32
+            setattr(first, 'owner_token', 'f' * 32)  # noqa: B010 -- 测试冻结属性或动态故障注入，需要运行时属性访问
         with pytest.raises(service.ConversationBusyError):
             acquire(session, target)
         assert session.is_active and not session.in_transaction()
@@ -138,7 +140,7 @@ def test_existing_transaction_is_not_touched(engine, target, operation, kind):
         transaction = session.get_transaction()
         with pytest.raises(RuntimeError, match='无活动事务'):
             acquire(session, target) if operation == 'acquire' else release(session, target, 'a' * 32)
-        assert session.get_transaction() is transaction and transaction.is_active
+        assert session.get_transaction() is transaction and require_value(transaction).is_active
         session.commit()
     assert tokens(engine) == []
 
@@ -180,8 +182,8 @@ def test_failure_and_commit_uncertainty(engine, target, monkeypatch, operation, 
             else:
                 acquire(session, target)
         else:
-            assert stored == ([] if stage == 'after-commit' else [owner.owner_token])
-            assert release(session, target, owner.owner_token) is (stage != 'after-commit')
+            assert stored == ([] if stage == 'after-commit' else [require_value(owner).owner_token])
+            assert release(session, target, require_value(owner).owner_token) is (stage != 'after-commit')
 
 
 @pytest.mark.parametrize('operation', ['acquire', 'release'])
@@ -237,9 +239,9 @@ def test_real_lock_wait_then_recheck_and_other_conversation_independence(engine,
     expect_busy = (operation == 'acquire' and not rollback) or (operation == 'release' and rollback)
     if expect_busy:
         assert follower_result == 'busy'
-        assert tokens(engine) == [(owner if owner else leader_result).owner_token]
+        assert tokens(engine) == [require_instance(owner if owner else leader_result, service.ConversationExecutionOwnership).owner_token]
     else:
-        assert tokens(engine) == [follower_result.owner_token]
+        assert tokens(engine) == [require_instance(follower_result, service.ConversationExecutionOwnership).owner_token]
 
 
 def test_result_construction_failure_rolls_back_slot(engine, target, monkeypatch):

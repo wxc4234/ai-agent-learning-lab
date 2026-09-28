@@ -1,3 +1,4 @@
+from typing import Any
 """真实 Docker 的样例只读诊断专项；变更阶段与只读观测阶段明确分离。
 
 运行：PYTHONPATH=apps/api .venv/bin/python scripts/verify_sandbox_sample_reconciliation.py
@@ -21,6 +22,8 @@ from app.services.runtime.sandbox.sandbox_sample_reconciliation import reconcile
 from app.services.runtime.sandbox.sandbox_stop import stop_and_confirm_sandbox
 
 
+
+
 def source_evidence(sample):
     """记录本轮已知私有目录，不跟随测试替换出的链接。"""
 
@@ -39,9 +42,11 @@ def source_evidence(sample):
     return result
 
 
+from tests.assertions import require_value
+
 async def main():
     command = CommandRequest(argv=['/usr/local/bin/python', '-c', 'import time; time.sleep(600)'])
-    audit = {'container_ids': [], 'reports': []}
+    audit: dict[str, Any] = {'container_ids': [], 'reports': []}
     actual_create = commands.create_sandbox_container
     actual_client = client._run_docker_client
     recovery = None
@@ -63,7 +68,7 @@ async def main():
         return result
 
     async def observe(label, evidence, expected_container, expected_sample, *, fail_docker=False):
-        before_files = source_evidence(recovery.sample)
+        before_files = source_evidence(require_value(recovery).sample)
         before_containers = await container_evidence()
         before_registry = dict(samples._ACTIVE_SAMPLES)
         calls = []
@@ -78,7 +83,7 @@ async def main():
         assert snapshot.container_status == expected_container
         assert snapshot.sample_status == expected_sample
         assert snapshot.recovery is evidence and snapshot.recovery.command is evidence.command
-        assert source_evidence(recovery.sample) == before_files
+        assert source_evidence(require_value(recovery).sample) == before_files
         assert await container_evidence() == before_containers
         assert samples._ACTIVE_SAMPLES == before_registry
         if evidence.container_id is not None:
@@ -149,7 +154,7 @@ async def main():
 
         real_open = samples.os.open
         def denied(path, *args, **kwargs):
-            if path == recovery.sample.root.name:
+            if path == require_value(recovery.sample).root.name:
                 raise PermissionError(errno.EACCES, 'injected source permission failure')
             return real_open(path, *args, **kwargs)
         with patch.object(samples.os, 'open', denied):

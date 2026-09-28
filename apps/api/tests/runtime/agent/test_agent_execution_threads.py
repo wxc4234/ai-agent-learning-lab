@@ -16,6 +16,9 @@ from app.tools.registry import TOOL_REGISTRY, GetCurrentTimeArguments, ToolDefin
 from tests.runtime.execution import test_conversation_execution_scope as scope_tests
 from tests.runtime.execution.test_conversation_execution_service import tokens
 from tests.runtime.execution.test_execution_threads import ControlledWork, checkpoint
+from app.services.runtime.agent.agent_runtime import ToolErrorObservation
+from app.services.runtime.agent.agent_runtime import ToolObservation
+from tests.assertions import require_instance
 
 
 scope_target = scope_tests.scope_target
@@ -31,7 +34,7 @@ async def decide(observations):
     return FinalAnswer(content="finished")
 
 
-def register(monkeypatch, executor, timeout=5):
+def register(monkeypatch, executor, timeout: float=5):
     monkeypatch.setitem(TOOL_REGISTRY, "tracked-tool", ToolDefinition(
         name="tracked-tool", description="测试工具", arguments_model=GetCurrentTimeArguments,
         executor=executor, timeout_seconds=timeout,
@@ -69,11 +72,11 @@ def test_success_and_error_preserve_protocol_and_tracker_ownership(monkeypatch, 
             assert observation.tool_call_id == "tracked-call"
             assert observation.duration_ms is not None
             if failure:
-                assert observation.code == "tool_execution_failed"
-                assert observation.details == "ValueError"
+                assert require_instance(observation, ToolErrorObservation).code == "tool_execution_failed"
+                assert require_instance(observation, ToolErrorObservation).details == "ValueError"
                 assert "private executor detail" not in str(observation)
             else:
-                assert observation.result == "tool-result"
+                assert require_instance(observation, ToolObservation).result == "tool-result"
             # Runtime 不得替外层关闭共享跟踪器，后续数据库工作仍可登记。
             assert await tracker.run(lambda: 42) == 42
         finally:
@@ -98,7 +101,7 @@ def test_abandoned_tool_is_still_tracked(monkeypatch, mode, stop):
                     await task
             else:
                 result = await asyncio.wait_for(task, 2)
-                assert result.observations[0].code == "tool_timeout"
+                assert require_instance(result.observations[0], ToolErrorObservation).code == "tool_timeout"
             assert not work.finished.is_set()
             closing = asyncio.create_task(tracker.wait_closed())
             await checkpoint()
@@ -134,7 +137,7 @@ def test_rejected_tool_never_reaches_tracker(monkeypatch, arguments, tool_name, 
         tracker = RejectInvocation()
         try:
             result = await consume("result", tracker, decision)
-            assert result.observations[0].code == code
+            assert require_instance(result.observations[0], ToolErrorObservation).code == code
         finally:
             await tracker.wait_closed()
 
@@ -151,7 +154,7 @@ def test_real_slot_remains_until_actual_tool_finishes(engine, execution, monkeyp
         async def body():
             async with execution() as tracker:
                 result = await run_agent_loop(decide, execution_threads=tracker)
-                assert result.observations[0].code == "tool_timeout"
+                assert require_instance(result.observations[0], ToolErrorObservation).code == "tool_timeout"
                 loop_returned.set()
 
         task = asyncio.create_task(body())

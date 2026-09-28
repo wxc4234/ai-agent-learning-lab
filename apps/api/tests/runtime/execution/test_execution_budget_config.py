@@ -13,12 +13,12 @@ from app.config import Settings
 @pytest.mark.parametrize("value", [True, False, 0, -1, 2.0, "0", "-1", "2.0", " 2", "02", "2\n", None])
 def test_invalid_config(value):
     with pytest.raises(ValidationError):
-        Settings(_env_file=None, APP_MODE="account", DEEPSEEK_API_KEY="test", AGENT_MAX_CONCURRENT_EXECUTIONS=value)
+        Settings(_env_file=None, APP_MODE="account", DEEPSEEK_API_KEY="test", AGENT_MAX_CONCURRENT_EXECUTIONS=value)  # pyright: ignore[reportCallIssue] -- BaseSettings环境加载及别名由运行时解析
 
 
 @pytest.mark.parametrize("value", [1, "2", "10"])
 def test_valid_config(value):
-    settings = Settings(_env_file=None, APP_MODE="account", DEEPSEEK_API_KEY="test", AGENT_MAX_CONCURRENT_EXECUTIONS=value)
+    settings = Settings(_env_file=None, APP_MODE="account", DEEPSEEK_API_KEY="test", AGENT_MAX_CONCURRENT_EXECUTIONS=value)  # pyright: ignore[reportCallIssue] -- BaseSettings环境加载及别名由运行时解析
     assert settings.agent_max_concurrent_executions == int(value)
 
 

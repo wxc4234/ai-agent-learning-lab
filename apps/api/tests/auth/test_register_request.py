@@ -7,7 +7,7 @@ from app.schemas import RegisterRequest
 
 
 def test_valid_request_normalizes_username_and_preserves_password():
-    request = RegisterRequest(username="  Agent_User  ", password="Agent-2026!")
+    request = RegisterRequest.model_validate({'username': "  Agent_User  ", 'password': "Agent-2026!"})
     assert request.username == "agent_user"
     assert isinstance(request.password, SecretStr)
     assert request.password.get_secret_value() == "Agent-2026!"
@@ -15,7 +15,7 @@ def test_valid_request_normalizes_username_and_preserves_password():
 
 @pytest.mark.parametrize("length", [3, 64])
 def test_username_length_boundaries(length):
-    request = RegisterRequest(username="A" * length, password="Agent-2026!")
+    request = RegisterRequest.model_validate({'username': "A" * length, 'password': "Agent-2026!"})
     assert request.username == "a" * length
 
 
@@ -24,19 +24,19 @@ def test_username_length_boundaries(length):
 )
 def test_invalid_username_rejected(username):
     with pytest.raises(ValidationError):
-        RegisterRequest(username=username, password="Agent-2026!")
+        RegisterRequest.model_validate({'username': username, 'password': "Agent-2026!"})
 
 
 @pytest.mark.parametrize("length", [8, 128])
 def test_password_length_boundaries(length):
-    request = RegisterRequest(username="agent", password="A" * length)
+    request = RegisterRequest.model_validate({'username': "agent", 'password': "A" * length})
     assert len(request.password.get_secret_value()) == length
 
 
 @pytest.mark.parametrize("length", [0, 7, 129])
 def test_invalid_password_length_rejected(length):
     with pytest.raises(ValidationError):
-        RegisterRequest(username="agent", password="A" * length)
+        RegisterRequest.model_validate({'username': "agent", 'password': "A" * length})
 
 
 @pytest.mark.parametrize(
@@ -50,7 +50,7 @@ def test_password_whitespace_rejected(whitespace, position):
         "end": "Agent-2026!" + whitespace,
     }
     with pytest.raises(ValidationError) as error:
-        RegisterRequest(username="agent", password=passwords[position])
+        RegisterRequest.model_validate({'username': "agent", 'password': passwords[position]})
     assert error.value.errors(include_input=False)[0]["loc"] == ("password",)
     assert "密码不能包含空格或其他空白字符" in str(error.value)
 
@@ -84,12 +84,12 @@ def test_extra_fields_rejected(field):
 
 def test_secret_masking_and_error_string_hiding():
     password = "Sensitive-Password-2026!"
-    request = RegisterRequest(username="agent", password=password)
+    request = RegisterRequest.model_validate({'username': "agent", 'password': password})
     assert password not in repr(request)
     assert str(request.password) == "**********"
     assert json.loads(request.model_dump_json())["password"] == "**********"
     with pytest.raises(ValidationError) as error:
-        RegisterRequest(username="agent", password=password + " ")
+        RegisterRequest.model_validate({'username': "agent", 'password': password + " "})
     assert password not in str(error.value)
     # errors() can retain raw inputs; hiding exception text is not global redaction.
     safe_errors = error.value.errors(include_input=False, include_context=False)

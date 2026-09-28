@@ -32,3 +32,6 @@ uvicorn==0.52.4
 redis==8.1.0
 # 代码格式化工具（VS Code 已配置为默认格式化器）
 ruff==0.16.4
+
+# 全仓库Python类型检查，与编辑器共用pyrightconfig.json。
+pyright==1.1.414

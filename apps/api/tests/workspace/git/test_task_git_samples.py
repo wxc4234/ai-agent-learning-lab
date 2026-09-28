@@ -13,6 +13,7 @@ from app.repositories.workspace.workspace_repository import WorkspaceNotAccessib
 from app.services.workspace.git import task_git_samples as service
 from app.services.workspace.git.status_capture import GitStatusCaptureError
 from tests.tasks.test_task_deletion_service import target
+from tests.assertions import require_value
 
 __all__ = ['target']
 
@@ -83,9 +84,9 @@ def test_reauthorize_on_every_query(setup, engine, target, monkeypatch, kind):
     manager.bind(**scope)
     with Session(engine) as session, session.begin():
         if kind == 'workspace-owner':
-            session.scalar(select(Workspace)).user_id = target['other_id']
+            require_value(session.scalar(select(Workspace))).user_id = target['other_id']
         elif kind == 'conversation-owner':
-            session.get(Conversation, target['conversation_pk']).user_id = target['other_id']
+            require_value(session.get(Conversation, target['conversation_pk'])).user_id = target['other_id']
         else:
             session.delete(session.get(Conversation, target['conversation_pk']))
     monkeypatch.setattr(service, 'collect_sample_git_status', lambda handle: pytest.fail('must not execute'))
@@ -112,7 +113,7 @@ def test_creation_race_cleans_owned_sample(setup, engine, target, monkeypatch):
         with factory() as handle:
             roots.append(handle.root)
             with Session(engine) as session, session.begin():
-                session.get(Conversation, target['conversation_pk']).user_id = target['other_id']
+                require_value(session.get(Conversation, target['conversation_pk'])).user_id = target['other_id']
             yield handle
     monkeypatch.setattr(service, 'temporary_git_status_sample', create)
     with pytest.raises(WorkspaceNotAccessibleError):

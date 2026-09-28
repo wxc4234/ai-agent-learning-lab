@@ -13,6 +13,7 @@ from app.services.runtime.sandbox import sandbox_command as service
 from app.services.runtime.sandbox.sandbox_creation import SandboxCreationUnconfirmed
 from app.services.runtime.sandbox.sandbox_cleanup import SandboxCleanupUnconfirmed
 from tests.runtime.sandbox.test_sandbox_command_result import execution
+from tests.assertions import require_value
 
 
 CID = "a" * 64
@@ -34,6 +35,7 @@ def install(monkeypatch, *, code=0, failure=None, error=None, mutate=None):
             mutate()
         assert kwargs["request"].argv == request().argv
         if failure == "creating":
+            assert isinstance(error, BaseException)
             raise error
         return SimpleNamespace(container_id=CID)
 
@@ -43,12 +45,14 @@ def install(monkeypatch, *, code=0, failure=None, error=None, mutate=None):
         assert kwargs["execution_token"] == tokens[-1]
         assert kwargs["expected_container_id"] == CID
         if failure == "executing":
+            assert isinstance(error, BaseException)
             raise error
         return execution(code=code)
 
     def adapt(value):
         calls.append("adapting")
         if failure == "adapting":
+            assert isinstance(error, BaseException)
             raise error
         return actual_adapter(value)
 
@@ -58,6 +62,7 @@ def install(monkeypatch, *, code=0, failure=None, error=None, mutate=None):
         assert kwargs["execution_token"] == tokens[-1]
         assert kwargs["expected_container_id"] == CID
         if failure == "cleaning":
+            assert isinstance(error, BaseException)
             raise error
         return service.SandboxCleanupResult(execution_token=tokens[-1], container_id=CID)
 
@@ -80,7 +85,7 @@ def test_order_cleanup_independent_of_exit_success(monkeypatch, code):
     assert result.command.stdout == "你好\n"
     assert result.command.duration_ms == 123
     with pytest.raises(FrozenInstanceError):
-        result.cleanup = None
+        setattr(result, 'cleanup', None)  # noqa: B010 -- 测试冻结属性或动态故障注入，需要运行时属性访问
 
 
 @pytest.mark.parametrize("phase", ["creating", "executing", "adapting", "cleaning"])
@@ -103,7 +108,7 @@ def test_unexpected_failure_or_cancel_preserves_known_facts(monkeypatch, phase, 
     assert "PRIVATE" not in str(caught.value)
     assert caught.value.__suppress_context__
     with pytest.raises(FrozenInstanceError):
-        recovery.phase = "creating"
+        setattr(recovery, 'phase', "creating")  # noqa: B010 -- 测试冻结属性或动态故障注入，需要运行时属性访问
 
 
 @pytest.mark.parametrize("start,stop", [(False, False), (True, False), (True, True)])
@@ -129,7 +134,7 @@ def test_cleanup_cancel_keeps_command_and_attempt(monkeypatch, attempted):
     install(monkeypatch, failure="cleaning", error=error)
     with pytest.raises(service.SandboxCommandCancelled) as caught:
         asyncio.run(service.run_sandbox_command(request=request()))
-    assert caught.value.recovery.command.succeeded
+    assert require_value(caught.value.recovery.command).succeeded
     assert caught.value.recovery.delete_attempted is attempted
 
 

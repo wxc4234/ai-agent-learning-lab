@@ -10,6 +10,9 @@ from app.services.runtime.agent import agent_runtime as runtime
 from app.services.runtime.execution.execution_threads import ExecutionThreads
 from app.tools.context import ToolExecutionContext
 from app.tools.registry import ToolContextRequiredError, ToolDefinition, TOOL_REGISTRY
+from app.services.runtime.agent.agent_runtime import ToolErrorObservation
+from app.services.runtime.agent.agent_runtime import ToolObservation
+from tests.assertions import require_instance
 
 
 class Arguments(BaseModel):
@@ -24,7 +27,7 @@ def context(number=1):
     )
 
 
-def definition(executor, model=Arguments, required=True):
+def definition(executor, model: type[BaseModel]=Arguments, required=True):
     return ToolDefinition(
         name="context_test", description="test", arguments_model=model,
         executor=executor, requires_context=required,
@@ -87,7 +90,7 @@ def test_context_identity_reaches_executor(monkeypatch, mode, tracked):
         tracker = ExecutionThreads() if tracked else None
         try:
             result = await run(mode, tool_context=trusted, execution_threads=tracker)
-            assert result.observations[0].result == "t1"
+            assert require_instance(result.observations[0], ToolObservation).result == "t1"
         finally:
             if tracker is not None:
                 await tracker.wait_closed()
@@ -113,7 +116,7 @@ def test_parallel_runs_keep_contexts_separate(monkeypatch):
                 run("run", tool_context=first, execution_threads=trackers[0]),
                 run("stream", tool_context=second, execution_threads=trackers[1]),
             )
-            assert [result.observations[0].result for result in results] == ["1:t1", "2:t2"]
+            assert [require_instance(result.observations[0], ToolObservation).result for result in results] == ["1:t1", "2:t2"]
         finally:
             await asyncio.gather(*(tracker.wait_closed() for tracker in trackers))
 
@@ -129,13 +132,13 @@ def test_context_free_tool_retains_executor_signature(value):
 @pytest.mark.parametrize("alias", [False, True])
 def test_registration_rejects_reserved_field(alias):
     if alias:
-        class Reserved(BaseModel):
+        class AliasedReserved(BaseModel):
             forged: str = Field(alias="context")
     else:
         class Reserved(BaseModel):
             context: str
     with pytest.raises(ValueError, match="context"):
-        definition(lambda **kwargs: "unused", model=Reserved)
+        definition(lambda **kwargs: "unused", model=AliasedReserved if alias else Reserved)
 
 
 def test_extra_payload_cannot_override_context():
@@ -159,8 +162,8 @@ def test_wrong_argument_model_rejected():
 
 
 def test_model_schema_has_no_server_context():
-    schema = definition(lambda **kwargs: "unused").as_model_tool()["function"]["parameters"]
-    assert set(schema["properties"]) == {"relative_path"}
+    schema = require_instance(definition(lambda **kwargs: "unused").as_model_tool()["function"], dict)["parameters"]
+    assert set(require_instance(schema["properties"], dict)) == {"relative_path"}
     assert schema["additionalProperties"] is False
 
 
@@ -173,4 +176,4 @@ def test_model_context_injection_is_validation_error(monkeypatch):
         return runtime.FinalAnswer("done")
 
     result = asyncio.run(runtime.run_agent_loop(injected, tool_context=context()))
-    assert result.observations[0].code == "invalid_tool_arguments"
+    assert require_instance(result.observations[0], ToolErrorObservation).code == "invalid_tool_arguments"

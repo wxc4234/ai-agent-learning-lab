@@ -93,15 +93,15 @@ def test_projection_and_server_identity(monkeypatch, truncated):
 
 @pytest.mark.parametrize('error,code', [
     (WorkspaceNotAccessibleError(), 'workspace_not_accessible'),
-    (WorkspaceDirectoryError('unknown', 'PRIVATE'), 'workspace_directory_unavailable'),
+    (WorkspaceDirectoryError('unknown', 'PRIVATE'), 'workspace_directory_unavailable'),  # pyright: ignore[reportArgumentType] -- 反例故意构造不受支持的数据，保留运行时校验
     (WorkspacePathError('workspace_directory_unbound', 'PRIVATE'), 'workspace_directory_unbound'),
-    (WorkspacePathError('unknown', 'PRIVATE'), 'workspace_path_rejected'),
+    (WorkspacePathError('unknown', 'PRIVATE'), 'workspace_path_rejected'),  # pyright: ignore[reportArgumentType] -- 反例故意构造不受支持的数据，保留运行时校验
     *[(WorkspaceFileError(code, 'PRIVATE'), code) for code in ('file_read_unsupported', 'file_not_regular', 'file_too_large', 'file_not_utf8_text', 'file_changed')],
-    (WorkspaceFileError('unknown', 'PRIVATE'), 'file_unavailable'),
+    (WorkspaceFileError('unknown', 'PRIVATE'), 'file_unavailable'),  # pyright: ignore[reportArgumentType] -- 反例故意构造不受支持的数据，保留运行时校验
     *[(UnifiedPatchError(code), code) for code in sorted(adapter.PATCH_ERROR_CODES)],
     (UnifiedPatchError('PRIVATE'), 'patch_preview_unavailable'),
     *[(EditPreviewError(code, 'PRIVATE'), code) for code in ('invalid_edit_text', 'edit_text_too_large', 'edit_preview_too_many_lines')],
-    (EditPreviewError('PRIVATE', 'PRIVATE'), 'patch_preview_unavailable'),
+    (EditPreviewError('PRIVATE', 'PRIVATE'), 'patch_preview_unavailable'),  # pyright: ignore[reportArgumentType] -- 反例故意构造不受支持的数据，保留运行时校验
     (RuntimeError('PRIVATE'), 'patch_preview_unavailable'),
 ])
 def test_fixed_safe_error_mapping(monkeypatch, error, code):

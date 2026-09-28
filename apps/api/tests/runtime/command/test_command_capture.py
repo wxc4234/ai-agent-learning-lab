@@ -8,6 +8,7 @@ import pytest
 
 from app.services.runtime.command.command_capture import drain_command_streams
 from app.services.runtime.command.command_contracts import CommandResult
+from app.services.runtime.command.byte_reader import AsyncByteReader
 
 
 def run(scenario):
@@ -33,13 +34,10 @@ def test_real_memory_streams_and_result_contract(out, err):
             assert snapshot.text == data[:65_536].decode("utf-8")
             assert snapshot.truncated is (len(data) > 65_536)
         assert all(stream.at_eof() for stream in streams)
-        contract = CommandResult(status="exited", exit_code=1, duration_ms=0,
-                                 stdout=result.stdout.text, stderr=result.stderr.text,
-                                 stdout_truncated=result.stdout.truncated,
-                                 stderr_truncated=result.stderr.truncated)
+        contract = CommandResult.model_validate({'status': "exited", 'exit_code': 1, 'duration_ms': 0, 'stdout': result.stdout.text, 'stderr': result.stderr.text, 'stdout_truncated': result.stdout.truncated, 'stderr_truncated': result.stderr.truncated})
         assert CommandResult.model_validate_json(contract.model_dump_json()) == contract
         with pytest.raises(FrozenInstanceError):
-            result.stdout = result.stderr
+            setattr(result, 'stdout', result.stderr)  # noqa: B010 -- 测试冻结属性或动态故障注入，需要运行时属性访问
         assert_no_readers()
     run(scenario)
 
@@ -121,13 +119,13 @@ def test_failure_cancels_and_waits_for_sibling_cleanup(failed_side):
             async def read(self, n):
                 entered.set()
                 try:
-                    await asyncio.Future()
+                    return await asyncio.Future[bytes]()
                 finally:
                     cleaning.set()
                     await release.wait()
                     finished.set()
 
-        readers = [Waiting(), Waiting()]
+        readers: list[AsyncByteReader] = [Waiting(), Waiting()]
         readers[failed_side] = Broken()
         task = asyncio.create_task(drain_command_streams(stdout=readers[0], stderr=readers[1]))
         try:
@@ -161,7 +159,7 @@ def test_parent_cancellation_waits_for_both_cleanups():
             async def read(self, n):
                 entered[self.index].set()
                 try:
-                    await asyncio.Future()
+                    return await asyncio.Future[bytes]()
                 finally:
                     cleaning[self.index].set()
                     await release.wait()

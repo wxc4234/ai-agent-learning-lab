@@ -12,6 +12,7 @@ from app.models import FileEditProposal, Workspace
 from app.services.workspace.proposals import file_edit_proposal_decision as decision
 from app.services.workspace.proposals import file_edit_proposal_service as proposals
 from tests.workspace.samples import test_sample_proposal_execution as existing
+from tests.assertions import require_value
 
 setup = existing.setup
 target = existing.target
@@ -26,7 +27,7 @@ def sample(setup, engine, monkeypatch):
         monkeypatch.setattr(module, 'SessionLocal', factory)
     bindings.bind(**scope)
     with Session(engine) as session:
-        path = Path(session.scalar(select(Workspace.root_path)))
+        path = Path(require_value(session.scalar(select(Workspace.root_path))))
     return bindings, scope, path
 
 
@@ -83,10 +84,10 @@ def test_complete_patch_approval_application(sample, setup, engine, monkeypatch,
     assert not list(path.glob('.agent-edit-*.tmp'))
     with Session(engine) as session:
         row = session.scalar(select(FileEditProposal))
-        assert row.status == 'approved'  # 审批状态与应用状态不是同一个字段。
-        assert row.proposed_content == after
-        assert row.baseline_sha256 == sha256(before.encode()).hexdigest()
-        assert row.proposed_sha256 == sha256(file.read_bytes()).hexdigest()
+        assert require_value(row).status == 'approved'  # 审批状态与应用状态不是同一个字段。
+        assert require_value(row).proposed_content == after
+        assert require_value(row).baseline_sha256 == sha256(before.encode()).hexdigest()
+        assert require_value(row).proposed_sha256 == sha256(file.read_bytes()).hexdigest()
     bindings.close(**scope)
     assert not path.exists()
 
@@ -115,7 +116,7 @@ def test_preflight_refuses_stale_or_corrupt_candidate(ready, engine, monkeypatch
         (path / 'example.txt').write_bytes(b'external edit\n')
     else:
         with Session(engine) as session, session.begin():
-            session.scalar(select(FileEditProposal)).proposed_content = 'tampered\n'
+            require_value(session.scalar(select(FileEditProposal))).proposed_content = 'tampered\n'
     before = (path / 'example.txt').read_bytes()
     monkeypatch.setattr(existing.execution, 'replace_workspace_text_file', lambda **kwargs: pytest.fail('must not write'))
     receipt = existing.gate.execute_sample_proposal(bindings, **identity)

@@ -16,6 +16,7 @@ from tests.runtime.sandbox.test_sandbox_creation import CID, TOKEN, request
 from tests.runtime.sandbox.test_sandbox_isolation_policy import fixture
 from tests.runtime.sandbox.test_sandbox_stop import data
 from tests.runtime.docker.test_docker_attach_parser import frame
+from tests.assertions import require_instance
 
 
 def install(monkeypatch, *, failure=None, invalid=None, code=0, hold=False, eof_before_start=False,
@@ -121,7 +122,7 @@ def test_success_order_and_exit_facts(monkeypatch, code, oom, daemon_error, succ
         assert result.exit.oom_killed is oom and result.exit.daemon_error is daemon_error
         assert result.duration_ms >= 0
         with pytest.raises(FrozenInstanceError):
-            result.duration_ms = 1
+            setattr(result, 'duration_ms', 1)  # noqa: B010 -- 测试冻结属性或动态故障注入，需要运行时属性访问
         assert_no_owned_tasks()
     asyncio.run(scenario())
 
@@ -201,7 +202,7 @@ def test_timeout_or_cancel_stops_and_joins(monkeypatch, cancel, stop_ok):
                 await task
             assert caught.value.start_attempted and caught.value.stop_confirmed is stop_ok
             if not cancel:
-                assert caught.value.reason == "timed_out"
+                assert require_instance(caught.value, service.SandboxExecutionUnconfirmed).reason == "timed_out"
             assert lab.calls[-2:] == ["close", "stop"]
             assert_no_owned_tasks()
         finally:
@@ -315,7 +316,7 @@ def test_real_docker_execution_and_stopped_cleanup(monkeypatch, mode):
                     await task
                 assert caught.value.start_attempted and caught.value.stop_confirmed
                 if mode == "timeout":
-                    assert caught.value.reason == "timed_out"
+                    assert require_instance(caught.value, service.SandboxExecutionUnconfirmed).reason == "timed_out"
             else:
                 result = await task
                 assert result.exit.exit_code == (7 if mode == "nonzero" else 0)
@@ -380,7 +381,7 @@ def test_prestart_cancel_or_timeout_does_not_start_or_stop(monkeypatch, stage, c
             assert not caught.value.start_attempted and not caught.value.stop_confirmed
             assert "start" not in lab.calls and "stop" not in lab.calls
             if not cancel:
-                assert caught.value.reason == "timed_out"
+                assert require_instance(caught.value, service.SandboxExecutionUnconfirmed).reason == "timed_out"
             assert_no_owned_tasks()
         finally:
             task.cancel()

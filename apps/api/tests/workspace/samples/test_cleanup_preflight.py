@@ -13,6 +13,7 @@ from app.repositories.workspace.workspace_repository import WorkspaceNotAccessib
 from app.services.workspace.samples import cleanup_preflight as inspection
 from app.services.workspace.samples.task_sample_binding import TaskSampleBindingError, TaskSampleBindings
 from tests.workspace.samples.test_task_sample_binding import root, setup, target
+from tests.assertions import require_value
 
 __all__ = ["setup", "target"]
 
@@ -21,7 +22,7 @@ def _leave_real_pending(service, scope, engine, monkeypatch) -> Path:
     """只延迟本次物理清理；共用夹具退出时恢复并清理自有目录。"""
 
     service.bind(**scope)
-    path = Path(root(engine))
+    path = Path(require_value(root(engine)))
     with monkeypatch.context() as patch:
         patch.setattr(service._registry, "close", lambda _handle: False)
         with pytest.raises(TaskSampleBindingError) as caught:
@@ -29,20 +30,20 @@ def _leave_real_pending(service, scope, engine, monkeypatch) -> Path:
     assert caught.value.code == "sample_cleanup_incomplete"
     with Session(engine) as session:
         workspace = session.scalar(select(Workspace))
-        origin = session.get(WorkspaceSampleOrigin, workspace.id)
-        assert workspace.root_path is None
-        assert origin.task_id is not None
-        assert origin.lifecycle_state == "cleanup_pending"
-        assert origin.root_path == str(path)
+        origin = session.get(WorkspaceSampleOrigin, require_value(workspace).id)
+        assert require_value(workspace).root_path is None
+        assert require_value(origin).task_id is not None
+        assert require_value(origin).lifecycle_state == "cleanup_pending"
+        assert require_value(origin).root_path == str(path)
     return path
 
 
 def _evidence(engine):
     with Session(engine) as session:
         workspace = session.scalar(select(Workspace))
-        origin = session.get(WorkspaceSampleOrigin, workspace.id)
+        origin = session.get(WorkspaceSampleOrigin, require_value(workspace).id)
         return (
-            workspace.root_path,
+            require_value(workspace).root_path,
             None if origin is None else (
                 origin.workspace_id, origin.task_id, origin.root_path, origin.lifecycle_state,
                 origin.parent_dev, origin.parent_ino, origin.root_dev, origin.root_ino,
@@ -73,7 +74,7 @@ def test_missing_evidence_returns_fixed_read_only_result(setup, engine, monkeypa
 def test_preflight_requires_owned_source_task(setup, engine, target, monkeypatch, scope_change):
     service, scope, _, _ = setup
     service.bind(**scope)
-    path = Path(root(engine))
+    path = Path(require_value(root(engine)))
     before = _evidence(engine)
     other_scope = dict(scope)
     if scope_change == "foreign_user":
@@ -106,15 +107,15 @@ def test_active_or_inconsistent_origin_never_inspects_files(
 ):
     service, scope, _, _ = setup
     service.bind(**scope)
-    path = Path(root(engine))
+    path = Path(require_value(root(engine)))
     if change != "none":
         with Session(engine) as session, session.begin():
             workspace = session.scalar(select(Workspace))
-            origin = session.get(WorkspaceSampleOrigin, workspace.id)
+            origin = session.get(WorkspaceSampleOrigin, require_value(workspace).id)
             if change == "root_mismatch":
-                workspace.root_path = "/different"
+                require_value(workspace).root_path = "/different"
             else:
-                origin.lifecycle_state = "cleanup_pending"
+                require_value(origin).lifecycle_state = "cleanup_pending"
     before = _evidence(engine)
     with monkeypatch.context() as patch:
         patch.setattr(
@@ -172,10 +173,10 @@ def test_legacy_pending_candidate_remains_identity_unknown(setup, engine, monkey
     path = _leave_real_pending(service, scope, engine, monkeypatch)
     with Session(engine) as session, session.begin():
         origin = session.scalar(select(WorkspaceSampleOrigin))
-        origin.parent_dev = None
-        origin.parent_ino = None
-        origin.root_dev = None
-        origin.root_ino = None
+        require_value(origin).parent_dev = None
+        require_value(origin).parent_ino = None
+        require_value(origin).root_dev = None
+        require_value(origin).root_ino = None
     before = _evidence(engine)
 
     result = service.read_cleanup_preflight(**scope)
@@ -194,9 +195,9 @@ def test_persisted_identity_mismatch_is_inconsistent_without_mutation(
     with Session(engine) as session, session.begin():
         origin = session.scalar(select(WorkspaceSampleOrigin))
         if changed == "parent":
-            origin.parent_ino += 1
+            require_value(origin).parent_ino = require_value(require_value(origin).parent_ino) + 1
         else:
-            origin.root_ino += 1
+            require_value(origin).root_ino = require_value(require_value(origin).root_ino) + 1
     before = _evidence(engine)
     content_before = (path / "example.txt").read_bytes()
 
@@ -272,7 +273,7 @@ def test_pending_unsafe_persisted_path_never_opens_candidate(
     service, scope, _, _ = setup
     path = _leave_real_pending(service, scope, engine, monkeypatch)
     with Session(engine) as session, session.begin():
-        session.scalar(select(WorkspaceSampleOrigin)).root_path = raw_path
+        require_value(session.scalar(select(WorkspaceSampleOrigin))).root_path = raw_path
     with monkeypatch.context() as patch:
         patch.setattr(
             inspection.os, "open",
@@ -290,7 +291,7 @@ def test_pending_valid_name_under_old_temp_parent_cannot_be_inspected(
     path = _leave_real_pending(service, scope, engine, monkeypatch)
     old_parent_path = str(Path("/example-old-temporary-root") / path.name)
     with Session(engine) as session, session.begin():
-        session.scalar(select(WorkspaceSampleOrigin)).root_path = old_parent_path
+        require_value(session.scalar(select(WorkspaceSampleOrigin))).root_path = old_parent_path
     with monkeypatch.context() as patch:
         patch.setattr(
             inspection.os, "open",

@@ -14,6 +14,10 @@ from app.services.runtime.sandbox import sandbox_sample_cleanup as cleanup
 from app.services.runtime.sandbox.sandbox_stop import stop_and_confirm_sandbox
 
 
+
+
+from tests.assertions import require_value
+
 async def verify(mode):
     request = CommandRequest(argv=['/usr/local/bin/python', '-c', 'import time; time.sleep(600)'])
     recovery = None
@@ -57,12 +61,12 @@ async def verify(mode):
                 except (cleanup.SampleCleanupUnconfirmed, cleanup.SampleCleanupCancelled) as error:
                     recovery = error.recovery
                     assert recovery.delete_attempted and not recovery.container_absent
-                    assert recovery.sample.root.exists()
+                    assert require_value(recovery.sample).root.exists()
                 else:
                     raise AssertionError('lost receipt was accepted')
         result = await cleanup.cleanup_sample_command(recovery=recovery)
         assert result.recovery.sample_cleaned and result.recovery.container_absent
-        assert not recovery.sample.root.parent.exists()
+        assert not require_value(recovery.sample).root.parent.exists()
         assert await client.is_sandbox_container_absent(container_id=cid)
         print(json.dumps({'case': mode, 'container_id': cid, 'absent': True, 'source_released': True}), flush=True)
     except BaseException:

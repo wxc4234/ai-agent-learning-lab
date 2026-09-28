@@ -46,7 +46,7 @@ def test_fixed_private_sample_and_cleanup(parent, descriptors):
         assert str(root) not in repr(sample)
         assert str(sample.parent_identity) not in repr(sample)
         with pytest.raises(FrozenInstanceError):
-            sample.relative_path = 'other'
+            setattr(sample, 'relative_path', 'other')  # noqa: B010 -- 测试冻结属性或动态故障注入，需要运行时属性访问
     assert not root.exists() and list(parent.iterdir()) == []
 
 
@@ -96,8 +96,8 @@ def test_unknown_or_unsafe_entries_preserved(parent, descriptors, kind):
 
 
 def test_root_replaced_is_not_deleted(parent, descriptors):
+    moved = parent / 'moved'
     with pytest.raises(service.TemporarySampleError, match='cleanup_incomplete'), service.temporary_proposal_sample() as sample:
-        moved = parent / 'moved'
         sample.root.rename(moved)
         sample.root.mkdir()
         (sample.root / 'foreign').write_bytes(b'keep')

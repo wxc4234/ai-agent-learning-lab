@@ -19,6 +19,9 @@ from app.tools.errors import SafeToolExecutionError
 from app.tools.registry import TOOL_REGISTRY, ToolContextRequiredError, model_tools_for_context, tools_for_execution
 from tests.model.test_model_decision import build_text_response, build_tool_response
 from tests.tools.test_read_file_tool import CONTEXT
+from openai import AsyncOpenAI
+from tests.assertions import require_instance
+from typing import cast
 
 
 @pytest.mark.parametrize("field,value", [
@@ -42,9 +45,9 @@ def test_extra_parameters_rejected(field):
 def test_preserved_query_default_and_schema(query):
     arguments = adapter.FindFilesArguments(query=query)
     assert arguments.query == query and arguments.relative_path == "."
-    schema = TOOL_REGISTRY["find_files"].as_model_tool()["function"]["parameters"]
+    schema = require_instance(TOOL_REGISTRY["find_files"].as_model_tool()["function"], dict)["parameters"]
     assert schema["required"] == ["query"]
-    assert set(schema["properties"]) == {"query", "relative_path"}
+    assert set(require_instance(schema["properties"], dict)) == {"query", "relative_path"}
     assert schema["additionalProperties"] is False
     with pytest.raises(ValidationError):
         adapter.FindFilesArguments.model_validate({})
@@ -78,7 +81,7 @@ def test_identity_and_result_contract(monkeypatch, empty, truncated):
         "invalid_find_query", "file_find_unsupported", "file_find_changed",
         "file_find_access_denied", "file_find_unavailable",
     )],
-    (WorkspaceFindError("future_code", "PRIVATE"), "file_find_unavailable"),
+    (WorkspaceFindError("future_code", "PRIVATE"), "file_find_unavailable"),  # pyright: ignore[reportArgumentType] -- 反例故意构造不受支持的数据，保留运行时校验
 ])
 def test_safe_errors(monkeypatch, error, code):
     def fail(**kwargs):
@@ -160,7 +163,7 @@ def test_request_model_finds_then_reads_or_handles_error(monkeypatch, kind):
     monkeypatch.setattr(adapter, "find_task_files", find)
     monkeypatch.setattr(read_file, "read_task_text_file", read)
     client = SimpleNamespace(chat=SimpleNamespace(completions=SimpleNamespace(create=create)))
-    maker = DeepSeekDecisionMaker(client=client, model="test", system_prompt="system", user_prompt="find",
+    maker = DeepSeekDecisionMaker(client=cast(AsyncOpenAI, client), model="test", system_prompt="system", user_prompt="find",
                                  tool_context=provided, tool_definitions=definitions)
     result = asyncio.run(run_agent_loop(maker, tool_context=provided, tool_definitions=definitions))
     assert result.answer == "done"

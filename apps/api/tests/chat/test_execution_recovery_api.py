@@ -11,6 +11,7 @@ from app.services.runtime.execution import execution_recovery as recovery
 from app.services.runtime.execution.execution_process import host_identity
 from tests.chat import test_conversation_execution_api as query_tests
 from tests.local.test_local_mode import HEADERS
+from tests.assertions import require_value
 
 local_client = query_tests.local_client
 lab = query_tests.lab
@@ -51,6 +52,6 @@ def test_missing_origin_and_foreign_conversation(lab, engine, monkeypatch):
     monkeypatch.setattr(recovery, 'SessionLocal', sessionmaker(bind=engine))
     assert client.post(f'/sessions/{session_id}/execution/recover', headers={'X-Local-Runtime-Token': HEADERS['X-Local-Runtime-Token']}, json={}).status_code == 403
     with Session(engine) as session, session.begin():
-        session.scalar(select(Conversation).where(Conversation.external_id == session_id)).user_id = other_id
+        require_value(session.scalar(select(Conversation).where(Conversation.external_id == session_id))).user_id = other_id
     response = client.post(f'/sessions/{session_id}/execution/recover', headers=HEADERS, json={})
     assert response.status_code == 404

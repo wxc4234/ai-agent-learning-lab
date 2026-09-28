@@ -12,6 +12,7 @@ from app.services.runtime.sandbox.command_recovery_journal import (
 from app.services.runtime.sandbox.sandbox_command import SandboxCommandCancelled, SandboxCommandUnconfirmed
 from app.tools import run_command as tool
 from tests.tools.test_run_command import RECOVERY
+from app.tools.errors import SafeToolExecutionError
 
 
 def request():
@@ -31,7 +32,7 @@ def test_request_and_records_are_independent_snapshots():
     journal.finish(index, status="unconfirmed", recovery=RECOVERY)
     assert before[0].status == "pending" and journal.records[0].status == "unconfirmed"
     with pytest.raises(FrozenInstanceError):
-        journal.records[0].status = "completed"
+        setattr(journal.records[0], 'status', "completed")  # noqa: B010 -- 测试冻结属性或动态故障注入，需要运行时属性访问
 
 
 def test_capacity_is_hard_and_completed_slots_are_not_overwritten():
@@ -105,7 +106,7 @@ def test_unavailable_journal_blocks_external_execution(monkeypatch, kind):
 
     monkeypatch.setattr(tool, "run_sandbox_command", forbidden)
     with pytest.raises(tool.CommandToolExecutionError) as caught:
-        asyncio.run(tool.run_command(argv=["/bin/true"], recovery_journal=journal))
+        asyncio.run(tool.run_command(argv=["/bin/true"], recovery_journal=journal))  # pyright: ignore[reportArgumentType] -- 故意越过静态签名，验证运行时拒绝非法输入
     assert caught.value.code == "command_recovery_unavailable"
 
 
@@ -193,7 +194,7 @@ def test_concurrent_reservations_are_bounded_and_journals_isolated(monkeypatch):
             release.set()
             results = await asyncio.gather(*tasks, return_exceptions=True)
             assert calls == 16 and len(journal.records) == 16 and other.records == ()
-            assert sum(error.code == "command_recovery_unavailable" for error in results) == 1
+            assert sum(isinstance(error, SafeToolExecutionError) and error.code == "command_recovery_unavailable" for error in results) == 1
             assert all(record.status == "unconfirmed" for record in journal.records)
         finally:
             release.set()

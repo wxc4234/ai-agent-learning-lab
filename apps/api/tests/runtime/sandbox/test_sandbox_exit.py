@@ -46,7 +46,7 @@ def test_exit_facts_and_success(code, oom, error):
     assert json.dumps(value) == original
     assert not hasattr(result, "stdout") and not hasattr(result, "duration_ms")
     with pytest.raises(FrozenInstanceError):
-        result.exit_code = 0
+        setattr(result, 'exit_code', 0)  # noqa: B010 -- 测试冻结属性或动态故障注入，需要运行时属性访问
 
 
 @pytest.mark.parametrize("field,value", [

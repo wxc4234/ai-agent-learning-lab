@@ -23,6 +23,8 @@ from app.services.tasks.task_deletion_service import TaskRunUnsettledError, dele
 from tests.local.test_local_mode import HEADERS
 from tests.local import test_local_mode as local_mode_tests
 from tests.tasks.test_task_deletion_service import wait_for_database_block
+from app.services.workspace.samples import task_sample_binding
+from tests.assertions import require_value
 
 local_client = local_mode_tests.local_client
 
@@ -31,7 +33,7 @@ local_client = local_mode_tests.local_client
 def lab(local_client, engine, monkeypatch):
     factory = sessionmaker(engine)
     # 本地流式入口还会读取工具上下文，必须与会话查询使用同一隔离测试库。
-    for module in (conversations, runs, conversation_execution_scope, tool_execution_context):
+    for module in (conversations, runs, conversation_execution_scope, tool_execution_context, task_sample_binding):
         monkeypatch.setattr(module, 'SessionLocal', factory)
     prompts = []
 
@@ -88,15 +90,15 @@ def invalidate(engine, lab, kind):
     with Session(engine) as session, session.begin():
         row = session.scalar(select(Conversation).where(Conversation.external_id == session_id))
         if kind == 'standalone':
-            row.task_id = None
+            require_value(row).task_id = None
         else:
             other = User(external_id=uuid4().hex)
             session.add(other)
             session.flush()
             if kind == 'foreign-conversation':
-                row.user_id = other.id
+                require_value(row).user_id = other.id
             else:
-                session.scalar(select(Workspace).where(Workspace.external_id == workspace['external_id'])).user_id = other.id
+                require_value(session.scalar(select(Workspace).where(Workspace.external_id == workspace['external_id']))).user_id = other.id
     return session_id
 
 

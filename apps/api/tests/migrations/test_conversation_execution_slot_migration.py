@@ -18,6 +18,10 @@ from app.services.runtime.execution.conversation_execution_service import Conver
 from tests.migrations.test_database_readiness import migrate
 from tests.migrations.test_task_creation_request_migration import snapshot
 from sqlalchemy import MetaData
+from psycopg import Error as PsycopgError
+from sqlalchemy import Table
+from tests.assertions import require_instance
+from tests.assertions import require_value
 
 
 @pytest.fixture
@@ -38,7 +42,7 @@ def migrated(empty_engine):
 
 
 def insert_slot(conn, **overrides):
-    conn.execute(ConversationExecutionSlot.__table__.insert().values(
+    conn.execute(require_instance(ConversationExecutionSlot.__table__, Table).insert().values(
         **({'conversation_id': 1, 'owner_token': 'a' * 32} | overrides),
     ))
 
@@ -81,7 +85,7 @@ def test_upgrade_downgrade_reupgrade_preserves_history(migrated):
 def test_invalid_slot_is_rejected(migrated, values, state):
     with pytest.raises(DBAPIError) as caught, migrated[0].begin() as conn:
         insert_slot(conn, **values)
-    assert caught.value.orig.sqlstate == state
+    assert require_instance(require_value(caught.value.orig), PsycopgError).sqlstate == state
     with migrated[0].connect() as conn:
         assert conn.scalar(text('SELECT count(*) FROM conversation_execution_slots')) == 0
 
@@ -100,7 +104,7 @@ def test_orm_commits_one_slot_per_conversation(migrated):
         assert all(row.acquired_at.tzinfo is not None for row in rows)
     with pytest.raises(DBAPIError) as caught, engine.begin() as conn:
         insert_slot(conn, owner_token='c' * 32)
-    assert caught.value.orig.sqlstate == '23505'
+    assert require_instance(require_value(caught.value.orig), PsycopgError).sqlstate == '23505'
     with engine.connect() as conn:
         assert conn.scalar(text('SELECT owner_token FROM conversation_execution_slots WHERE conversation_id=1')) == 'a' * 32
 
@@ -111,7 +115,7 @@ def test_foreign_key_prevents_silent_conversation_deletion(migrated):
         insert_slot(conn)
     with pytest.raises(DBAPIError) as caught, engine.begin() as conn:
         conn.execute(text('DELETE FROM conversations WHERE id=1'))
-    assert caught.value.orig.sqlstate == '23503'
+    assert require_instance(require_value(caught.value.orig), PsycopgError).sqlstate == '23503'
     with engine.connect() as conn:
         assert conn.scalar(text('SELECT count(*) FROM conversation_execution_slots')) == 1
         assert conn.scalar(text('SELECT count(*) FROM conversations WHERE id=1')) == 1

@@ -20,8 +20,13 @@ WEB = ROOT / 'apps/web'
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(API))
 spec = importlib.util.spec_from_file_location('isolated_fixtures', API / 'tests/conftest.py')
-fixtures = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(fixtures)
+
+from tests.assertions import require_value
+
+fixtures = importlib.util.module_from_spec(require_value(spec))
+require_value(require_value(spec).loader).exec_module(fixtures)
+
+
 
 
 def port():
@@ -105,17 +110,17 @@ try:
             assert sample.read_bytes() == b'old\n'
             with Session(engine) as session:
                 proposal = session.scalar(select(FileEditProposal).where(FileEditProposal.external_id == fixture['proposal_id']))
-                assert proposal.status == 'approved' and proposal.application_status == 'idle'
+                assert require_value(proposal).status == 'approved' and require_value(proposal).application_status == 'idle'
             public_scope = {'workspaceId': fixture['workspace_id'], 'taskId': fixture['task_id'], 'proposalId': fixture['proposal_id']}
             # 仅向页面注入公开资源编号，绝不注入root或内部凭证。
             (web / 'src/app/page.tsx').write_text('import Panel from "../features/chat/components/proposal-execution-actions"; export default function Page(){return <main className="mx-auto max-w-3xl p-6"><h1>真实样例应用验收</h1><Panel {...' + json.dumps(public_scope) + '} /></main>;}')
-            start([shutil.which('node'), str(WEB / 'node_modules/next/dist/bin/next'), 'dev', '--webpack', '--hostname', '127.0.0.1', '--port', str(web_port)], web, 'web')
+            start([require_value(shutil.which('node')), str(WEB / 'node_modules/next/dist/bin/next'), 'dev', '--webpack', '--hostname', '127.0.0.1', '--port', str(web_port)], web, 'web')
             ready(base, token, processes)
-            subprocess.run([shutil.which('node'), str(HERE / 'verify.mjs')], cwd=WEB, env=env, check=True, timeout=120)
+            subprocess.run([require_value(shutil.which('node')), str(HERE / 'verify.mjs')], cwd=WEB, env=env, check=True, timeout=120)
             assert sample.read_bytes() == b'new\n'
             with Session(engine) as session:
                 proposal = session.scalar(select(FileEditProposal).where(FileEditProposal.external_id == fixture['proposal_id']))
-                assert proposal.application_status == 'applied'
+                assert require_value(proposal).application_status == 'applied'
             report = json.loads((output / 'browser.json').read_text())
             report.update(beforeFile='old\\n', afterFile='new\\n', beforeDatabase='idle', afterDatabase='applied')
         finally:
@@ -130,7 +135,7 @@ try:
         assert not Path(fixture['root']).exists()
         with Session(engine) as session:
             workspace = session.scalar(select(Workspace).where(Workspace.external_id == fixture['workspace_id']))
-            assert workspace.root_path is None
+            assert require_value(workspace).root_path is None
         report.update(sampleRemoved=True, workspaceUnbound=True, servicesStopped=True, normalCloseRefused=True, cleanup='isolated fixture only after confirmed applied state and stopped requests')
         (output / 'evidence.json').write_text(json.dumps(report, indent=4))
 finally:

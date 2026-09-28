@@ -19,6 +19,7 @@ from app.services.runtime.sandbox.sandbox_spec import (
 )
 from tests.runtime.sandbox.test_sandbox_creation import CID, TOKEN, request
 from tests.runtime.sandbox.test_sandbox_isolation_policy import fixture as base_payload
+from tests.assertions import require_value
 
 
 @pytest.fixture
@@ -93,7 +94,7 @@ def test_factory_spec_policy_and_cleanup(sample):
 def test_forged_equal_object_and_unregistered_object_rejected(sample):
     for forged in (replace(sample), replace(sample, token="0" * 32), None):
         with pytest.raises(samples.SandboxSampleError):
-            samples.confirm_sandbox_sample_source(forged)
+            samples.confirm_sandbox_sample_source(forged)  # pyright: ignore[reportArgumentType] -- 故意越过静态签名，验证运行时拒绝非法输入
     assert samples.confirm_sandbox_sample_source(sample) == str(sample.root)
 
 
@@ -165,7 +166,7 @@ def test_file_identity_entries_and_permissions_rejected(sample, change):
         elif change.startswith("extra"):
             extra.unlink()
         else:
-            target.chmod(original_mode)
+            require_value(target).chmod(original_mode)
 
 
 def test_source_unavailable_and_cleanup_failure_preserve_registration(sample, monkeypatch):

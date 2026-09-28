@@ -14,6 +14,7 @@ from app.repositories.workspace.workspace_repository import (
     create_workspace,
     require_owned_workspace,
 )
+from tests.assertions import require_value
 
 
 @pytest.fixture
@@ -101,11 +102,11 @@ def test_flush_is_invisible_to_other_connection_until_caller_commits(engine, own
 def test_caller_rollback_removes_workspace_and_other_writes(engine, owners):
     with Session(engine) as session:
         user = session.get(User, owners[0])
-        user.external_id = "changed-owner"
+        require_value(user).external_id = "changed-owner"
         create_workspace(session, user_id=owners[0], name="回滚")
         session.rollback()
     with Session(engine) as observer:
-        assert observer.get(User, owners[0]).external_id == "workspace-owner-a"
+        assert require_value(observer.get(User, owners[0])).external_id == "workspace-owner-a"
         assert observer.scalar(select(func.count()).select_from(Workspace)) == 0
 
 

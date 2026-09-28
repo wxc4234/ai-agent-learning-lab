@@ -61,7 +61,7 @@ def test_success_preserves_exact_text_and_metadata(content, body, expected):
     assert result.after_byte_count == len(expected.encode('utf-8'))
     assert result.hunk_count == sum(line.startswith('@@') for line in body.split('\n'))
     with pytest.raises(FrozenInstanceError):
-        result.updated_content = 'changed'
+        setattr(result, 'updated_content', 'changed')  # noqa: B010 -- 测试冻结属性或动态故障注入，需要运行时属性访问
 
 
 @pytest.mark.parametrize('content,body,code', [

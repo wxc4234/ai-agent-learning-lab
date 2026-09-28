@@ -1,7 +1,7 @@
 """应用级持有 Task 快照 journal；单进程/单事件循环，无持久恢复。"""
 
 import os
-from collections.abc import Iterator
+from collections.abc import Generator
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 
@@ -78,7 +78,7 @@ class TaskSampleRecoveryStore:
         scope.journal.close()
 
     @contextmanager
-    def request_scope(self, *, user_id: int, conversation_id: str, run_id: int) -> Iterator[TaskSampleRecoveryScope]:
+    def request_scope(self, *, user_id: int, conversation_id: str, run_id: int) -> Generator[TaskSampleRecoveryScope, None, None]:
         scope = self.acquire(user_id=user_id, conversation_id=conversation_id, run_id=run_id)
         try:
             yield scope

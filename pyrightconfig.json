@@ -1,0 +1,10 @@
+{
+    "include": ["apps/api", "apps/web/test", "scripts", "week-learning"],
+    "exclude": ["**/__pycache__", "**/node_modules", "**/.next", "**/output"],
+    "extraPaths": ["apps/api"],
+    "venvPath": ".",
+    "venv": ".venv",
+    "pythonVersion": "3.12",
+    "typeCheckingMode": "basic",
+    "reportDeprecated": "warning"
+}

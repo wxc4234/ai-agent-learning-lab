@@ -26,6 +26,12 @@ from app.tools.registry import TOOL_REGISTRY, ToolContextRequiredError, tools_fo
 from tests.model.test_model_decision import build_text_response, build_tool_response
 from tests.runtime.sandbox.test_sandbox_command_result import execution
 from tests.tools.test_run_command import RECOVERY
+from app.services.runtime.agent.agent_runtime import ToolErrorObservation
+from app.services.runtime.agent.agent_runtime import ToolObservation
+from openai import AsyncOpenAI
+from tests.assertions import require_instance
+from typing import cast
+from tests.assertions import require_value
 
 
 CONTEXT = ToolExecutionContext(1, "PRIVATE-session", "PRIVATE-workspace", "PRIVATE-task")
@@ -39,9 +45,9 @@ def test_default_capability_never_contains_command(context):
 
 def test_requires_context_and_callable():
     with pytest.raises(ToolContextRequiredError):
-        tools_for_execution(context=None, command_executor=lambda: None)
+        tools_for_execution(context=None, command_executor=lambda: None)  # pyright: ignore[reportArgumentType] -- 故意越过静态签名，验证运行时拒绝非法输入
     with pytest.raises(TypeError):
-        tools_for_execution(context=CONTEXT, command_executor=1)
+        tools_for_execution(context=CONTEXT, command_executor=1)  # pyright: ignore[reportArgumentType] -- 故意越过静态签名，验证运行时拒绝非法输入
 
 
 def test_parallel_bindings_and_context_identity():
@@ -61,7 +67,7 @@ def test_parallel_bindings_and_context_identity():
             await left.execute_async(arguments, context=other_context)
         schema = left.as_model_tool()
         assert "PRIVATE" not in json.dumps(schema)
-        assert set(schema["function"]["parameters"]["properties"]) == {"argv", "working_directory"}
+        assert set(require_instance(require_instance(schema["function"], dict)["parameters"]["properties"], dict)) == {"argv", "working_directory"}
         assert "run_command" not in TOOL_REGISTRY
     asyncio.run(scenario())
 
@@ -75,10 +81,10 @@ def test_empty_snapshot_disables_tools_but_none_keeps_default(explicit):
     definitions = () if explicit else None
     result = asyncio.run(run_agent_loop(decide, tool_definitions=definitions))
     if explicit:
-        assert result.observations[0].code == "unknown_tool"
+        assert require_instance(result.observations[0], ToolErrorObservation).code == "unknown_tool"
     else:
-        assert result.observations[0].result == "6"
-    model = DeepSeekDecisionMaker(client=None, model="test", messages=[{"role": "user", "content": "test"}],
+        assert require_instance(result.observations[0], ToolObservation).result == "6"
+    model = DeepSeekDecisionMaker(client=cast(AsyncOpenAI, None), model="test", messages=[{"role": "user", "content": "test"}],
                                   tool_definitions=definitions)
     assert bool(model._tools) is (not explicit)
 
@@ -121,7 +127,7 @@ def test_model_runtime_bound_owner_and_recovery(monkeypatch, outcome):
         create = AsyncMock(side_effect=[build_tool_response(("call", "run_command", '{"argv":["/bin/true"]}')),
                                        build_text_response("done")])
         client = SimpleNamespace(chat=SimpleNamespace(completions=SimpleNamespace(create=create)))
-        model = DeepSeekDecisionMaker(client=client, model="test", messages=[{"role": "user", "content": "test"}],
+        model = DeepSeekDecisionMaker(client=cast(AsyncOpenAI, client), model="test", messages=[{"role": "user", "content": "test"}],
                                       tool_context=CONTEXT, tool_definitions=definitions)
         try:
             if outcome == "cancel":
@@ -132,21 +138,21 @@ def test_model_runtime_bound_owner_and_recovery(monkeypatch, outcome):
                 result = await run_agent_loop(model, tool_context=CONTEXT, tool_definitions=definitions)
                 observation = result.observations[0]
                 if outcome in ("success", "nonzero"):
-                    assert json.loads(observation.result)["exit_code"] == command.exit_code
+                    assert json.loads(require_instance(observation, ToolObservation).result)["exit_code"] == command.exit_code
                 else:
-                    assert observation.code == ("tool_timeout" if outcome == "timeout" else "tool_execution_failed")
+                    assert require_instance(observation, ToolErrorObservation).code == ("tool_timeout" if outcome == "timeout" else "tool_execution_failed")
                 assert "PRIVATE" not in str(observation)
                 assert create.await_count == 2
             for call in create.call_args_list:
                 assert "PRIVATE" not in json.dumps(call.kwargs)
                 assert {item["function"]["name"] for item in call.kwargs["tools"]} == {item.name for item in definitions}
-            record = owner.command_scope.journal.records[0]
+            record = require_value(owner.command_scope).journal.records[0]
             assert record.status == {"success": "completed", "nonzero": "completed", "cleanup": "unconfirmed",
                                      "timeout": "cancelled", "cancel": "cancelled"}[outcome]
             if outcome not in ("success", "nonzero"):
                 assert record.recovery is recovery
         finally:
-            owner.command_recovery_store.close_scope(owner.command_scope)
+            require_value(owner.command_recovery_store).close_scope(require_value(owner.command_scope))
             await owner.threads.wait_closed()
     asyncio.run(scenario())
 
@@ -178,6 +184,6 @@ def test_real_docker_via_request_bound_tool(monkeypatch, code):
             assert await docker_client.is_sandbox_container_absent(container_id=results[0].cleanup.container_id)
         finally:
             if owner.command_scope is not None:
-                owner.command_recovery_store.close_scope(owner.command_scope)
+                require_value(owner.command_recovery_store).close_scope(owner.command_scope)
             await owner.threads.wait_closed()
     asyncio.run(asyncio.wait_for(scenario(), 45))

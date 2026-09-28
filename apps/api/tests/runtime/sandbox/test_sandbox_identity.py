@@ -150,7 +150,7 @@ def test_character_limit_extra_fields_and_immutable_snapshot():
     assert identity.execution_token == SPEC.execution_token
     assert identity.image == APPROVED_SANDBOX_IMAGE
     with pytest.raises(FrozenInstanceError):
-        identity.container_id = "c" * 64
+        setattr(identity, 'container_id', "c" * 64)  # noqa: B010 -- 测试冻结属性或动态故障注入，需要运行时属性访问
     with pytest.raises(SandboxIdentityError):
         confirm(bounded + " ")
 

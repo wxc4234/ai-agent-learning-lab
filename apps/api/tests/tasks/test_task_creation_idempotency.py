@@ -16,6 +16,8 @@ from app.services.tasks import task_service as service
 from app.services.tasks.task_deletion_service import delete_workspace_task
 from tests.tasks.test_task_deletion_service import wait_for_database_block
 from tests.tasks.test_task_service import project as project  # noqa: PLC0414 -- 显式导出 pytest 夹具
+from tests.assertions import require_instance
+from tests.assertions import require_value
 
 
 KEY = '0123456789abcdef0123456789abcdef'
@@ -62,12 +64,12 @@ def test_replay_returns_committed_plain_result_without_writes(engine, project, e
     assert counts(engine) == (1, 1, 1)
     with Session(engine) as reader:
         receipt = reader.scalar(select(TaskCreationRequest))
-        assert receipt.request_hash == hashlib.sha256(
+        assert require_value(receipt).request_hash == hashlib.sha256(
             '{"title":"学习 Agent"}'.encode()
         ).hexdigest()
-        assert receipt.request_key == KEY
-        assert receipt.user_id == project[0]
-        assert reader.get(Task, receipt.task_id).external_id == first.external_id
+        assert require_value(receipt).request_key == KEY
+        assert require_value(receipt).user_id == project[0]
+        assert require_value(reader.get(Task, require_value(receipt).task_id)).external_id == first.external_id
 
 
 @pytest.mark.parametrize('key', ['', 'a' * 31, 'a' * 33, 'A' * 32, 'g' * 32,
@@ -187,9 +189,9 @@ def test_deleted_result_keeps_key_and_requires_new_intent(engine, project):
         second = create(session, project, key='f' * 32)
     assert second.external_id != first.external_id
     with Session(engine) as reader:
-        assert reader.scalar(select(TaskCreationRequest).where(
+        assert require_value(reader.scalar(select(TaskCreationRequest).where(
             TaskCreationRequest.request_key == KEY,
-        )).task_id is None
+        ))).task_id is None
     assert counts(engine) == (1, 1, 2)
 
 
@@ -251,7 +253,7 @@ def test_real_project_lock_serializes_create_replay_and_delete(
                     return create(session, project)
                 return delete_workspace_task(
                     session, user_id=project[0], workspace_id=project[1],
-                    task_id=original.external_id,
+                    task_id=require_value(original).external_id,
                 )
             except RuntimeError as exc:
                 assert rollback and str(exc) == 'injected rollback'
@@ -295,7 +297,7 @@ def test_real_project_lock_serializes_create_replay_and_delete(
         else:
             assert second is service.TaskCreationResultDeletedError
     elif rollback:
-        assert second.title == ('不同输入' if different else '学习 Agent')
+        assert require_instance(second, service.TaskCreationResult).title == ('不同输入' if different else '学习 Agent')
     elif different:
         assert second is service.TaskCreationConflictError
     else:
@@ -320,7 +322,7 @@ def test_commit_succeeded_but_confirmation_lost_can_replay(engine, project, monk
         assert counts(engine) == (1, 1, 1)
         replay = create(session, project)
     with Session(engine) as reader:
-        assert reader.scalar(select(Task)).external_id == replay.external_id
+        assert require_value(reader.scalar(select(Task))).external_id == replay.external_id
     assert counts(engine) == (1, 1, 1)
 
 
@@ -342,7 +344,7 @@ def test_replay_refreshes_stale_identity_map(engine, project, deleted):
             else:
                 writer.execute(update(Task).values(title='新标题'))
                 writer.commit()
-        assert receipt.task_id is not None and task.title == '学习 Agent'
+        assert require_value(receipt).task_id is not None and require_value(task).title == '学习 Agent'
         if deleted:
             with pytest.raises(service.TaskCreationResultDeletedError):
                 create(session, project)

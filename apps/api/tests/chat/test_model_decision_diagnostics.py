@@ -8,7 +8,8 @@ import pytest
 from app.services.chat import chat_service as service
 from app.services.model.model_decision import ModelDecisionError
 from app.services.runtime.execution.execution_threads import ExecutionThreads
-from tests.chat.test_chat_stream import never_receive_cancellation, standalone_stream_owner  # noqa: F401
+from tests.assertions import require_instance
+from tests.chat.test_chat_stream import never_receive_cancellation, standalone_stream_owner, standalone_stream_reply  # noqa: F401 -- 导入autouse资源收尾夹具
 
 
 @pytest.mark.parametrize('reason', list(ModelDecisionError.MESSAGES))
@@ -30,7 +31,7 @@ def test_reason_reaches_stream_and_run_without_raw_response(monkeypatch, caplog,
     monkeypatch.setattr(service, 'finish_agent_run', lambda *args: finished.append(args))
 
     async def collect():
-        return [json.loads(line) async for line in service.stream_chat_reply(
+        return [json.loads(line) async for line in standalone_stream_reply(
             user_id=1, session_id='diagnostic', prompt='question', run_id=303,
         )]
 
@@ -66,5 +67,5 @@ def test_same_session_history_is_loaded_and_windowed_without_cross_session(monke
     _, sent = asyncio.run(prepare())
     assert authorized == [{'user_id': 1, 'session_id': 'same'}]
     assert sent[1:-1] == saved[-10:]
-    assert sent[-1]['content'] == '继续回答之前的问题'
+    assert require_instance(sent[-1], dict)['content'] == '继续回答之前的问题'
     assert 'PRIVATE' not in str(sent)

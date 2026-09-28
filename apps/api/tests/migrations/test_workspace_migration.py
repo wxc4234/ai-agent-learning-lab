@@ -25,11 +25,11 @@ def metadata_before_tasks():
     # 历史版本没有 Task 表和会话关联字段，移除其索引与外键后再比较。
     snapshot = MetaData()
     for table in Base.metadata.sorted_tables:
-        if table.name not in {"tasks", "task_creation_requests", "conversation_execution_slots"}:
+        if table.name in {"users", "conversations", "messages", "agent_runs", "agent_run_events", "login_sessions", "workspaces"}:
             table.to_metadata(snapshot)
     conversation = snapshot.tables["conversations"]
     for constraint in list(conversation.constraints):
-        if any(column.name == "task_id" for column in constraint.columns):
+        if any(column.name == "task_id" for column in getattr(constraint, "columns", ())):
             conversation.constraints.remove(constraint)
     for index in list(conversation.indexes):
         if "task_id" in index.columns:

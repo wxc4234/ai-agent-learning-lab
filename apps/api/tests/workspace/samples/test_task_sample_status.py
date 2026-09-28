@@ -12,6 +12,7 @@ from app.models import Conversation, Workspace, WorkspaceSampleOrigin
 from app.repositories.workspace.workspace_repository import WorkspaceNotAccessibleError
 from app.services.workspace.samples import task_sample_binding as module
 from tests.workspace.samples.test_task_sample_binding import setup, target
+from tests.assertions import require_value
 
 __all__ = ['setup', 'target']
 
@@ -51,7 +52,7 @@ def test_authorizes_even_when_registration_missing(setup, target, engine, regist
         args['workspace_id'] = 'f' * 32
     else:
         with Session(engine) as session, session.begin():
-            session.get(Conversation, target['conversation_pk']).user_id = target['other_id']
+            require_value(session.get(Conversation, target['conversation_pk'])).user_id = target['other_id']
     with pytest.raises(WorkspaceNotAccessibleError):
         service.read_status(**args)
 
@@ -75,7 +76,7 @@ def test_root_mismatch_reports_sealed_without_mutating_binding(setup, engine):
     service.bind(**scope)
     binding = next(iter(service._bindings.values()))
     with Session(engine) as session, session.begin():
-        session.scalar(select(Workspace)).root_path = '/changed'
+        require_value(session.scalar(select(Workspace))).root_path = '/changed'
     assert asdict(service.read_status(**scope)) == {'status': 'sealed', 'sealed_reason': 'unavailable'}
     assert binding.state == 'ready'
     with Session(engine) as session:

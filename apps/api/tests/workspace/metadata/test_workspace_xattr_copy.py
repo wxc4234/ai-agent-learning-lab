@@ -38,7 +38,7 @@ def test_real_copy_and_noop_preserve_content_and_descriptors(files):
     assert service.copy_file_xattrs(source_fd=source, target_fd=target, expected=expected).written_count == 0
     assert 'secret' not in repr(result)
     with pytest.raises(FrozenInstanceError):
-        result.written_count = 999
+        setattr(result, 'written_count', 999)  # noqa: B010 -- 测试冻结属性或动态故障注入，需要运行时属性访问
 
 
 @pytest.fixture

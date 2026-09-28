@@ -9,6 +9,7 @@ from app.routers.workspace import directories as workspace
 from tests.local.test_local_mode import HEADERS
 from tests.tasks.test_task_workspace import task
 from tests.workspace.directory import test_workspace_binding_api as binding
+from tests.assertions import require_value
 
 local_client = binding.local_client
 target = binding.target
@@ -21,7 +22,7 @@ def test_busy_http_is_safe_and_keeps_resources(local_client, target, engine, tmp
     binding.safe(binding.put(local_client, target), 200)
     with Session(engine) as session, session.begin():
         row = session.scalar(select(Task).where(Task.external_id == created['external_id']))
-        session.add(FileEditProposal(external_id='c' * 32, task_id=row.id, bound_root=target[1],
+        session.add(FileEditProposal(external_id='c' * 32, task_id=require_value(row).id, bound_root=target[1],
             relative_path='file.txt', baseline_sha256='a' * 64, proposed_sha256='b' * 64,
             proposed_content='PRIVATE', diff='PRIVATE', diff_truncated=False, status='approved',
             application_status=state, application_token='f' * 32))
@@ -34,17 +35,17 @@ def test_busy_http_is_safe_and_keeps_resources(local_client, target, engine, tmp
     else:
         # 选择窗口打开时未绑定；等待用户选择期间另一执行已绑定并领取。
         with Session(engine) as session, session.begin():
-            session.scalar(select(Workspace)).root_path = None
+            require_value(session.scalar(select(Workspace))).root_path = None
             proposal = session.scalar(select(FileEditProposal))
-            proposal.application_status = 'idle'
-            proposal.application_token = None
+            require_value(proposal).application_status = 'idle'
+            require_value(proposal).application_token = None
 
         def concurrent_selection():
             with Session(engine) as session, session.begin():
-                session.scalar(select(Workspace)).root_path = target[1]
+                require_value(session.scalar(select(Workspace))).root_path = target[1]
                 proposal = session.scalar(select(FileEditProposal))
-                proposal.application_status = state
-                proposal.application_token = 'f' * 32
+                require_value(proposal).application_status = state
+                require_value(proposal).application_token = 'f' * 32
             return str(other)
 
         monkeypatch.setattr(workspace, 'select_directory', concurrent_selection)

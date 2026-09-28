@@ -286,7 +286,7 @@ def test_wrong_identity_before_or_after_start(monkeypatch, stage):
             if len(calls) == stage:
                 value = json.loads(result.streams.stdout.text)
                 value[0]["Config"]["Labels"]["ai-agent-learning-lab.execution"] = "c" * 32
-                result.streams.stdout.text = json.dumps(value)
+                setattr(result.streams.stdout, 'text', json.dumps(value))  # noqa: B010 -- 测试冻结属性或动态故障注入，需要运行时属性访问
             return result
         monkeypatch.setattr(client, "_run_docker_client", runner)
         with pytest.raises(service.SandboxStartUnconfirmed):

@@ -13,6 +13,8 @@ from app.repositories.workspace.workspace_repository import WorkspaceNotAccessib
 from app.services.workspace.directory import workspace_path as service
 from app.services.workspace.directory.workspace_directory import WorkspaceDirectoryError
 from tests.tasks import test_task_deletion_service as task_fixtures
+from typing import Any
+from tests.assertions import require_value
 
 
 # 复用已提交的任务/会话数据，仍由根夹具隔离并清理 PostgreSQL 资源。
@@ -160,7 +162,7 @@ def test_target_errors_are_sanitized(root, monkeypatch, error, code):
 def database(engine, target, root, monkeypatch):
     monkeypatch.setattr(settings, "app_mode", "local")
     with Session(engine) as session, session.begin():
-        session.scalar(select(Workspace)).root_path = str(root)
+        require_value(session.scalar(select(Workspace))).root_path = str(root)
     sessions = []
     statements = []
 
@@ -192,8 +194,10 @@ def database(engine, target, root, monkeypatch):
 
 
 def read(target, **overrides):
-    arguments = {key: target[key] for key in ("user_id", "workspace_id", "task_id")}
-    return service.resolve_task_workspace_path(**(arguments | {"relative_path": "."} | overrides))
+    arguments: dict[str, Any] = {key: target[key] for key in ("user_id", "workspace_id", "task_id")}
+    arguments.update({"relative_path": "."})
+    arguments.update(overrides)
+    return service.resolve_task_workspace_path(**arguments)
 
 
 def test_owned_task_reads_only_and_closes_before_filesystem(database, target, root, monkeypatch):
@@ -226,7 +230,7 @@ def test_authorization_precedes_path_parsing_and_filesystem(engine, database, ta
             session.add(Workspace(external_id="f" * 32, name="other", user_id=target["user_id"]))
             overrides["workspace_id"] = "f" * 32
         elif kind == "foreign-conversation":
-            session.get(Conversation, target["conversation_pk"]).user_id = target["other_id"]
+            require_value(session.get(Conversation, target["conversation_pk"])).user_id = target["other_id"]
         else:
             session.delete(session.get(Conversation, target["conversation_pk"]))
 
@@ -241,7 +245,7 @@ def test_authorization_precedes_path_parsing_and_filesystem(engine, database, ta
 
 def test_unbound_workspace_has_no_cwd_fallback(engine, database, target, monkeypatch):
     with Session(engine) as session, session.begin():
-        session.scalar(select(Workspace)).root_path = None
+        require_value(session.scalar(select(Workspace))).root_path = None
 
     def forbidden(*args, **kwargs):
         pytest.fail("unbound project must not inspect filesystem")

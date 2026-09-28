@@ -14,6 +14,7 @@ from app.repositories.workspace.workspace_repository import WorkspaceNotAccessib
 from app.services.workspace.files import workspace_listing as service
 from app.services.workspace.directory.workspace_path import WorkspacePathError
 from tests.workspace.directory import test_workspace_path as path_tests
+from tests.assertions import require_value
 
 
 root = path_tests.root
@@ -92,7 +93,7 @@ def test_entry_limit_and_bounded_iteration(directory, resources, count):
     assert names == sorted(names)
     assert result.relative_path == "."
     with pytest.raises(FrozenInstanceError):
-        result.truncated = True
+        setattr(result, 'truncated', True)  # noqa: B010 -- 测试冻结属性或动态故障注入，需要运行时属性访问
 
 
 def test_real_kinds_hidden_names_and_no_recursive_or_link_read(directory, resources, monkeypatch):
@@ -113,7 +114,7 @@ def test_real_kinds_hidden_names_and_no_recursive_or_link_read(directory, resour
     }
     assert len(resources) == 1
     with pytest.raises(FrozenInstanceError):
-        result.entries[0].name = "changed"
+        setattr(result.entries[0], 'name', "changed")  # noqa: B010 -- 测试冻结属性或动态故障注入，需要运行时属性访问
 
 
 @pytest.mark.parametrize("stage", ["leaf", "ancestor"])
@@ -253,7 +254,7 @@ def test_authorization_and_binding_precede_enumeration(engine, database, target,
         args["user_id"] = target["other_id"]
     else:
         with Session(engine) as session, session.begin():
-            session.scalar(select(Workspace)).root_path = None
+            require_value(session.scalar(select(Workspace))).root_path = None
     monkeypatch.setattr(service, "_list_resolved_directory", lambda *args: pytest.fail("must not enumerate"))
     error = WorkspaceNotAccessibleError if kind == "foreign" else WorkspacePathError
     with pytest.raises(error):

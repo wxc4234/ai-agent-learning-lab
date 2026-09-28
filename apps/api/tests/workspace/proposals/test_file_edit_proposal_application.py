@@ -11,6 +11,7 @@ from app.models import FileEditProposal, Workspace
 from app.services.workspace.proposals import file_edit_proposal_application as service
 from app.services.workspace.proposals.file_edit_proposal_service import ProposalBindingChangedError
 from tests.workspace.proposals import test_file_edit_proposal_query as query_tests
+from tests.assertions import require_value
 
 root = query_tests.root
 target = query_tests.target
@@ -23,14 +24,14 @@ saved = query_tests.saved
 def ready(saved, setup, engine, monkeypatch):
     monkeypatch.setattr(service, 'SessionLocal', sessionmaker(bind=engine, class_=setup[3]))
     with Session(engine) as session, session.begin():
-        session.scalar(select(FileEditProposal)).status = 'approved'
+        require_value(session.scalar(select(FileEditProposal))).status = 'approved'
     return saved
 
 
 def state(engine):
     with Session(engine) as session:
         p = session.scalar(select(FileEditProposal))
-        return p.application_status, p.application_token
+        return require_value(p).application_status, require_value(p).application_token
 
 
 @pytest.mark.parametrize('outcome', ['applied', 'not_applied', 'uncertain'])
@@ -77,7 +78,7 @@ def test_both_operations_reauthorize(ready, engine, target, monkeypatch, kind, o
 @pytest.mark.parametrize('status', ['pending', 'rejected'])
 def test_only_approved_can_claim(ready, engine, status):
     with Session(engine) as session, session.begin():
-        session.scalar(select(FileEditProposal)).status = status
+        require_value(session.scalar(select(FileEditProposal))).status = status
     with pytest.raises(service.ProposalApplicationError):
         service.claim_task_file_edit_proposal(**ready[0])
     assert state(engine) == ('idle', None)
@@ -88,15 +89,15 @@ def test_binding_checked_for_claim_but_not_result_recording(ready, engine, bindi
     query = ready[0]
     with Session(engine) as session, session.begin():
         w = session.scalar(select(Workspace))
-        previous = w.root_path
-        w.root_path = binding
+        previous = require_value(w).root_path
+        require_value(w).root_path = binding
     with pytest.raises(ProposalBindingChangedError):
         service.claim_task_file_edit_proposal(**query)
     with Session(engine) as session, session.begin():
-        session.scalar(select(Workspace)).root_path = previous
+        require_value(session.scalar(select(Workspace))).root_path = previous
     claim = service.claim_task_file_edit_proposal(**query)
     with Session(engine) as session, session.begin():
-        session.scalar(select(Workspace)).root_path = binding
+        require_value(session.scalar(select(Workspace))).root_path = binding
     service.finish_task_file_edit_proposal(**query, application_token=claim.application_token, outcome='uncertain')
     assert state(engine)[0] == 'uncertain'
 

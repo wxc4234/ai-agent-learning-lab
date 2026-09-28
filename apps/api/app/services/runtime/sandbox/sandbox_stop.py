@@ -2,6 +2,7 @@
 
 import re
 from dataclasses import dataclass
+from typing import Literal
 
 from app.services.runtime.command.command_contracts import CommandRequest
 from app.services.runtime.docker.docker_client import inspect_sandbox_container_by_id, stop_sandbox_container
@@ -23,7 +24,7 @@ class SandboxStateSnapshot:
     """可信daemon单次响应的状态快照，不是持续停止的保证。"""
 
     identity: SandboxContainerIdentity
-    status: str
+    status: Literal["created", "running", "exited"]
     pid: int
 
     @property

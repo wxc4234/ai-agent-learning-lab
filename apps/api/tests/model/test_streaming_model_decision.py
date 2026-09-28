@@ -10,6 +10,10 @@ from openai.types.chat import ChatCompletionChunk
 from app.services.model.model_decision import ModelDecisionError
 from app.services.model.streaming_model_decision import StreamingDeepSeekDecisionMaker
 from app.services.runtime.agent.agent_runtime import FinalAnswer, ModelTextDelta, ToolAction, stream_agent_loop
+from tests.assertions import require_instance
+from openai import AsyncOpenAI
+from typing import cast
+from tests.assertions import require_value
 
 
 def chunk(content=None, finish=None, tools=None, usage=None):
@@ -40,7 +44,7 @@ def maker(parts):
     stream = Stream(parts)
     create = AsyncMock(return_value=stream)
     decide = StreamingDeepSeekDecisionMaker(
-        client=SimpleNamespace(chat=SimpleNamespace(completions=SimpleNamespace(create=create))),
+        client=cast(AsyncOpenAI, SimpleNamespace(chat=SimpleNamespace(completions=SimpleNamespace(create=create)))),
         model='test', system_prompt='system', user_prompt='user',
     )
     return decide, stream, create
@@ -65,7 +69,7 @@ def test_text_arrives_before_upstream_finishes_and_usage_is_aggregated():
     parts = asyncio.run(run())
     assert parts[1] == ModelTextDelta('好')
     assert isinstance(parts[2], FinalAnswer) and parts[2].content == '你好'
-    assert parts[2].model_usage.total_tokens == 12
+    assert require_value(parts[2].model_usage).total_tokens == 12
     assert upstream.closed
     assert create.call_args.kwargs['stream'] is True
     assert create.call_args.kwargs['stream_options'] == {'include_usage': True}
@@ -130,7 +134,7 @@ def test_streamed_tool_round_feeds_complete_observation_before_final_text():
     second = Stream([chunk('面积是'), chunk('12。', finish='stop')])
     create = AsyncMock(side_effect=[first, second])
     decide = StreamingDeepSeekDecisionMaker(
-        client=SimpleNamespace(chat=SimpleNamespace(completions=SimpleNamespace(create=create))),
+        client=cast(AsyncOpenAI, SimpleNamespace(chat=SimpleNamespace(completions=SimpleNamespace(create=create)))),
         model='test', system_prompt='system', user_prompt='area',
     )
 
@@ -143,6 +147,6 @@ def test_streamed_tool_round_feeds_complete_observation_before_final_text():
     assert isinstance(events[-1], AgentLoopCompleted)
     assert events[-1].result.answer == '面积是12。'
     messages = decide._messages
-    assert messages[2]['tool_calls'][0]['function']['arguments'] == '{"width":3,"height":4}'
+    assert require_instance(messages[2], dict)['tool_calls'][0]['function']['arguments'] == '{"width":3,"height":4}'
     assert messages[3]['role'] == 'tool' and messages[3]['tool_call_id'] == 'area'
     assert first.closed and second.closed

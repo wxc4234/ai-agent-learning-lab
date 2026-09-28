@@ -18,6 +18,11 @@ from app.services.workspace.samples.task_sample_binding import TaskSampleBinding
 OUTPUT = Path('/private/tmp/agent-ui-patch-application/output/playwright')
 
 
+
+
+
+from tests.assertions import require_value
+
 def install_patch_application_fixture(app):
     original = app.router.lifespan_context
 
@@ -54,9 +59,9 @@ def install_patch_application_fixture(app):
                         assert not binding.busy and binding.state == 'uncertain'
                         with SessionLocal() as session, session.begin():
                             task = session.scalar(select(Task).where(Task.external_id == item['task_id']))
-                            rows = list(session.scalars(select(FileEditProposal).where(FileEditProposal.task_id == task.id)))
+                            rows = list(session.scalars(select(FileEditProposal).where(FileEditProposal.task_id == require_value(task).id)))
                             assert all(row.application_status in ('idle', 'applied', 'not_applied') for row in rows)
-                            workspace = task.workspace
+                            workspace = require_value(task).workspace
                             assert workspace.root_path == item['root']
                             workspace.root_path = None
                             origin = session.get(WorkspaceSampleOrigin, workspace.id)

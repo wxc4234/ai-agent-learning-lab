@@ -13,6 +13,7 @@ from app.services.workspace.files import workspace_file
 from app.services.workspace.directory import workspace_path
 from app.services.workspace.proposals.file_edit_proposal_service import ProposalBindingChangedError
 from tests.workspace.proposals import test_file_edit_proposal_query as query_tests
+from tests.assertions import require_value
 
 root = query_tests.root
 target = query_tests.target
@@ -25,7 +26,7 @@ saved = query_tests.saved
 def ready(saved, setup, engine, monkeypatch):
     monkeypatch.setattr(service, 'SessionLocal', sessionmaker(bind=engine, class_=setup[3]))
     with Session(engine) as session, session.begin():
-        session.scalar(select(FileEditProposal)).status = 'approved'
+        require_value(session.scalar(select(FileEditProposal))).status = 'approved'
     return saved
 
 
@@ -59,7 +60,7 @@ def test_snapshot_is_readonly_private_and_closes_transactions(ready, database, m
     assert all(sql.lstrip().lower().startswith('select') and 'for update' not in sql.lower() for sql in statements)
     assert file.read_bytes() == before
     with pytest.raises(FrozenInstanceError):
-        result.proposal_id = 'changed'
+        setattr(result, 'proposal_id', 'changed')  # noqa: B010 -- 测试冻结属性或动态故障注入，需要运行时属性访问
 
 
 @pytest.mark.parametrize('kind', [
@@ -84,7 +85,7 @@ def test_unapproved_rejected_before_read(ready, engine, status, monkeypatch):
 @pytest.mark.parametrize('binding', [None, '/changed'])
 def test_binding_change_rejected_before_read(ready, engine, binding, monkeypatch):
     with Session(engine) as session, session.begin():
-        session.scalar(select(Workspace)).root_path = binding
+        require_value(session.scalar(select(Workspace))).root_path = binding
     monkeypatch.setattr(service, 'read_task_text_file', lambda **args: pytest.fail('no file read'))
     with pytest.raises(ProposalBindingChangedError):
         service.check_task_file_edit_proposal(**ready[0])
@@ -139,7 +140,7 @@ def test_binding_changed_between_snapshot_and_path_resolution(ready, engine, mon
 
     def changed(**args):
         with Session(engine) as session, session.begin():
-            session.scalar(select(Workspace)).root_path = '/changed'
+            require_value(session.scalar(select(Workspace))).root_path = '/changed'
         return read(**args)
 
     monkeypatch.setattr(service, 'read_task_text_file', changed)
@@ -157,15 +158,15 @@ def test_changes_during_read_are_rechecked(ready, engine, target, change, monkey
         result = read(**args)
         with Session(engine) as session, session.begin():
             if change == 'binding':
-                session.scalar(select(Workspace)).root_path = None
+                require_value(session.scalar(select(Workspace))).root_path = None
             elif change == 'owner':
-                session.scalar(select(Workspace)).user_id = target['other_id']
+                require_value(session.scalar(select(Workspace))).user_id = target['other_id']
             else:
                 row = session.scalar(select(FileEditProposal))
                 if change == 'content':
-                    row.proposed_content = 'changed'
+                    require_value(row).proposed_content = 'changed'
                 else:
-                    row.status = 'rejected'
+                    require_value(row).status = 'rejected'
         return result
 
     monkeypatch.setattr(service, 'read_task_text_file', changed)
@@ -246,9 +247,9 @@ def test_internal_repository_does_not_flush_pending_changes(ready, engine, targe
     from app.models import Task
     with Session(engine) as session:
         task = session.get(Task, target['task_pk'])
-        task.title = 'uncommitted'
+        require_value(task).title = 'uncommitted'
         result = service.read_owned_proposal_application_source(session, **ready[0])
         assert result['status'] == 'approved' and task in session.dirty
         with Session(engine) as other:
-            assert other.get(Task, target['task_pk']).title == '空任务'
+            assert require_value(other.get(Task, target['task_pk'])).title == '空任务'
         session.rollback()

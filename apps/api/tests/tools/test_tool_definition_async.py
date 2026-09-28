@@ -11,6 +11,8 @@ from app.tools.errors import SafeToolExecutionError
 from app.tools.registry import (
     GetCurrentTimeArguments, ToolContextRequiredError, ToolDefinition,
 )
+from typing import Any
+from tests.assertions import require_instance
 
 
 CONTEXT = ToolExecutionContext(user_id=1, conversation_id="conversation", workspace_id="workspace", task_id="task")
@@ -57,9 +59,9 @@ def test_correct_payload_context_and_schema(asynchronous, required):
     assert invoke(tool, context=CONTEXT) == "ok"
     assert calls == [{"utc_offset_hours": 8, **({"context": CONTEXT} if required else {})}]
     assert tool.validate_arguments('{"utc_offset_hours":8}') == ARGS
-    assert tool.as_model_tool()["function"]["parameters"] == GetCurrentTimeArguments.model_json_schema()
+    assert require_instance(tool.as_model_tool()["function"], dict)["parameters"] == GetCurrentTimeArguments.model_json_schema()
     with pytest.raises(FrozenInstanceError):
-        tool.requires_context = False
+        setattr(tool, 'requires_context', False)  # noqa: B010 -- 测试冻结属性或动态故障注入，需要运行时属性访问
 
 
 @pytest.mark.parametrize("asynchronous", [False, True])
@@ -74,7 +76,7 @@ def test_preflight_blocks_executor(asynchronous, case):
     async def forbidden_async(**kwargs):
         forbidden(**kwargs)
 
-    kwargs = {"async_executor": forbidden_async} if asynchronous else {"executor": forbidden}
+    kwargs: dict[str, Any] = {"async_executor": forbidden_async} if asynchronous else {"executor": forbidden}
     tool = definition(**kwargs, requires_context=True)
     arguments, context, expected = ARGS, CONTEXT, TypeError
     if case == "missing":
@@ -86,10 +88,10 @@ def test_preflight_blocks_executor(asynchronous, case):
     else:
         tool = ToolDefinition(name="extra", description="test", arguments_model=ExtraArguments,
                               requires_context=True, **kwargs)
-        arguments = ExtraArguments(context="model-controlled")
+        arguments = ExtraArguments(context="model-controlled")  # pyright: ignore[reportCallIssue] -- 反例故意构造不受支持的数据，保留运行时校验
         expected = ValueError
     with pytest.raises(expected):
-        invoke(tool, arguments, context=context)
+        invoke(tool, arguments, context=context)  # pyright: ignore[reportArgumentType] -- 故意越过静态签名，验证运行时拒绝非法输入
 
 
 @pytest.mark.parametrize("alias", [False, True])

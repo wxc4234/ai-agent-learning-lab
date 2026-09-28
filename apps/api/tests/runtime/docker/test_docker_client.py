@@ -7,6 +7,7 @@ from pathlib import Path
 import pytest
 
 from app.services.runtime.docker import docker_client as client
+from typing import cast
 
 
 TOKEN = "a" * 32
@@ -247,7 +248,7 @@ def test_process_exits_between_poll_and_kill(monkeypatch):
             raise ProcessLookupError
         process.kill = raced_kill
         async def spawned():
-            return process
+            return cast(asyncio.subprocess.Process, process)
         await client._finish_client(asyncio.create_task(spawned()), None)
         assert process.waited
         assert_no_workers()

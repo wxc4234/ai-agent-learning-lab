@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 from app.models import Conversation, Task, User, Workspace
 from app.repositories.workspace.workspace_repository import WorkspaceNotAccessibleError
 from app.services.tasks import task_service as service
+from tests.assertions import require_value
 
 
 @pytest.fixture
@@ -42,20 +43,20 @@ def test_success_commits_pair_and_returns_plain_data(engine, project, expire):
         with Session(engine) as reader:
             task = reader.scalar(select(Task))
             conversation = reader.scalar(select(Conversation))
-            assert task.workspace.external_id == result.workspace_id == project[1]
-            assert task.workspace.root_path is None
-            assert task.title == conversation.title == result.title == '新任务'
-            assert conversation.user_id == task.workspace.user_id == project[0]
-            assert task.conversation is conversation
-            assert task.external_id == result.external_id
-            assert conversation.external_id == result.conversation_id
-            assert task.created_at == result.created_at
+            assert require_value(task).workspace.external_id == result.workspace_id == project[1]
+            assert require_value(task).workspace.root_path is None
+            assert require_value(task).title == require_value(conversation).title == result.title == '新任务'
+            assert require_value(conversation).user_id == require_value(task).workspace.user_id == project[0]
+            assert require_value(task).conversation is conversation
+            assert require_value(task).external_id == result.external_id
+            assert require_value(conversation).external_id == result.conversation_id
+            assert require_value(task).created_at == result.created_at
     assert set(asdict(result)) == {'external_id', 'workspace_id', 'conversation_id', 'title', 'created_at'}
     assert result.created_at.tzinfo is not None
     assert result.external_id != result.conversation_id
     assert UUID(hex=result.external_id).version == UUID(hex=result.conversation_id).version == 4
     with pytest.raises(FrozenInstanceError):
-        result.title = '不允许修改'
+        setattr(result, 'title', '不允许修改')  # noqa: B010 -- 测试冻结属性或动态故障注入，需要运行时属性访问
 
 
 @pytest.mark.parametrize('title', ['', ' \t\n\u3000', '字' * 201, '😀' * 201, None, 123, [], {}])
@@ -107,9 +108,9 @@ def test_existing_transaction_untouched(engine, project, kind):
         transaction = session.get_transaction()
         with pytest.raises(RuntimeError, match='无活动事务'):
             create(session, project)
-        assert session.get_transaction() is transaction and transaction.is_active
+        assert session.get_transaction() is transaction and require_value(transaction).is_active
         if kind == 'pending':
-            assert pending in session.new and pending.id is None
+            assert pending in session.new and require_value(pending).id is None
         session.commit()
     assert counts(engine) == (0, 0)
     if pending is not None:

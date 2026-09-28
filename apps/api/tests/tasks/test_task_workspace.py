@@ -1,4 +1,5 @@
 """真实 PostgreSQL 工作台读取/归属/首轮总结失败与持久化。"""
+
 import pytest
 from sqlalchemy.orm import Session
 from app.models import Conversation, Message
@@ -7,6 +8,7 @@ from app.services.tasks import task_workspace
 import tests.workspace.directory.test_workspace_binding_api as binding
 from tests.local.test_local_mode import HEADERS
 from tests.tasks.test_task_api import post
+from tests.assertions import require_value
 
 local_client = binding.local_client
 target = binding.target
@@ -32,7 +34,7 @@ def test_list_pages_and_messages(local_client, target):
 def persist(engine, task):
     with Session(engine) as session, session.begin():
         conversation = session.scalar(select(Conversation).where(Conversation.external_id == task['conversation_id']))
-        session.add_all([Message(conversation_id=conversation.id, role=role, content=content) for role, content in [('user', '请实现搜索'), ('assistant', '可以先增加搜索接口')]])
+        session.add_all([Message(conversation_id=require_value(conversation).id, role=role, content=content) for role, content in [('user', '请实现搜索'), ('assistant', '可以先增加搜索接口')]])
 
 
 def test_summary_persisted_and_not_repeated(local_client, target, engine, monkeypatch):
@@ -96,7 +98,7 @@ def test_late_summary_does_not_overwrite_changed_title(local_client, target, eng
     async def generate(messages):
         with Session(engine) as session, session.begin():
             row = session.scalar(select(Task).where(Task.external_id == created['external_id']))
-            row.title = '用户后来的标题'
+            require_value(row).title = '用户后来的标题'
         return '迟到的标题'
     monkeypatch.setattr(task_workspace, 'generate_title', generate)
     assert local_client.post(path + '/title', headers=HEADERS, json={}).json() == {'title': '用户后来的标题'}
@@ -110,7 +112,7 @@ def test_other_owner_cannot_list_read_or_summarize(local_client, target, engine,
         session.add(owner)
         session.flush()
         workspace = session.scalar(select(Workspace).where(Workspace.external_id == target[0]))
-        workspace.user_id = owner.id
+        require_value(workspace).user_id = owner.id
     async def forbidden(messages):
         pytest.fail('must authorize before model')
     monkeypatch.setattr(task_workspace, 'generate_title', forbidden)

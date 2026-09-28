@@ -18,8 +18,11 @@ sys.path.insert(0, str(API))
 spec = importlib.util.spec_from_file_location(
     "lesson_conftest", API / "tests/conftest.py"
 )
-module = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(module)
+
+from tests.assertions import require_value
+
+module = importlib.util.module_from_spec(require_value(spec))
+require_value(require_value(spec).loader).exec_module(module)
 database = module.test_database_url.__wrapped__()
 url = next(database)
 schema = module.empty_engine.__wrapped__(url)
@@ -58,7 +61,7 @@ try:
         now = datetime.now(UTC)
         create_login_session(
             session,
-            user_id=user.id,
+            user_id=require_value(user).id,
             token_hash=sha256(("e" * 43).encode()).hexdigest(),
             created_at=now - timedelta(hours=2),
             expires_at=now - timedelta(hours=1),
@@ -239,14 +242,14 @@ try:
             dead.wait(timeout=10)
             with Session(engine) as session, session.begin():
                 conversation = session.scalar(select(Conversation).where(Conversation.external_id == task['conversation_id']))
-                session.add(ConversationExecutionSlot(conversation_id=conversation.id, owner_token='c' * 32, owner_host_id=host_identity(), owner_pid=dead.pid))
-                session.add(AgentRun(conversation_id=conversation.id, status='running', owner_host_id=host_identity(), owner_pid=dead.pid))
-                session.add(Message(conversation_id=conversation.id, role='user', content='异常退出前已持久化的消息'))
+                session.add(ConversationExecutionSlot(conversation_id=require_value(conversation).id, owner_token='c' * 32, owner_host_id=host_identity(), owner_pid=dead.pid))
+                session.add(AgentRun(conversation_id=require_value(conversation).id, status='running', owner_host_id=host_identity(), owner_pid=dead.pid))
+                session.add(Message(conversation_id=require_value(conversation).id, role='user', content='异常退出前已持久化的消息'))
             browser_fixture = {"RECOVERY_TASK": json.dumps(task)}
         print("Isolated services ready; starting browser verification.", flush=True)
         try:
             subprocess.run(
-                [NODE, str(ROOT / "apps/web/test/browser" / (os.environ.get("BROWSER_TEST_SCRIPT") or ("local-mode.mjs" if test_mode == "local" else "login-page.mjs")))],
+                [require_value(NODE), str(ROOT / "apps/web/test/browser" / (os.environ.get("BROWSER_TEST_SCRIPT") or ("local-mode.mjs" if test_mode == "local" else "login-page.mjs")))],
                 check=True,
                 timeout=720,
                 env=os.environ | browser_fixture | {"AUTH_TEST_BASE_URL": "http://localhost:13000", "BROWSER_APP_MODE": test_mode, "BROWSER_TEST_DIRECTORY": env.get("BROWSER_TEST_DIRECTORY", "")},

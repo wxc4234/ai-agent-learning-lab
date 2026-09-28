@@ -112,7 +112,7 @@ def test_cancellation_propagates(execution, monkeypatch, error):
     assert caught.value is error
 
 
-@pytest.mark.parametrize('snapshot', [object(), GitStatusSnapshot((object(),), 0),
+@pytest.mark.parametrize('snapshot', [object(), GitStatusSnapshot((object(),), 0),  # pyright: ignore[reportArgumentType] -- 反例故意构造不受支持的数据，保留运行时校验
     GitStatusSnapshot((GitStatusEntry('??', 'untracked', '\ud800'),), 1)])
 def test_projection_failure_never_empty_success(execution, monkeypatch, snapshot):
     execute, manager, _ = execution
@@ -134,4 +134,4 @@ def test_json_expansion_budget(execution, monkeypatch):
 
 def test_manager_cannot_be_model_mapping():
     with pytest.raises(TypeError):
-        adapter.make_git_sample_status_executor({})
+        adapter.make_git_sample_status_executor({})  # pyright: ignore[reportArgumentType] -- 故意越过静态签名，验证运行时拒绝非法输入

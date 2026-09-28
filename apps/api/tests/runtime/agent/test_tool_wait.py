@@ -10,13 +10,15 @@ from app.services.runtime.sandbox.sandbox_command import SandboxCommandCancelled
 from app.tools import run_command as command_tool
 from tests.tools.test_run_command import RECOVERY
 from tests.runtime.agent.test_async_tool_dispatch import register, consume, decide
+from app.services.runtime.agent.agent_runtime import ToolErrorObservation
+from tests.assertions import require_instance
 
 
 @pytest.mark.parametrize("kind", ["ordinary_cancel", "special_cancel", "return", "error"])
 def test_timeout_source_independent_of_cleanup_outcome(kind):
     async def executor():
         try:
-            await asyncio.Future()
+            return await asyncio.Future[str]()
         except asyncio.CancelledError:
             if kind == "special_cancel":
                 raise SandboxCommandCancelled(recovery=RECOVERY) from None
@@ -51,7 +53,7 @@ def test_external_and_repeated_cancel_wait_for_cleanup(timeout_first):
         async def executor():
             entered.set()
             try:
-                await asyncio.Future()
+                return await asyncio.Future[str]()
             finally:
                 cleaning.set()
                 await release.wait()
@@ -84,7 +86,7 @@ def test_runtime_classification_and_recovery(monkeypatch, mode, kind):
         journal = CommandRecoveryJournal()
         async def sandbox(**kwargs):
             try:
-                await asyncio.Future()
+                return await asyncio.Future[str]()
             except asyncio.CancelledError:
                 raise SandboxCommandCancelled(recovery=RECOVERY) from None
         async def executor(**kwargs):
@@ -95,7 +97,7 @@ def test_runtime_classification_and_recovery(monkeypatch, mode, kind):
         register(monkeypatch, executor, timeout=0.01)
         result = await consume(mode, decide=decide)
         observation = result.observations[0]
-        assert observation.code == ("tool_timeout" if kind == "budget" else "tool_execution_failed")
+        assert require_instance(observation, ToolErrorObservation).code == ("tool_timeout" if kind == "budget" else "tool_execution_failed")
         assert "PRIVATE" not in str(observation)
         if kind == "budget":
             assert journal.records[0].recovery is RECOVERY

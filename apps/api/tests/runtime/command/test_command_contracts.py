@@ -61,7 +61,7 @@ def test_request_cannot_override_server_policy(name):
 
 def test_missing_argv_and_public_schema():
     with pytest.raises(ValidationError):
-        CommandRequest()
+        CommandRequest()  # pyright: ignore[reportCallIssue] -- 故意越过静态签名，验证运行时拒绝非法输入
     schema = CommandRequest.model_json_schema()
     assert set(schema["properties"]) == {"argv", "working_directory"}
     assert schema["additionalProperties"] is False
@@ -72,7 +72,7 @@ def test_missing_argv_and_public_schema():
 
 @pytest.mark.parametrize("code", [0, 1, -9])
 def test_exited_includes_nonzero_and_signal_codes(code):
-    result = CommandResult(status="exited", exit_code=code, duration_ms=0)
+    result = CommandResult.model_validate({'status': "exited", 'exit_code': code, 'duration_ms': 0})
     assert result.status == "exited"
     assert result.exit_code == code
 
@@ -80,7 +80,7 @@ def test_exited_includes_nonzero_and_signal_codes(code):
 @pytest.mark.parametrize("status", ["timed_out", "cancelled"])
 @pytest.mark.parametrize("code", [None, 0, 1, -15])
 def test_interrupted_result_can_preserve_actual_exit_code(status, code):
-    result = CommandResult(status=status, exit_code=code, duration_ms=10)
+    result = CommandResult.model_validate({'status': status, 'exit_code': code, 'duration_ms': 10})
     assert result.exit_code == code
 
 
@@ -89,7 +89,7 @@ def test_interrupted_result_can_preserve_actual_exit_code(status, code):
     "sandbox_unavailable", "process_start_failed",
 ])
 def test_start_failure_has_fixed_category_and_no_process_output(code):
-    result = CommandResult(status="start_failed", start_error_code=code, duration_ms=0)
+    result = CommandResult.model_validate({'status': "start_failed", 'start_error_code': code, 'duration_ms': 0})
     assert result.exit_code is None
     assert result.stdout == result.stderr == ""
     assert not result.stdout_truncated and not result.stderr_truncated
@@ -109,7 +109,7 @@ def test_inconsistent_start_failure_rejected(patch):
 @pytest.mark.parametrize("status", ["exited", "timed_out", "cancelled"])
 def test_started_command_cannot_have_start_error(status):
     with pytest.raises(ValidationError):
-        CommandResult(status=status, exit_code=1, duration_ms=0, start_error_code="permission_denied")
+        CommandResult.model_validate({'status': status, 'exit_code': 1, 'duration_ms': 0, 'start_error_code': "permission_denied"})
 
 
 @pytest.mark.parametrize("patch", [
@@ -135,21 +135,17 @@ def test_required_result_fields(field):
 def test_per_stream_output_character_boundary(field):
     # 多字节字符证明这里限制的是字符，不是实际捕获的原始字节。
     text = "中" * 65_536
-    result = CommandResult(status="exited", exit_code=0, duration_ms=0, **{field: text})
+    result = CommandResult.model_validate({'status': "exited", 'exit_code': 0, 'duration_ms': 0, field: text})
     assert getattr(result, field) == text
     with pytest.raises(ValidationError):
-        CommandResult(status="exited", exit_code=0, duration_ms=0, **{field: text + "x"})
+        CommandResult.model_validate({'status': "exited", 'exit_code': 0, 'duration_ms': 0, field: text + "x"})
 
 
 @pytest.mark.parametrize("stdout_truncated,stderr_truncated", [
     (False, False), (True, False), (False, True), (True, True),
 ])
 def test_independent_truncation_and_json_round_trip(stdout_truncated, stderr_truncated):
-    result = CommandResult(
-        status="exited", exit_code=1, duration_ms=5,
-        stdout="stdout", stderr="stderr",
-        stdout_truncated=stdout_truncated, stderr_truncated=stderr_truncated,
-    )
+    result = CommandResult.model_validate({'status': "exited", 'exit_code': 1, 'duration_ms': 5, 'stdout': "stdout", 'stderr': "stderr", 'stdout_truncated': stdout_truncated, 'stderr_truncated': stderr_truncated})
     restored = CommandResult.model_validate_json(result.model_dump_json())
     assert restored == result
     assert restored.stdout_truncated is stdout_truncated
@@ -162,8 +158,7 @@ def test_independent_truncation_and_json_round_trip(stdout_truncated, stderr_tru
 @pytest.mark.parametrize("daemon_error", [None, False, True])
 @pytest.mark.parametrize("code", [0, 7])
 def test_success_requires_known_negative_error_facts(oom, daemon_error, code):
-    result = CommandResult(status="exited", exit_code=code, duration_ms=0,
-                           oom_killed=oom, daemon_error=daemon_error)
+    result = CommandResult.model_validate({'status': "exited", 'exit_code': code, 'duration_ms': 0, 'oom_killed': oom, 'daemon_error': daemon_error})
     assert result.succeeded is (code == 0 and oom is False and daemon_error is False)
     restored = CommandResult.model_validate_json(result.model_dump_json())
     assert restored == result and restored.succeeded is result.succeeded
@@ -172,8 +167,7 @@ def test_success_requires_known_negative_error_facts(oom, daemon_error, code):
 
 @pytest.mark.parametrize("status", ["timed_out", "cancelled"])
 def test_interruption_is_not_success_even_with_clean_exit(status):
-    result = CommandResult(status=status, exit_code=0, duration_ms=1,
-                           oom_killed=False, daemon_error=False)
+    result = CommandResult.model_validate({'status': status, 'exit_code': 0, 'duration_ms': 1, 'oom_killed': False, 'daemon_error': False})
     assert not result.succeeded
 
 
@@ -181,19 +175,18 @@ def test_interruption_is_not_success_even_with_clean_exit(status):
 @pytest.mark.parametrize("value", [0, 1, "false", "true", 0.0])
 def test_exit_error_facts_are_strict_booleans(field, value):
     with pytest.raises(ValidationError):
-        CommandResult(status="exited", exit_code=0, duration_ms=0, **{field: value})
+        CommandResult.model_validate({'status': "exited", 'exit_code': 0, 'duration_ms': 0, field: value})
 
 
 @pytest.mark.parametrize("field", ["oom_killed", "daemon_error"])
 @pytest.mark.parametrize("value", [False, True])
 def test_start_failure_cannot_claim_observed_exit_facts(field, value):
     with pytest.raises(ValidationError):
-        CommandResult(status="start_failed", start_error_code="process_start_failed",
-                      duration_ms=0, **{field: value})
+        CommandResult.model_validate({'status': "start_failed", 'start_error_code': "process_start_failed", 'duration_ms': 0, field: value})
 
 
 def test_absent_exit_facts_stay_unknown_and_success_cannot_be_supplied():
-    result = CommandResult(status="exited", exit_code=0, duration_ms=0)
+    result = CommandResult.model_validate({'status': "exited", 'exit_code': 0, 'duration_ms': 0})
     assert result.oom_killed is None and result.daemon_error is None
     assert not result.succeeded
     with pytest.raises(ValidationError):

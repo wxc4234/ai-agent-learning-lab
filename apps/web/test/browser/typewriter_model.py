@@ -1,5 +1,9 @@
 """隔离 UI 流式夹具：真实 SDK 适配器解析受控延迟 chunk。"""
 
+from openai import AsyncOpenAI
+
+from typing import cast
+
 import asyncio
 from types import SimpleNamespace
 from openai.types.chat import ChatCompletionChunk
@@ -31,7 +35,7 @@ async def stream_typewriter():
         return Stream()
 
     maker = StreamingDeepSeekDecisionMaker(
-        client=SimpleNamespace(chat=SimpleNamespace(completions=SimpleNamespace(create=create))),
+        client=cast(AsyncOpenAI, SimpleNamespace(chat=SimpleNamespace(completions=SimpleNamespace(create=create)))),
         model='test', system_prompt='system', user_prompt='test',
     )
     async for part in maker.stream_decisions(()):

@@ -1,6 +1,8 @@
 """并发排空命令的两路输出，并等待读取任务完成收尾。"""
 
 import asyncio
+
+from app.services.runtime.command.byte_reader import AsyncByteReader
 from dataclasses import dataclass
 
 from app.services.runtime.command.command_output import CapturedCommandOutput
@@ -17,8 +19,8 @@ class CapturedCommandStreams:
 
 async def drain_command_streams(
     *,
-    stdout: asyncio.StreamReader,
-    stderr: asyncio.StreamReader,
+    stdout: AsyncByteReader,
+    stderr: AsyncByteReader,
 ) -> CapturedCommandStreams:
     """并发读取 stdout/stderr；失败或取消时等待读取任务退出。"""
 

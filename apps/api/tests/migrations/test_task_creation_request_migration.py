@@ -15,6 +15,10 @@ from app.database import Base
 from app.models import TaskCreationRequest
 from app.services.tasks.task_deletion_service import delete_workspace_task
 from tests.migrations.test_database_readiness import migrate
+from psycopg import Error as PsycopgError
+from sqlalchemy import Table
+from tests.assertions import require_instance
+from tests.assertions import require_value
 
 
 @pytest.fixture
@@ -40,7 +44,7 @@ def snapshot(connection, metadata):
 def insert_receipt(connection, **overrides):
     values = {'user_id': 1, 'workspace_id': 1, 'request_key': 'a' * 32, 'request_hash': 'b' * 64, 'task_id': 1}
     values.update(overrides)
-    connection.execute(TaskCreationRequest.__table__.insert().values(**values))
+    connection.execute(require_instance(TaskCreationRequest.__table__, Table).insert().values(**values))
 
 
 def test_migration_round_trip(migrated):
@@ -81,7 +85,7 @@ def test_migration_round_trip(migrated):
 def test_invalid_receipts(migrated, overrides, state):
     with pytest.raises(DBAPIError) as caught, migrated[0].begin() as connection:
         insert_receipt(connection, **overrides)
-    assert caught.value.orig.sqlstate == state
+    assert require_instance(require_value(caught.value.orig), PsycopgError).sqlstate == state
 
 
 def test_scope_and_orm(migrated):
@@ -93,11 +97,11 @@ def test_scope_and_orm(migrated):
         insert_receipt(connection, workspace_id=2, task_id=None)
     with pytest.raises(DBAPIError) as caught, engine.begin() as connection:
         insert_receipt(connection, request_hash='c' * 64)
-    assert caught.value.orig.sqlstate == '23505'
+    assert require_instance(require_value(caught.value.orig), PsycopgError).sqlstate == '23505'
     with Session(engine) as session:
         row = session.scalar(select(TaskCreationRequest).where(TaskCreationRequest.task_id == 1))
-        assert row.id > 0 and row.created_at.tzinfo is not None
-        assert row.request_key == 'a' * 32
+        assert require_value(row).id > 0 and require_value(row).created_at.tzinfo is not None
+        assert require_value(row).request_key == 'a' * 32
 
 
 def test_real_deletion_keeps_key(migrated):
@@ -112,4 +116,4 @@ def test_real_deletion_keeps_key(migrated):
         assert connection.execute(text('SELECT count(*) FROM tasks')).scalar_one() == 0
     with pytest.raises(DBAPIError) as caught, engine.begin() as connection:
         insert_receipt(connection, task_id=None)
-    assert caught.value.orig.sqlstate == '23505'
+    assert require_instance(require_value(caught.value.orig), PsycopgError).sqlstate == '23505'

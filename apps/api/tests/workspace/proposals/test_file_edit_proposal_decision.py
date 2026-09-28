@@ -14,6 +14,9 @@ from app.models import FileEditProposal, Workspace
 from app.services.workspace.proposals import file_edit_proposal_decision as decision_service
 from app.services.workspace.proposals import file_edit_proposal_service as save_service
 from tests.workspace.proposals import test_file_edit_proposal_query as query_tests
+from psycopg import Error as PsycopgError
+from tests.assertions import require_instance
+from tests.assertions import require_value
 
 root = query_tests.root
 target = query_tests.target
@@ -48,7 +51,7 @@ def test_commit_public_snapshot_and_unchanged_file(ready, engine, database, deci
     assert save_service.get_task_file_edit_proposal(**query).status == decision
     assert sessions[-1].closed and file.read_bytes() == before
     with pytest.raises(FrozenInstanceError):
-        result.status = "pending"
+        setattr(result, 'status', "pending")  # noqa: B010 -- 测试冻结属性或动态故障注入，需要运行时属性访问
     locks = [sql.lower() for sql in database[1] if "for update" in sql.lower()]
     assert len(locks) == 4
     assert all(f"from {name}" in sql for name, sql in zip(
@@ -98,7 +101,7 @@ def test_binding_change_prevents_only_approval(ready, engine, binding, decision)
     query, file, _ = ready
     before = file.read_bytes()
     with Session(engine) as session, session.begin():
-        session.scalar(select(Workspace)).root_path = binding
+        require_value(session.scalar(select(Workspace))).root_path = binding
     if decision == "approved":
         with pytest.raises(save_service.ProposalBindingChangedError):
             decision_service.decide_task_file_edit_proposal(**query, decision=decision)
@@ -113,7 +116,7 @@ def test_binding_change_prevents_only_approval(ready, engine, binding, decision)
 def test_truncated_diff_prevents_only_approval(ready, engine, decision):
     query, _, _ = ready
     with Session(engine) as session, session.begin():
-        session.scalar(select(FileEditProposal)).diff_truncated = True
+        require_value(session.scalar(select(FileEditProposal))).diff_truncated = True
     if decision == "approved":
         with pytest.raises(decision_service.ProposalDecisionError) as caught:
             decision_service.decide_task_file_edit_proposal(**query, decision=decision)
@@ -223,7 +226,7 @@ def test_decision_holds_ownership_and_deletion_locks(ready, engine, target, monk
         with pytest.raises(DBAPIError) as caught, engine.begin() as connection:
             connection.execute(text("SET LOCAL lock_timeout = '100ms'"))
             connection.execute(text(sql), {"other": target["other_id"], "task": target["task_pk"]})
-        assert caught.value.orig.sqlstate == "55P03"
+        assert require_instance(require_value(caught.value.orig), PsycopgError).sqlstate == "55P03"
         return row
 
     monkeypatch.setattr(decision_service, "lock_file_edit_proposal_for_decision", check)

@@ -49,12 +49,16 @@ print(p.read_text(), end='', flush=True)
 """
 
 
+
+
+from tests.assertions import require_value
+
 @pytest.mark.parametrize('mode', ['read', 'nonzero', 'timeout', 'cancel', 'create_loss', 'delete_loss'])
 def test_real_task_snapshot_command(lab, target, engine, monkeypatch, mode):
     bindings, scope, _ = lab
     bindings.bind(**scope)
     with Session(engine) as session:
-        task_root = Path(session.scalar(select(Workspace.root_path)))
+        task_root = Path(require_value(session.scalar(select(Workspace.root_path))))
     task_file = task_root / 'example.txt'
     task_file.write_bytes(b'task snapshot content\n')
     original_mode = task_file.stat().st_mode
@@ -124,8 +128,8 @@ def test_real_task_snapshot_command(lab, target, engine, monkeypatch, mode):
             except (owner.SampleCommandUnconfirmed, owner.SampleCommandCancelled) as error:
                 recovery = error.recovery
                 assert mode in ('timeout', 'cancel', 'create_loss', 'delete_loss')
-                assert recovery.sample is audit['sample'] and recovery.sample.root.exists()
-                assert (recovery.sample.root / 'example.txt').read_bytes() == b'task snapshot content\n'
+                assert recovery.sample is audit['sample'] and require_value(recovery.sample).root.exists()
+                assert (require_value(recovery.sample).root / 'example.txt').read_bytes() == b'task snapshot content\n'
                 if mode in ('timeout', 'cancel'):
                     assert recovery.stop_confirmed and recovery.start_attempted
                     if mode == 'cancel':

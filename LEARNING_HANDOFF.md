@@ -1,24 +1,24 @@
 # AI Agent 学习交接
 
-更新：2026-09-24（Asia/Shanghai）。这是唯一动态接续入口；只保留当前快照，禁止追加历史课程流水账。教学与维护规则见 [AGENTS.md](AGENTS.md)。
+更新：2026-09-28（Asia/Shanghai）。这是唯一动态接续入口；只保留当前快照，禁止追加历史课程流水账。教学与维护规则见 [AGENTS.md](AGENTS.md)。
 
 ## 当前状态
 
 - 正式进度：第 1～4 周完成，4/12；第 5 周进行中。完整任务与阶段能力见 [课程大纲](LEARNING_CURRICULUM.md)。
 - 主产品：本地优先 PC Coding Agent；Next.js + FastAPI + PostgreSQL + Redis，模型由用户配置。账号模式保留为扩展。
 - 主仓库使用 `main`；每次接续重新检查分支与工作区，不把历史验收视为当前 checkout 已复验。
-- 最新工程完成：模型公开文本真实流式传输至 Markdown UI；完整工具参数才执行、成功完整回答一次持久化。发送/重试时将本轮问题定位到对话区顶部，流式增量不改变阅读位置。用户追加产品需求，唯一下一课不变。本次流式与滚动改动已获用户授权随文档提交至 main；同步状态以 Git 为准。
-- 本课由教练按“你直接完成了吧”的单课授权实现、测试并收尾；不标记学习者独立掌握，授权不延续到下一课。补丁解析核心仍保留学习者实现。用户已于本次收尾明确授权提交并推送远程 main；授权仅涵盖本次收尾，不延续到下一课。
+- 最新工程完成：用户授权的全仓库类型与弃用维护，覆盖生产代码、测试和脚本；统一 Python 检查入口，修复可空值、异步生成器契约与过期测试夹具。最近学习课仍为 Git 样例 diff 受控只读采集，学习者按参考实现核心；工程验收不等同于独立掌握。
+- 用户已授权将 Git diff 采集与本轮类型维护一起提交、推送；实际同步状态以 Git 为准。模型公开文本流式传输与对话定位已保留，历史验收见对应测试与 UI 事件设计。
 
 ## 唯一下一课
 
-**第 5 周：Git 样例 diff 的受控只读采集。**
+**第 5 周：Task 作用域内的 Git 样例 diff 读取。**
 
-- 目标：在既有可信临时Git句柄与受控进程采集边界内取得差异，明确工作区相对暂存区、暂存区相对基线两种比较范围；不接受模型提供宿主目录或Git选项。
-- 验收：自建样例验证普通修改、空差异与暂存差异；超时、超限、命令失败或句柄失效不得伪装完整/无差异；禁止外部diff/textconv，源文件与索引不变。
-- 范围：内部受控采集和直接测试；不注册模型diff工具、不解析为可应用补丁、不修改真实项目Git。测试所需基线只在临时仓库准备，项目代码不提交。
-- 教学：先给完整核心参考；学习者明确“完成了”后再补测试与验收。只回归新增和直接受影响功能。未经用户重新授权，不执行 Git 提交。
-- 入口：`services/workspace/git/status_capture.py`、`tests/workspace/git/test_status_capture.py`及受控进程输出预算。
+- 目标：在既有 TaskGitSamples 中复用登记身份、每次读取重新授权与借用互斥，调用本课内部 diff 采集；只接受固定 worktree/staged 范围。
+- 验收：合法已登记样例返回对应差异；未登记、跨任务、归属变化、关闭/借用竞争及底层采集失败明确失败；采集结束或异常均释放借用，关闭不能提前删除目录。
+- 范围：内部 Task 服务与直接测试，不注册模型 diff 工具、不接 HTTP/UI、不解析或应用补丁、不开放普通项目 Git。基线仍只由可信临时夹具准备。
+- 教学：先给完整核心参考；学习者明确“完成了”后补测试与验收。只回归新增和直接受影响功能；未经授权不执行 Git 提交。
+- 入口：`services/workspace/git/task_git_samples.py`、`diff_capture.py` 与对应 `tests/workspace/git/`。
 
 ## 接续所需边界
 
@@ -36,12 +36,13 @@
 
 ## 最近验收摘要
 
-- 流式模型：新增 [适配器](apps/api/app/services/model/streaming_model_decision.py)，`stream=True` / usage 尾块 / 单工具约束；Runtime 转发公开 delta，聊天服务不重复输出完整答案。文本与工具字段每步合计 1 MiB，明确终态后才执行工具；隐藏推理不传输或存储。协议与保存边界见 [UI 事件设计](docs/agent-ui-events.md)。
-- [模型流专项](apps/api/tests/model/test_streaming_model_decision.py) 13 项、[增量聊天专项](apps/api/tests/chat/test_chat_incremental_text.py) 3 项通过，覆盖先出文本、拆分工具参数、工具轮次接续、usage、无终态/截断/超限/网络失败、关闭与取消，以及完整消息只落库一次。直接受影响的既有模型决策、Runtime 事件、聊天流、安全诊断测试通过；定向 Ruff/空白检查通过。没有无关全量回归。
-- 真实 Next/BFF/API/隔离 PostgreSQL 页面使用 [延迟 SDK chunk 夹具](apps/web/test/browser/typewriter_model.py)：未结束时已出现正文/加粗/列表，结束后代码块与 100 Token/真实夹具耗时显示；刷新完整历史不重播。第二轮中途停止后保留已显示片段、恢复输入，刷新不把取消轮次当完整历史。未调用真实模型供应商，不据此保证其分块频率、网络时延或措辞质量。
-- 对话定位：发送/重试仅定位一次，本轮预留一屏高度并关闭浏览器自动滚动锚定；流式增量与结束不重定位。PC 隔离浏览器验证首轮/有历史第二轮问题均距对话区顶部 24px，生成中手动上翻后保持位置直至结束；前端 typecheck 通过；lint 无错误，保留既有浏览器脚本的 4 项未使用变量警告。
-- 前次工作已推送 main 的 `1c0939c`：受控样例命令、补丁提案与 Git 状态能力，项目创建浮窗、任务改动侧栏、常驻图标统计及会话切换/刷新恢复。入口见目录导航、对应测试/题库；本次未重新执行早期专项，也不把历次测试数汇总成全量结论。
-- Git 状态 PC 四场景及历史无重放证据见 [专项脚本](apps/web/test/browser/git-status.mjs) 与本地忽略产物 `apps/web/output/playwright/git-status/`。普通项目 Git Diff/写入尚未开放，唯一下一课仍按下述受控边界进行。
+- 全仓库静态检查：Python 476 个文件，Pyright basic + 弃用诊断 0 错误/警告；后端、测试和脚本 Ruff 通过；前端 typecheck、lint 通过。复现入口见 [环境说明](ENVIRONMENT.md#5-定向测试与静态检查) 与 [类型配置](pyrightconfig.json)。TS/JS/MJS 206 个文件弃用扫描保留一处输入法 keyCode 229 兼容判断，原因与 MDN 依据见环境说明。
+- 本轮统一回归覆盖 158 个实际受影响测试文件：4752 passed、30 skipped，启用 warnings-as-errors；跳过项为需显式启用的真实 Docker 测试。这是受影响范围的同轮结果，不代表全量后端或所有平台验收。
+- 关键失败路径新增证据：[来源绑定丢失时提前拒绝](apps/api/tests/tools/test_request_task_sample_tools.py)、[发现缺失身份保持未知](apps/api/tests/runtime/sandbox/test_sandbox_sample_reconciliation.py)。历史迁移夹具按当时表集合重建，数据库测试使用隔离 PostgreSQL；未触碰开发业务数据。
+- [diff 采集](apps/api/tests/workspace/git/test_diff_capture.py) 与 [status 采集](apps/api/tests/workspace/git/test_status_capture.py) 纳入本轮回归，覆盖真实临时 Git、子进程、超时/超限及管道缺失回收。仍仅支持 POSIX 可信自建样例，不含 Task diff 授权、普通项目或补丁应用；空 diff 不证明仓库干净，暂存比较要求已有 HEAD。
+- 本轮未复验真实 Docker、供应商模型、Windows 或浏览器交互；静态检查与替身测试不能替代这些边界。
+- 前次流式/滚动证据入口：[模型专项](apps/api/tests/model/test_streaming_model_decision.py)、[聊天专项](apps/api/tests/chat/test_chat_incremental_text.py)、[UI 事件设计](docs/agent-ui-events.md)、[隔离模型夹具](apps/web/test/browser/typewriter_model.py)。前次真实隔离页面覆盖增量 Markdown、停止、刷新不重播、发送/重试定位与手动上翻保持；供应商未实测，本课未复验。
+- Git 状态 PC 四场景及历史无重放证据见 [专项脚本](apps/web/test/browser/git-status.mjs) 与本地忽略产物 `apps/web/output/playwright/git-status/`；本课未复验。其他前期能力见课程大纲、对应测试与题库，不汇总历次测试数为全量结论。
 
 ## 未解决问题
 

@@ -58,6 +58,11 @@ OFF_PEAK_PRICED_AT = datetime(
 )
 
 
+def standalone_stream_reply(**kwargs):
+    # autouse夹具替换了资源所有者签名，调用实际已安装的测试包装器。
+    return getattr(chat_service, "stream_chat_reply")(**kwargs)  # noqa: B009 -- 测试冻结属性或动态故障注入，需要运行时属性访问
+
+
 async def never_receive_cancellation(_: int) -> str:
     await asyncio.Future[None]()
     raise AssertionError("取消等待协程不应自行结束")
@@ -249,7 +254,7 @@ def test_redis_cancellation_signal_aborts_stream(monkeypatch):
     )
 
     async def consume_until_cancelled():
-        stream = chat_service.stream_chat_reply(
+        stream = standalone_stream_reply(
             user_id=1,
             session_id="redis-cancel-test",
             prompt="生成一段长回答",
@@ -326,7 +331,7 @@ def test_cancelled_stream_rolls_back_pending_user_message(monkeypatch):
     )
 
     async def run_cancel():
-        stream = chat_service.stream_chat_reply(
+        stream = standalone_stream_reply(
             user_id=1,
             session_id="cancel-test",
             prompt="生成一段长回答",
@@ -405,7 +410,7 @@ def test_completed_stream_records_chunks_and_finished_status(monkeypatch):
     async def collect_stream():
         return [
             decode_event(line)
-            async for line in chat_service.stream_chat_reply(
+            async for line in standalone_stream_reply(
                 user_id=1,
                 session_id="agent-success",
                 prompt="计算矩形面积",
@@ -525,7 +530,7 @@ def test_model_error_finishes_run_as_error_and_rolls_back_user_message(monkeypat
     async def collect_stream():
         return [
             decode_event(line)
-            async for line in chat_service.stream_chat_reply(
+            async for line in standalone_stream_reply(
                 user_id=1,
                 session_id="agent-model-error",
                 prompt="测试错误",
@@ -623,7 +628,7 @@ def test_timed_out_stream_finishes_as_error(monkeypatch):
     )
 
     async def cancel_stream():
-        stream = chat_service.stream_chat_reply(
+        stream = standalone_stream_reply(
             user_id=1,
             session_id="timeout-test",
             prompt="生成一段长回答",
@@ -707,7 +712,7 @@ def test_tool_error_is_emitted_and_model_can_still_finish(monkeypatch):
     async def collect_stream():
         return [
             decode_event(line)
-            async for line in chat_service.stream_chat_reply(
+            async for line in standalone_stream_reply(
                 user_id=1,
                 session_id="agent-tool-error",
                 prompt="调用未知工具",
@@ -821,7 +826,7 @@ def test_non_completed_loop_emits_run_error_and_rolls_back_turn(
     async def collect_stream():
         return [
             decode_event(line)
-            async for line in chat_service.stream_chat_reply(
+            async for line in standalone_stream_reply(
                 user_id=1,
                 session_id="agent-max-steps",
                 prompt="一直调用工具",

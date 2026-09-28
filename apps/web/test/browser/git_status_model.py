@@ -19,6 +19,8 @@ from fastapi import Request
 OUTPUT = Path(__file__).resolve().parents[2] / 'output/playwright/git-status'
 
 
+
+
 def git_status_decision(observations):
     usage = ModelUsage(input_tokens=10, output_tokens=10, total_tokens=20)
     if observations:
@@ -90,6 +92,9 @@ def install_git_status_fixture(app):
     app.router.lifespan_context = lifespan
 
 
+
+from tests.assertions import require_value
+
 def verify_git_status_rows(engine):
     report = json.loads((OUTPUT / 'evidence.json').read_text())
     assert len(report) == 4
@@ -97,8 +102,8 @@ def verify_git_status_rows(engine):
         assert len(session.scalars(select(AgentRun)).all()) == 4
         for item in report:
             run = session.get(AgentRun, item['run_id'])
-            assert run.status == 'done'
-            events = session.scalars(select(AgentRunEvent).where(AgentRunEvent.run_id == run.id)).all()
+            assert require_value(run).status == 'done'
+            events = session.scalars(select(AgentRunEvent).where(AgentRunEvent.run_id == require_value(run).id)).all()
             assert sum(event.event_type == 'TOOL_CALL_START' for event in events) == 1
             assert sum(event.event_type == 'TOOL_CALL_RESULT' for event in events) == item['result_count']
             assert sum(event.event_type == 'TOOL_CALL_ERROR' for event in events) == item['error_count']

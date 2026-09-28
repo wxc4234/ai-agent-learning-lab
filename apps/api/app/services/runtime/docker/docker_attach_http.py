@@ -1,6 +1,8 @@
 """有界读取并校验 attach 升级响应，不创建或关闭连接。"""
 
 import asyncio
+
+from app.services.runtime.command.byte_reader import AsyncByteReader
 import re
 
 
@@ -148,7 +150,7 @@ def _validate_upgrade_response(header: bytes) -> None:
 
 
 async def read_docker_attach_upgrade(
-    reader: asyncio.StreamReader,
+    reader: AsyncByteReader,
 ) -> None:
     """消费并验证响应头，保留 reader 中尚未读取的输出帧。"""
 

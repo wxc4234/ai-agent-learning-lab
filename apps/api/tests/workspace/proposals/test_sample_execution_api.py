@@ -14,6 +14,7 @@ from app.services.workspace.samples.task_sample_binding import TaskSampleBinding
 from tests.local.test_local_mode import HEADERS, local_client
 from tests.workspace.samples.test_sample_proposal_execution import ready, state
 from tests.workspace.samples.test_task_sample_binding import setup, target
+from tests.assertions import require_value
 
 __all__ = ['local_client', 'ready', 'setup', 'target']
 
@@ -23,7 +24,7 @@ def endpoint(ready, local_client, engine):
     bindings, scope, identity, path = ready
     # 使用真实 CurrentUser；仅将隔离夹具的所有者映射为本机身份。
     with Session(engine) as session, session.begin():
-        session.get(User, scope['user_id']).external_id = LOCAL_USER_ID
+        require_value(session.get(User, scope['user_id'])).external_id = LOCAL_USER_ID
     app.dependency_overrides[get_sample_bindings] = lambda: bindings
     url = (f"/workspaces/{scope['workspace_id']}/tasks/{scope['task_id']}"
            f"/file-edit-proposals/{identity['proposal_id']}/apply")
@@ -148,7 +149,6 @@ def test_account_mode_rejects_sample_execution(endpoint, monkeypatch):
     monkeypatch.setattr(settings, 'app_mode', 'account')
     monkeypatch.setattr(routes, 'execute_sample_proposal', lambda *a, **kw: pytest.fail('must not execute'))
     safe(send(endpoint), 403)
-
 
 
 def test_binding_reauthorizes_changed_owner(endpoint, target, engine, monkeypatch):

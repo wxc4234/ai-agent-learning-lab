@@ -42,7 +42,7 @@ def test_success_is_exactly_one_inspect(monkeypatch, known_id):
         assert identity.execution_token == TOKEN
         assert calls == [("container", "inspect", f"agent-sandbox-{TOKEN}")]
         with pytest.raises(FrozenInstanceError):
-            identity.container_id = "c" * 64
+            setattr(identity, 'container_id', "c" * 64)  # noqa: B010 -- 测试冻结属性或动态故障注入，需要运行时属性访问
     run(scenario)
 
 
@@ -94,7 +94,7 @@ def test_invalid_original_context_never_queries(monkeypatch, kind):
         else:
             command.argv.clear()
         with pytest.raises((TypeError, ValueError)):
-            await service.reconcile_created_sandbox(request=command, execution_token=token)
+            await service.reconcile_created_sandbox(request=command, execution_token=token)  # pyright: ignore[reportArgumentType] -- 故意越过静态签名，验证运行时拒绝非法输入
     run(scenario)
 
 
@@ -150,7 +150,7 @@ def test_recovery_length_boundary_and_extra_fields():
     with pytest.raises(SandboxIdentityError):
         recover(text + " " * (65537 - len(text)))
     with pytest.raises(TypeError):
-        recover_created_sandbox_identity(inspect_stdout=text, spec={})
+        recover_created_sandbox_identity(inspect_stdout=text, spec={})  # pyright: ignore[reportArgumentType] -- 故意越过静态签名，验证运行时拒绝非法输入
 
 
 @pytest.mark.parametrize("known_id", [None, CID])

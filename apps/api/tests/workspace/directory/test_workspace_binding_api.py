@@ -14,6 +14,7 @@ from app.services.workspace.directory import workspace_binding
 from app.services.workspace.directory.workspace_directory import WorkspaceDirectoryError
 import tests.local.test_local_mode as local_fixtures
 from tests.local.test_local_mode import HEADERS, TOKEN
+from tests.assertions import require_value
 
 local_client = local_fixtures.local_client
 
@@ -68,11 +69,11 @@ def test_conflict_preserves_first_binding(local_client, target, tmp_path, engine
 def test_cleanup_pending_rejects_directory_bind_over_http(local_client, target, engine):
     with Session(engine) as session, session.begin():
         workspace = session.scalar(select(Workspace).where(Workspace.external_id == target[0]))
-        task = Task(external_id=uuid4().hex, title='来源任务', workspace_id=workspace.id)
+        task = Task(external_id=uuid4().hex, title='来源任务', workspace_id=require_value(workspace).id)
         session.add(task)
         session.flush()
         session.add(WorkspaceSampleOrigin(
-            workspace_id=workspace.id,
+            workspace_id=require_value(workspace).id,
             task_id=task.id,
             root_path='/previous-sample',
             lifecycle_state='cleanup_pending',

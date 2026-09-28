@@ -12,6 +12,7 @@ from app.services.workspace.proposals import file_edit_proposal_service as servi
 from app.services.workspace.directory import workspace_path
 from tests.local.test_local_mode import HEADERS, TOKEN
 from tests.local import test_local_mode as local_tests
+from tests.assertions import require_value
 
 local_client = local_tests.local_client
 
@@ -34,7 +35,7 @@ def saved(local_client, engine, tmp_path, monkeypatch):
     tid = response.json()["external_id"]
     with Session(engine) as session:
         uid = session.scalar(select(Workspace.user_id).where(Workspace.external_id == wid))
-    proposal = service.create_task_file_edit_proposal(user_id=uid, workspace_id=wid, task_id=tid, relative_path="file.txt", old_text="old", new_text="new")
+    proposal = service.create_task_file_edit_proposal(user_id=require_value(uid), workspace_id=wid, task_id=tid, relative_path="file.txt", old_text="old", new_text="new")
     path = f"/workspaces/{wid}/tasks/{tid}/file-edit-proposals/{proposal.proposal_id}"
     return path, file, proposal
 
@@ -115,9 +116,9 @@ def test_unknown_and_inaccessible_are_same_404(local_client, saved, engine, kind
             session.add(other)
             session.flush()
             if kind == "owner":
-                session.scalar(select(Workspace)).user_id = other.id
+                require_value(session.scalar(select(Workspace))).user_id = other.id
             else:
-                session.scalar(select(Conversation)).user_id = other.id
+                require_value(session.scalar(select(Conversation))).user_id = other.id
     response = local_client.get(path, headers=HEADERS)
     safe(response, 404)
     assert response.json() == {"code": "workspace_not_accessible", "message": "工作空间不存在或不可访问"}
@@ -157,9 +158,9 @@ def test_historical_diff_survives_file_deletion_and_truncation(local_client, sav
     file.unlink()
     with Session(engine) as session, session.begin():
         row = session.scalar(select(FileEditProposal))
-        row.diff = "x" * 16384
-        row.diff_truncated = True
-        session.scalar(select(Workspace)).root_path = None
+        require_value(row).diff = "x" * 16384
+        require_value(row).diff_truncated = True
+        require_value(session.scalar(select(Workspace))).root_path = None
     response = local_client.get(path, headers=HEADERS)
     safe(response, 200)
     assert response.json()["diff"] == "x" * 16384 and response.json()["diff_truncated"] is True
@@ -175,7 +176,7 @@ def test_committed_decision_is_visible_through_local_http(local_client, saved, e
     with Session(engine) as session:
         user_id = session.scalar(select(Workspace.user_id).where(Workspace.external_id == proposal.workspace_id))
     decisions.decide_task_file_edit_proposal(
-        user_id=user_id, workspace_id=proposal.workspace_id, task_id=proposal.task_id,
+        user_id=require_value(user_id), workspace_id=proposal.workspace_id, task_id=proposal.task_id,
         proposal_id=proposal.proposal_id, decision=decision,
     )
     response = local_client.get(path, headers=HEADERS)
