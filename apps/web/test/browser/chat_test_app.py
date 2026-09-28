@@ -29,8 +29,25 @@ class BrowserDecisionMaker:
             yield await self(observations)
 
     async def __call__(self, observations):
+        if "[coding-loop" in self.prompt:
+            from coding_loop_model import coding_loop_decision
+
+            return coding_loop_decision(self.prompt, observations)
+
         if "[layout]" in self.prompt:
             return FinalAnswer(content="布局验收完成，未修改文件。\n\n### 代码与文件\n\n- 阅读代码、搜索符号与文本\n- 审查修改提案，区分批准与应用状态\n- 查看本次运行的 Token 与耗时\n\n### 使用方式\n\n描述你要完成的任务，例如：`检查当前项目结构`。\n\n```python\nprint(\"Hello, Agent\")\n```\n\n长回复保持清晰的段落间距，代码块独立滚动。", model_usage=ModelUsage(input_tokens=20, output_tokens=30, total_tokens=50))
+        if "[task_sample_diff]" in self.prompt:
+            from task_sample_diff_model import task_sample_diff_decision
+
+            return task_sample_diff_decision(observations)
+        if "[verification]" in self.prompt:
+            from verification_model import verification_decision
+
+            return verification_decision(observations)
+        if "[git-diff]" in self.prompt:
+            from git_diff_model import git_diff_decision
+
+            return git_diff_decision(self.prompt, observations)
         if "[git-status]" in self.prompt:
             from git_status_model import git_status_decision
 
@@ -169,7 +186,33 @@ if os.environ.get("BROWSER_TEST_SCRIPT") == "git-status.mjs":
 
     install_git_status_fixture(app)
 
-if os.environ.get("BROWSER_TEST_SCRIPT") == "workbench-layout-wait.mjs":
+if os.environ.get("BROWSER_TEST_SCRIPT") in ("workbench-layout-wait.mjs", "workbench-simple.mjs"):
     from workbench_layout_fixture import install_layout_fixture
 
     install_layout_fixture(app)
+
+if os.environ.get("BROWSER_TEST_SCRIPT") == "git-diff.mjs":
+    from git_diff_model import install_git_diff_fixture
+
+    install_git_diff_fixture(app)
+
+
+if os.environ.get("BROWSER_TEST_SCRIPT") == "verification.mjs":
+    from verification_model import install_verification_fixture
+
+    install_verification_fixture(app)
+
+if os.environ.get("BROWSER_TEST_SCRIPT") == "task-sample-diff.mjs":
+    from task_sample_diff_model import install_task_sample_diff_fixture
+
+    install_task_sample_diff_fixture(app)
+
+if os.environ.get("BROWSER_TEST_SCRIPT") == "coding-loop.mjs":
+    from coding_loop_model import install_coding_loop_fixture
+
+    install_coding_loop_fixture(app)
+
+if os.environ.get("BROWSER_TEST_SCRIPT") == "project-write-grant-integration.mjs":
+    from project_write_grant_fixture import audit_host
+
+    audit_host(app)

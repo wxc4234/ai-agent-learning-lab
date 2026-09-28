@@ -175,6 +175,8 @@ def test_dependency_injects_application_store_or_refuses_missing(monkeypatch, co
 
     application = FastAPI()
     application.state.execution_budget = ExecutionBudget(capacity=1)
+    from app.services.runtime.execution.verification_recovery_store import VerificationRecoveryStore
+    application.state.verification_recovery_store = VerificationRecoveryStore()
     if configured:
         application.state.command_recovery_store = CommandRecoveryStore()
     monkeypatch.setattr(chat.settings, "app_mode", "local")

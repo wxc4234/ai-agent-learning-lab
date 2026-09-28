@@ -1,3 +1,4 @@
+import { openAdvancedDetails } from './workbench-navigation.mjs';
 import assert from 'node:assert/strict';
 import { mkdir } from 'node:fs/promises';
 import { createRequire } from 'node:module';
@@ -30,12 +31,12 @@ try {
     let chatPosts = 0;
     page.on('request', req => { if (req.method() === 'POST' && req.url().endsWith('/api/chat/stream')) chatPosts++; });
     async function openDetail() {
-        if (await page.getByRole('button', { name: '展开详情', exact: true }).isVisible()) await page.getByRole('button', { name: '展开详情', exact: true }).click();
+        await openAdvancedDetails(page);
         await page.getByRole('button', { name: `查看运行 ${runId}`, exact: true }).click();
     }
     await page.goto(`${base}/?workspace=${workspace.external_id}&task=${task.external_id}`);
     await page.getByLabel('你的问题').waitFor();
-    await page.getByRole('button', { name: /展开详情|收起详情/ }).waitFor();
+    await page.getByRole('button', { name: '查看改动' }).waitFor();
     await openDetail();
     await card().waitFor();
     const before = await card().innerText();

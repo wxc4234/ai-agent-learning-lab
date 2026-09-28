@@ -1,0 +1,100 @@
+import { openAdvancedDetails } from './workbench-navigation.mjs';
+import assert from 'node:assert/strict';
+import { readFile, writeFile } from 'node:fs/promises';
+import { createRequire } from 'node:module';
+import { fileURLToPath } from 'node:url';
+const { chromium } = createRequire(import.meta.url)(process.env.PLAYWRIGHT_MODULE || 'playwright');
+const output = fileURLToPath(new URL('../../output/playwright/layout/', import.meta.url));
+const fixtures = JSON.parse(await readFile(`${output}/fixture.json`, 'utf8'));
+const fixture = fixtures.find(f => !f.empty);
+const base = process.env.AUTH_TEST_BASE_URL;
+assert.ok(base && process.env.BROWSER_APP_MODE === 'local');
+const browser = await chromium.launch({ headless: true, executablePath: process.env.CHROME_EXECUTABLE });
+const page = await browser.newPage({ viewport: { width: 1366, height: 900 } });
+page.setDefaultTimeout(60000);
+let chats = 0, decisions = 0, executions = 0;
+const errors = [];
+page.on('pageerror', e => errors.push(e.message));
+page.on('request', r => {
+    if (r.method() !== 'POST') return;
+    if (r.url().endsWith('/api/chat/stream')) chats++;
+    if (r.url().endsWith('/decision')) decisions++;
+    if (r.url().includes('/execute')) executions++;
+});
+const changes = page.getByRole('complementary', { name: '文件改动', exact: true });
+const advanced = page.getByRole('complementary', { name: '高级详情', exact: true });
+async function openAdvanced() {
+    await openAdvancedDetails(page);
+    await advanced.waitFor();
+}
+
+try {
+    await page.goto(`${base}/?workspace=${fixture.workspace_id}&task=${fixture.task_id}`);
+    const input = page.getByLabel('你的问题');
+    await input.fill('保留草稿');
+    await page.getByRole('button', { name: '收起导航', exact: true }).click();
+    await page.getByRole('button', { name: '展开导航', exact: true }).click();
+    assert.equal(await input.inputValue(), '保留草稿');
+    assert.equal(await page.locator('#workbench-details').isVisible(), false);
+    for (const width of [1366, 1920]) {
+        await page.setViewportSize({ width, height: 900 });
+        assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+        await page.screenshot({ path: `${output}/simple-default-${width}.png` });
+    }
+    const open = page.getByRole('button', { name: '查看改动', exact: true });
+    await open.focus(); await open.press('Enter');
+    await changes.getByText('src/chat.tsx', { exact: true }).waitFor();
+    assert.equal(await changes.getByText('样例登记状态', { exact: true }).count(), 0);
+    await changes.getByText('src/chat.tsx', { exact: true }).click();
+    await changes.getByRole('button', { name: '查看提案详情', exact: true }).click();
+    const approve = changes.getByRole('button', { name: '批准提案', exact: true });
+    await approve.waitFor();
+    assert.equal(await changes.getByRole('button', { name: '查询登记状态', exact: true }).isVisible(), false);
+    await changes.getByText('高级状态核对', { exact: true }).click();
+    assert.equal(await changes.getByRole('button', { name: '查询登记状态', exact: true }).isVisible(), true);
+    await changes.getByText('高级状态核对', { exact: true }).click();
+    await page.setViewportSize({ width: 1366, height: 900 });
+    const separator = page.getByRole('separator', { name: '调整运行详情宽度' });
+    const widthBefore = Number(await separator.getAttribute('aria-valuenow'));
+    await separator.focus(); await separator.press('ArrowLeft');
+    assert.ok(Number(await separator.getAttribute('aria-valuenow')) > widthBefore);
+    assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+    assert.equal(executions, 0);
+    await approve.click();
+    await changes.getByText('已确认批准此提案，尚未应用到文件。', { exact: true }).waitFor();
+    assert.equal(executions, 0);
+    await page.screenshot({ path: `${output}/simple-proposal.png` });
+    await page.getByRole('button', { name: '关闭详情', exact: true }).press('Escape');
+    assert.equal(await page.locator('#workbench-details').isVisible(), false);
+    assert.ok(await open.evaluate(e => e === document.activeElement));
+    assert.equal(await input.inputValue(), '保留草稿');
+    await openAdvanced();
+    await advanced.getByText('运行记录与诊断', { exact: true }).waitFor();
+    assert.equal(await advanced.getByRole('heading', { name: '修改提案', exact: true }).count(), 0);
+    await page.getByRole('button', { name: '关闭详情', exact: true }).click();
+    await input.fill('[layout] 简洁工作台');
+    const pending = page.waitForResponse(r => r.url().endsWith('/api/chat/stream'));
+    await input.press('Enter');
+    const response = await pending;
+    assert.equal(response.status(), 200);
+    await page.getByRole('button', { name: '发送', exact: true }).waitFor();
+    assert.equal(await page.getByLabel('运行简报').count(), 0);
+    assert.equal(await page.getByRole('button', { name: '查看执行详情', exact: true }).count(), 0);
+    assert.equal(await page.locator('#workbench-details').isVisible(), false);
+    await openAdvanced();
+    await advanced.waitFor();
+    await page.getByRole('button', { name: '关闭详情', exact: true }).click();
+    await page.reload();
+    await input.waitFor();
+    assert.equal(await page.locator('#workbench-details').isVisible(), false);
+    await openAdvanced();
+    await page.getByRole('button', { name: `查看运行 ${response.headers()['x-run-id']}`, exact: true }).click();
+    await page.getByLabel('历史运行详情', { exact: true }).waitFor();
+    assert.equal(chats, 1); assert.equal(decisions, 1); assert.equal(executions, 0); assert.deepEqual(errors, []);
+    await writeFile(`${output}/simple-evidence.json`, JSON.stringify({ chats, decisions, executions, history_no_replay: true, draft_preserved: true }, null, 4));
+    console.log('PASS simple workbench: default hidden, two PC widths, keyboard/focus/draft, explicit approval, advanced/history without replay');
+} catch (error) {
+    console.error(await page.locator('body').innerText());
+    await page.screenshot({ path: `${output}/simple-failure.png` });
+    throw error;
+} finally { await browser.close(); }

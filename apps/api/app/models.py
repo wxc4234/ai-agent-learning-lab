@@ -79,6 +79,7 @@ class Workspace(Base):
             "root_path IS NULL OR char_length(root_path) > 0",
             name="ck_workspaces_root_path_not_empty",
         ),
+        CheckConstraint("binding_revision > 0", name="ck_workspaces_binding_revision_positive"),
     )
 
     # 内部主键用于数据库关联，对外使用独立生成的 external_id。
@@ -108,6 +109,12 @@ class Workspace(Base):
     root_path: Mapped[str | None] = mapped_column(
         Text,
         nullable=True,
+    )
+
+    # 绑定变化的持久版本；1是初始基线，不推断迁移前经历过几次目录变更。
+    # 与root_path在同一行锁/事务更新；同路径幂等绑定不消耗修订。
+    binding_revision: Mapped[int] = mapped_column(
+        BigInteger, nullable=False, default=1, server_default="1",
     )
 
     # 由数据库生成带时区的创建时间，避免依赖应用服务器时钟。
@@ -661,3 +668,27 @@ class FileEditProposal(Base):
         server_default=func.now(),
         nullable=False,
     )
+
+
+class ProjectWriteGrantRecord(Base):
+    """独立于审批的具体目标许可；撤销是终态，不删除后重新发放。"""
+
+    __tablename__ = "project_write_grants"
+    __table_args__ = (
+        CheckConstraint("grant_id ~ '^[0-9a-f]{32}$'", name="ck_project_write_grants_id"),
+        CheckConstraint(
+            "(enabled AND revision = 1) OR (NOT enabled AND revision = 2)",
+            name="ck_project_write_grants_state",
+        ),
+        CheckConstraint("jsonb_typeof(target) = 'object'", name="ck_project_write_grants_target"),
+    )
+
+    grant_id: Mapped[str] = mapped_column(String(32), primary_key=True)
+    # 每个提案仅一条记录，未知提交也不能重试生成第二份许可。
+    # 任务/提案删除时级联清理；删除的提案本身不能再应用。
+    proposal_id: Mapped[int] = mapped_column(
+        ForeignKey("file_edit_proposals.id", ondelete="CASCADE"), unique=True, nullable=False,
+    )
+    target: Mapped[dict] = mapped_column(JSONB, nullable=False)
+    revision: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    enabled: Mapped[bool] = mapped_column(Boolean, nullable=False)

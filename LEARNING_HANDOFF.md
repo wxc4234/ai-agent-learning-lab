@@ -7,18 +7,18 @@
 - 正式进度：第 1～4 周完成，4/12；第 5 周进行中。完整任务与阶段能力见 [课程大纲](LEARNING_CURRICULUM.md)。
 - 主产品：本地优先 PC Coding Agent；Next.js + FastAPI + PostgreSQL + Redis，模型由用户配置。账号模式保留为扩展。
 - 主仓库使用 `main`；每次接续重新检查分支与工作区，不把历史验收视为当前 checkout 已复验。
-- 最新工程完成：用户授权的全仓库类型与弃用维护，覆盖生产代码、测试和脚本；统一 Python 检查入口，修复可空值、异步生成器契约与过期测试夹具。最近学习课仍为 Git 样例 diff 受控只读采集，学习者按参考实现核心；工程验收不等同于独立掌握。
-- 用户已授权将 Git diff 采集与本轮类型维护一起提交、推送；实际同步状态以 Git 为准。模型公开文本流式传输与对话定位已保留，历史验收见对应测试与 UI 事件设计。
+- 最新工程完成：普通项目写入前置检查只读HTTP接口及严格协议/归属/状态变化/失败未知验收通过。用户授权教练直接实现核心、测试与收尾；不标记为学习者独立掌握。
+- 本次收尾提交汇总自cc8d430以来的Task差异/固定验证/受控编码闭环、PC工作台精简、普通项目许可策略/持久化/HTTP/BFF/PC联合验收及前置检查HTTP。用户已授权提交并推送main；接续以Git实际HEAD和origin/main为准，不继承后续提交推送授权。
 
 ## 唯一下一课
 
-**第 5 周：Task 作用域内的 Git 样例 diff 读取。**
+**第 5 周：普通项目写入前置检查的同源BFF。**
 
-- 目标：在既有 TaskGitSamples 中复用登记身份、每次读取重新授权与借用互斥，调用本课内部 diff 采集；只接受固定 worktree/staged 范围。
-- 验收：合法已登记样例返回对应差异；未登记、跨任务、归属变化、关闭/借用竞争及底层采集失败明确失败；采集结束或异常均释放借用，关闭不能提前删除目录。
-- 范围：内部 Task 服务与直接测试，不注册模型 diff 工具、不接 HTTP/UI、不解析或应用补丁、不开放普通项目 Git。基线仍只由可信临时夹具准备。
-- 教学：先给完整核心参考；学习者明确“完成了”后补测试与验收。只回归新增和直接受影响功能；未经授权不执行 Git 提交。
-- 入口：`services/workspace/git/task_git_samples.py`、`diff_capture.py` 与对应 `tests/workspace/git/`。
+- 目标：代理只读assessment接口，严格校验入参与资源回执，固定分类白名单投影；本机运行令牌只在服务端注入。
+- 验收：参数/Origin/上游协议异常安全拒绝，资源错配和意外eligible不透传，断网与取消保留未知，不自动重试。
+- 范围：BFF与定向测试，不接入UI/自动调用，不领取应用机会、不修改许可或文件。
+- 教学：下一课在新会话开始，恢复默认学习分工：提供完整核心参考实现，等待学习者完成后再检查与补测试；前课直接完成授权不自动延续。
+- 入口：后端project_write_grants.py的assessment及现有许可BFF；改动前读取skills/agent-streaming/SKILL.md。
 
 ## 接续所需边界
 
@@ -36,22 +36,22 @@
 
 ## 最近验收摘要
 
-- 全仓库静态检查：Python 476 个文件，Pyright basic + 弃用诊断 0 错误/警告；后端、测试和脚本 Ruff 通过；前端 typecheck、lint 通过。复现入口见 [环境说明](ENVIRONMENT.md#5-定向测试与静态检查) 与 [类型配置](pyrightconfig.json)。TS/JS/MJS 206 个文件弃用扫描保留一处输入法 keyCode 229 兼容判断，原因与 MDN 依据见环境说明。
-- 本轮统一回归覆盖 158 个实际受影响测试文件：4752 passed、30 skipped，启用 warnings-as-errors；跳过项为需显式启用的真实 Docker 测试。这是受影响范围的同轮结果，不代表全量后端或所有平台验收。
-- 关键失败路径新增证据：[来源绑定丢失时提前拒绝](apps/api/tests/tools/test_request_task_sample_tools.py)、[发现缺失身份保持未知](apps/api/tests/runtime/sandbox/test_sandbox_sample_reconciliation.py)。历史迁移夹具按当时表集合重建，数据库测试使用隔离 PostgreSQL；未触碰开发业务数据。
-- [diff 采集](apps/api/tests/workspace/git/test_diff_capture.py) 与 [status 采集](apps/api/tests/workspace/git/test_status_capture.py) 纳入本轮回归，覆盖真实临时 Git、子进程、超时/超限及管道缺失回收。仍仅支持 POSIX 可信自建样例，不含 Task diff 授权、普通项目或补丁应用；空 diff 不证明仓库干净，暂存比较要求已有 HEAD。
-- 本轮未复验真实 Docker、供应商模型、Windows 或浏览器交互；静态检查与替身测试不能替代这些边界。
-- 前次流式/滚动证据入口：[模型专项](apps/api/tests/model/test_streaming_model_decision.py)、[聊天专项](apps/api/tests/chat/test_chat_incremental_text.py)、[UI 事件设计](docs/agent-ui-events.md)、[隔离模型夹具](apps/web/test/browser/typewriter_model.py)。前次真实隔离页面覆盖增量 Markdown、停止、刷新不重播、发送/重试定位与手动上翻保持；供应商未实测，本课未复验。
-- Git 状态 PC 四场景及历史无重放证据见 [专项脚本](apps/web/test/browser/git-status.mjs) 与本地忽略产物 `apps/web/output/playwright/git-status/`；本课未复验。其他前期能力见课程大纲、对应测试与题库，不汇总历次测试数为全量结论。
+- 新增`POST .../write-grant/assessment`，仅接收grant_id、revision和明确apply_requested；复用应用级宿主，身份来自本地认证，不接收调用方可信事实。响应仅资源外部ID和固定拒绝分类，不提供执行凭据。
+- 入参严格拒绝额外字段/类型转换/查询参数；复用local/Origin/JSON门禁，资源不可访问404。未知读取、宿主缺失和非法内部响应均500 `project_write_assessment_read_failed`，不会变成grant_missing或许可变更未知；响应no-store。意外eligible按协议失败处理。
+- [HTTP专项](apps/api/tests/workspace/proposals/test_project_write_assessment_api.py)43项与受共享请求/错误边界影响的既有许可测试14项，共57项通过（38项不相关既有用例未运行）。真实隔离PostgreSQL/临时文件核对正常目标仍exclusive_access_unconfirmed、重复检查、撤销/修订/旧宿主/绑定/inode变化、应用已消耗、越权及异常；许可、应用状态/token、文件字节/inode/mtime不受检查修改。
+- 改动文件Ruff、Pyright及diff空白检查通过；未运行全量回归或前端浏览器验收，未新增迁移，没有模型/Docker调用或普通项目写入。本课接口尚无BFF/UI入口。
+- 既有PC许可联合验收证据仍见[专项](apps/web/test/browser/project-write-grant-integration.mjs)及[独立DB对账](apps/web/test/browser/project_write_grant_fixture.py)，最近两轮冷启动通过；本课未重跑，首次撤销404原因仍待定位。
 
 ## 未解决问题
+
+- 许可联合验收首次旧修订撤销出现404，后续两轮独立环境返回预期409；已保留响应正文诊断，尚未定位首次原因，不宣称已修复。
 
 - 刷新/关闭仍会丢失未发送草稿、创建重试键及删除结果未确认的客户端提示；一次详情成功不证明先前写请求已停止。
 - 跨进程并发总预算、持久 Checkpoint 和副作用恢复尚未实现；本机退出恢复拒绝无身份旧数据、外机及停止证据不足的情况，不自动重放工具。
 - 数据库提交与 Redis 通知不是同一事务，重复取消不补发通知；跨系统恢复待处理。
 - 隔离取消曾出现 ASGI/Next 响应管道关闭错误；传输层有序关闭及文本出现后终态前断网仍待验证，见 [浏览器故障验收](docs/chat-browser-fault-validation.md)。
 - 模型流式未结束时无法确认最终用量；失败/取消轮次仍无完整指标，不推算为零。辅助标题费用未计入 AgentRun，受控模型测试不能证明真实模型措辞质量。
-- 通用 Apply Patch、Git/目标测试工具与整周编码冒烟闭环未完成。自动依赖安装与分发尚未交付，源码运行仍需 PostgreSQL/Redis。
+- 通用 Apply Patch、普通项目的Git/目标测试与整周编码冒烟闭环未完成；受控样例工具与PC联合闭环已完成。自动依赖安装与分发尚未交付，源码运行仍需 PostgreSQL/Redis。
 - API 启动只读核对迁移版本，迁移须显式执行；版本一致不证明没有手工结构漂移，禁止用 stamp 掩盖缺失结构。
 
 ## 按需入口

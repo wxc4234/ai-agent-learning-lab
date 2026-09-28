@@ -1,3 +1,4 @@
+import { openAdvancedDetails } from './workbench-navigation.mjs';
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
 import { mkdir } from 'node:fs/promises';
@@ -25,7 +26,7 @@ try {
     const other = await create(`/workspaces/${workspace.external_id}/tasks`, { title: '切换目标任务' });
     await page.goto(`${base}/?workspace=${workspace.external_id}&task=${task.external_id}`);
     await page.getByLabel('你的问题').waitFor();
-    await page.getByRole('button', { name: '展开详情', exact: true }).click();
+    await openAdvancedDetails(page);
     await area().getByText('这个任务还没有运行记录。').waitFor();
     console.log('PASS real BFF/API empty task');
 
@@ -94,10 +95,10 @@ try {
     assert.equal(await area().locator('li').count(), 1);
     assert.ok(!(await area().innerText()).includes('#50'));
     console.log('PASS delayed skeleton and task switch isolates late response');
-    await page.getByRole('button', { name: '收起详情', exact: true }).click();
+    await page.getByRole('button', { name: '关闭详情', exact: true }).click();
     assert.equal(await area().count(), 0);
     const count = requested.length;
-    await page.getByRole('button', { name: '展开详情', exact: true }).click();
+    await openAdvancedDetails(page);
     await area().getByText('#99', { exact: true }).waitFor();
     // React 开发模式可能重跑挂载 effect；只约束每次都重新请求第一页。
     assert.ok(requested.length > count);
@@ -167,8 +168,8 @@ try {
     assert.equal(await detailArea().count(), 0);
     await area().getByRole('button', { name: '查看运行 50' }).click();
     await detailArea().getByText('运行超时', { exact: true }).waitFor();
-    await page.getByRole('button', { name: '收起详情', exact: true }).click();
-    await page.getByRole('button', { name: '展开详情', exact: true }).click();
+    await page.getByRole('button', { name: '关闭详情', exact: true }).click();
+    await openAdvancedDetails(page);
     await area().getByRole('button', { name: '查看运行 50' }).waitFor();
     assert.equal(await detailArea().count(), 0);
     console.log('PASS task switch isolates detail; reopen returns to list');
@@ -219,7 +220,7 @@ try {
     await page.screenshot({ path: '/private/tmp/agent-ui-preview/output/playwright/details-wide.png' });
     await page.reload();
     await page.getByLabel('你的问题').waitFor();
-    await page.getByRole('button', { name: '展开详情', exact: true }).click();
+    await openAdvancedDetails(page);
     await page.waitForFunction(width => document.querySelector('[role="separator"]')?.getAttribute('aria-valuenow') === String(width), draggedWidth - 16);
     console.log('PASS real run summary, narrow metrics, pointer/keyboard resize, draft/node preservation and persisted width');
     assert.deepEqual(errors, []);

@@ -1,3 +1,4 @@
+import { openAdvancedDetails } from './workbench-navigation.mjs';
 import assert from 'node:assert/strict';
 import { mkdir } from 'node:fs/promises';
 import { createRequire } from 'node:module';
@@ -16,7 +17,7 @@ page.on('pageerror', error => errors.push(error.message));
 try {
     await page.goto(`${base}/?workspace=${task.workspace_id}&task=${task.external_id}`);
     await page.getByText('异常退出前已持久化的消息', { exact: true }).waitFor();
-    await page.getByRole('button', { name: '展开详情', exact: true }).click();
+    await openAdvancedDetails(page);
     const panel = page.getByRole('region', { name: '会话执行占用' });
     await panel.getByRole('button', { name: '查询状态', exact: true }).click();
     await panel.getByText('查询时存在执行占用', { exact: true }).waitFor();

@@ -1,6 +1,6 @@
 """工具描述、参数模型与 Python 执行白名单。"""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from collections.abc import Awaitable, Callable
 from datetime import datetime, timedelta, timezone
 
@@ -400,6 +400,11 @@ class CommandToolBinding:
 
 GitStatusExecutor = Callable[..., str]
 GitStatusBindingProvider = Callable[[ToolExecutionContext], GitStatusExecutor]
+GitDiffBindingProvider = Callable[[ToolExecutionContext], ToolDefinition]
+
+
+VerificationBindingProvider = Callable[[ToolExecutionContext], Awaitable[ToolDefinition | None]]
+SampleDiffBindingProvider = Callable[[ToolExecutionContext], Awaitable[ToolDefinition | None]]
 
 
 CommandBindingProvider = Callable[[ToolExecutionContext], Awaitable[CommandToolBinding | None]]
@@ -411,6 +416,9 @@ def tools_for_execution(
     command_executor: CommandExecutor | None = None,
     sample_snapshot: bool = False,
     git_status_executor: GitStatusExecutor | None = None,
+    git_diff_definition: ToolDefinition | None = None,
+    verification_definition: ToolDefinition | None = None,
+    sample_diff_definition: ToolDefinition | None = None,
 ) -> tuple[ToolDefinition, ...]:
     """为单次执行构造能力快照，不修改全局注册表。"""
 
@@ -447,6 +455,58 @@ def tools_for_execution(
             executor=execute_bound_git_status,
             requires_context=True,
             timeout_seconds=10.0,
+        ))
+
+    if git_diff_definition is not None:
+        if not has_context:
+            raise ToolContextRequiredError()
+        # 复用同一个定义的schema/描述/预算，只绑定本次请求身份。
+        diff_executor = git_diff_definition.executor
+        if git_diff_definition.name != 'git_sample_diff' or not callable(diff_executor):
+            raise TypeError('需要同步Git差异工具定义')
+        diff_context = context
+
+        def execute_bound_git_diff(*, context: ToolExecutionContext, **arguments: object) -> str:
+            if context is not diff_context:
+                raise ToolContextRequiredError()
+            return diff_executor(context=context, **arguments)
+
+        definitions = (*definitions, replace(
+            git_diff_definition, executor=execute_bound_git_diff, requires_context=True,
+        ))
+
+    if sample_diff_definition is not None:
+        if context is None:
+            raise ToolContextRequiredError()
+        sample_executor = sample_diff_definition.executor
+        if sample_diff_definition.name != 'read_task_sample_diff' or not callable(sample_executor):
+            raise ValueError('invalid sample diff definition')
+        sample_context = context
+
+        def execute_bound_sample_diff(*, context: ToolExecutionContext, **arguments: object) -> str:
+            if context is not sample_context:
+                raise ToolContextRequiredError()
+            return sample_executor(context=context, **arguments)
+
+        definitions = (*definitions, replace(
+            sample_diff_definition, executor=execute_bound_sample_diff, requires_context=True,
+        ))
+
+    if verification_definition is not None:
+        if not has_context:
+            raise ToolContextRequiredError()
+        verification_executor = verification_definition.async_executor
+        if verification_definition.name != 'verify_task_sample' or not callable(verification_executor):
+            raise TypeError('需要异步固定验证工具定义')
+        verification_context = context
+
+        async def execute_bound_verification(*, context: ToolExecutionContext, **arguments: object) -> str:
+            if context is not verification_context:
+                raise ToolContextRequiredError()
+            return await verification_executor(context=context, **arguments)
+
+        definitions = (*definitions, replace(
+            verification_definition, async_executor=execute_bound_verification, requires_context=True,
         ))
 
     if command_executor is None:

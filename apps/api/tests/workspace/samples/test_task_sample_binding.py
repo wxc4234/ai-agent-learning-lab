@@ -54,6 +54,8 @@ def root(engine):
 def test_real_binding_borrow_reauthorize_and_close(setup, engine, tmp_path):
     service, scope, _, sessions = setup
     service.bind(**scope)
+    with Session(engine) as session:
+        assert session.scalar(select(Workspace.binding_revision)) == 2
     path = Path(require_value(root(engine)))
     assert path.parent == tmp_path and path.is_dir()
     with service.borrow(**scope) as sample:
@@ -65,6 +67,8 @@ def test_real_binding_borrow_reauthorize_and_close(setup, engine, tmp_path):
             pytest.fail('exclusive')
     service.close(**scope)
     assert root(engine) is None and not path.exists()
+    with Session(engine) as session:
+        assert session.scalar(select(Workspace.binding_revision)) == 3
     with pytest.raises(m.TaskSampleBindingError), service.borrow(**scope):
         pytest.fail('closed')
 
@@ -158,6 +162,8 @@ def test_uncertain_commit_retains_directory_and_seals(setup, engine, tmp_path, o
     expected_bound = (operation == 'bind' and timing == 'after_commit') or (operation == 'close' and timing == 'before_commit')
     assert (root(engine) is not None) is expected_bound
     with Session(engine) as session:
+        expected_revision = (2 if operation == 'close' else 1) + (timing == 'after_commit')
+        assert session.scalar(select(Workspace.binding_revision)) == expected_revision
         origin = session.scalar(select(WorkspaceSampleOrigin))
         expected_state = (
             'cleanup_pending' if operation == 'close' and timing == 'after_commit'

@@ -5,7 +5,7 @@ from sqlalchemy import event
 from sqlalchemy.orm import Session
 
 from app.main import app
-from app.models import User, Workspace
+from app.models import FileEditProposal, User, Workspace
 from app.routers.workspace import execution as routes
 from app.services.auth.local_identity import LOCAL_USER_ID
 from app.services.workspace.proposals import file_edit_proposal_execution as execution
@@ -158,3 +158,24 @@ def test_binding_reauthorizes_changed_owner(endpoint, target, engine, monkeypatc
     monkeypatch.setattr(execution, 'replace_workspace_text_file', lambda **kw: pytest.fail('must not write'))
     safe(send(endpoint), 404)
     assert (endpoint[2] / 'example.txt').read_bytes() == b'old\n'
+
+
+@pytest.mark.parametrize('approval', ['pending', 'rejected', 'truncated'])
+def test_known_approval_rejection_preserves_sample(endpoint, ready, engine, monkeypatch, approval):
+    bindings, scope, _, path = ready
+    with Session(engine) as session, session.begin():
+        proposal = session.query(FileEditProposal).one()
+        if approval == 'truncated':
+            proposal.status = 'pending'
+            proposal.diff_truncated = True
+        else:
+            proposal.status = approval
+    monkeypatch.setattr(execution, 'replace_workspace_text_file', lambda **kw: pytest.fail('must not write'))
+    response = send(endpoint)
+    safe(response, 409)
+    assert response.json()['code'] == 'proposal_not_approved'
+    assert state(engine) == 'idle'
+    assert (path / 'example.txt').read_bytes() == b'old\n'
+    assert bindings.read_status(**scope).status == 'ready'
+    bindings.close(**scope)
+    assert not path.exists()

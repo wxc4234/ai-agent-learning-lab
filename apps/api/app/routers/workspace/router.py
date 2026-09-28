@@ -7,10 +7,11 @@ from app.routers.workspace import (
     execution,
     projects,
     proposals,
+    project_write_grants,
     samples,
     tasks,
 )
 
 router = APIRouter()
-for domain in (projects, directories, tasks, proposals, execution, samples):
+for domain in (projects, directories, tasks, proposals, execution, samples, project_write_grants):
     router.include_router(domain.router)

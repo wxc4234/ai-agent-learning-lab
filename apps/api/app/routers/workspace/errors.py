@@ -8,6 +8,8 @@ from fastapi.responses import JSONResponse
 from app.routers.workspace.http import _error_response
 from app.routers.workspace.request_kinds import (
     _is_directory_request,
+    _is_project_write_assessment_request,
+    _is_project_write_grant_request,
     _is_proposal_application_status_request,
     _is_proposal_decision_request,
     _is_proposal_execution_request,
@@ -24,7 +26,13 @@ logger = logging.getLogger(__name__)
 def _workspace_failure_response(request: Request) -> JSONResponse:
     """按操作返回安全错误，不暴露SQL、路径或原始异常。"""
 
-    if _is_sample_cleanup_preflight_request(request):
+    if _is_project_write_assessment_request(request):
+        code = "project_write_assessment_read_failed"
+        message = "前置检查读取失败，结果未知"
+    elif _is_project_write_grant_request(request):
+        code = "project_write_grant_read_failed" if request.method == "GET" else "project_write_grant_uncertain"
+        message = "许可读取失败，请重新查询" if request.method == "GET" else "许可变更结果未确认，请先查询，勿重复提交"
+    elif _is_sample_cleanup_preflight_request(request):
         code = "sample_cleanup_preflight_read_failed"
         message = "读取样例清理诊断失败，请稍后重新查询"
     elif _is_sample_status_request(request):

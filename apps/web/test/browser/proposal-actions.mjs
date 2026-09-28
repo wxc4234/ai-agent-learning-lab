@@ -1,3 +1,4 @@
+import { openAdvancedDetails } from './workbench-navigation.mjs';
 import assert from 'node:assert/strict';
 import { mkdir, mkdtemp, realpath, readFile, writeFile, rm } from 'node:fs/promises';
 import { createRequire } from 'node:module';
@@ -67,8 +68,7 @@ async function send(prompt, answer) {
         await new Promise(resolve => setTimeout(resolve, 100));
     }
     assert.equal(events.filter(event => event.type === 'RUN_FINISHED').length, 1);
-    const expand = page.getByRole('button', { name: '展开详情', exact: true });
-    if (await expand.isVisible()) await expand.click();
+    await openAdvancedDetails(page);
     return { events, runId };
 }
 
@@ -85,14 +85,12 @@ async function until(check) {
     }
 }
 async function openHistory(runId) {
-    const expand = page.getByRole('button', { name: '展开详情', exact: true });
-    if (await expand.isVisible()) await expand.click();
+    await openAdvancedDetails(page);
     await page.getByRole('button', { name: `查看运行 ${runId}`, exact: true }).click();
     await page.getByRole('region', { name: '历史运行详情', exact: true }).waitFor();
 }
 async function openDetail() {
-    const expand = page.getByRole('button', { name: '展开详情', exact: true });
-    if (await expand.isVisible()) await expand.click();
+    await openAdvancedDetails(page);
     const panel = page.getByRole('region', { name: '文件修改提案详情', exact: true });
     await panel.getByRole('button', { name: '查看提案详情', exact: true }).click();
     await panel.getByLabel('提案 Diff', { exact: true }).waitFor();

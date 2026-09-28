@@ -7,6 +7,8 @@ import {
     type FileEditProposalDetail,
 } from "../../workbench/file-edit-proposal-data";
 import { Button } from "@/components/ui/button";
+import ProjectWriteGrantActions from "./project-write-grant-actions";
+import ProposalExecutionActions from "./proposal-execution-actions";
 import FileEditProposalActions from "./file-edit-proposal-actions";
 import ProposalApplicationStatusPanel from "./proposal-application-status";
 import TaskSampleStatusPanel from "../../workbench/components/task-sample-status-panel";
@@ -254,11 +256,11 @@ export default function FileEditProposalDetailPanel({
                         读取详情不会改变审批状态；批准也不会直接写入文件。
                     </p>
 
-                    <section
+                    <details
                         aria-label="样例与提案状态核对"
                         className="space-y-3"
                     >
-                        <p className="font-medium">状态核对</p>
+                        <summary className="cursor-pointer font-medium text-muted-foreground">高级状态核对</summary>
                         <p className="text-muted-foreground">
                             分别查询任务的样例登记和这份提案的应用记录。
                             一项查询失败时，另一项结果仍可单独查看。
@@ -280,7 +282,7 @@ export default function FileEditProposalDetailPanel({
                             即使登记显示 ready、应用记录显示 idle，也不能据此执行提案、
                             恢复登记或清除本标签页的防重复提交记录。
                         </p>
-                    </section>
+                    </details>
 
                     <FileEditProposalActions
                         key={
@@ -307,6 +309,25 @@ export default function FileEditProposalDetailPanel({
                             });
                         }}
                     />
+
+                    <ProjectWriteGrantActions
+                        workspaceId={state.detail.workspace_id}
+                        taskId={state.detail.task_id}
+                        proposalId={state.detail.proposal_id}
+                        approved={state.detail.status === "approved"}
+                    />
+
+                    {/* 批准仅改变审批状态；应用仍需独立确认并在服务端重新授权。 */}
+                    {state.detail.status === "approved" && (
+                        <details className="space-y-3">
+                            <summary className="cursor-pointer font-medium">应用到受控样例</summary>
+                            <ProposalExecutionActions
+                                workspaceId={state.detail.workspace_id}
+                                taskId={state.detail.task_id}
+                                proposalId={state.detail.proposal_id}
+                            />
+                        </details>
+                    )}
                 </div>
             )}
         </section>

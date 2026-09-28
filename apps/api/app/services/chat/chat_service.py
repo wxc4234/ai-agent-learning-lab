@@ -48,7 +48,7 @@ from app.services.runtime.agent.tool_execution_context import (
     load_tool_execution_context,
 )
 from app.tools.context import ToolExecutionContext
-from app.tools.registry import CommandBindingProvider, CommandExecutor, GitStatusBindingProvider, tools_for_execution
+from app.tools.registry import CommandBindingProvider, CommandExecutor, GitStatusBindingProvider, GitDiffBindingProvider, VerificationBindingProvider, SampleDiffBindingProvider, tools_for_execution
 
 logger = logging.getLogger(__name__)
 
@@ -327,6 +327,9 @@ async def stream_chat_reply(
     command_executor: CommandExecutor | None = None,
     command_binding_provider: CommandBindingProvider | None = None,
     git_status_binding_provider: GitStatusBindingProvider | None = None,
+    git_diff_binding_provider: GitDiffBindingProvider | None = None,
+    verification_binding_provider: VerificationBindingProvider | None = None,
+    sample_diff_binding_provider: SampleDiffBindingProvider | None = None,
 ) -> AsyncGenerator[str, None]:
     """运行 Agent Loop，并逐行返回结构化 NDJSON 事件。"""
 
@@ -384,10 +387,22 @@ async def stream_chat_reply(
         git_status_executor = None
         if tool_context is not None and git_status_binding_provider is not None:
             git_status_executor = git_status_binding_provider(tool_context)
+        git_diff_definition = None
+        if tool_context is not None and git_diff_binding_provider is not None:
+            git_diff_definition = git_diff_binding_provider(tool_context)
+        sample_diff_definition = None
+        if tool_context is not None and sample_diff_binding_provider is not None:
+            sample_diff_definition = await sample_diff_binding_provider(tool_context)
+        verification_definition = None
+        if tool_context is not None and verification_binding_provider is not None:
+            verification_definition = await verification_binding_provider(tool_context)
         tool_definitions = tools_for_execution(
             context=tool_context, command_executor=selected_executor,
             sample_snapshot=sample_snapshot,
             git_status_executor=git_status_executor,
+            git_diff_definition=git_diff_definition,
+            verification_definition=verification_definition,
+            sample_diff_definition=sample_diff_definition,
         )
 
         # 展示与执行使用同一份能力快照，不能分别拼接工具列表。

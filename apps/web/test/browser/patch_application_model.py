@@ -23,19 +23,19 @@ OUTPUT = Path('/private/tmp/agent-ui-patch-application/output/playwright')
 
 from tests.assertions import require_value
 
-def install_patch_application_fixture(app):
+def install_patch_application_fixture(app, *, output=OUTPUT, markers=('success', 'pending', 'truncated', 'conflict')):
     original = app.router.lifespan_context
 
     @asynccontextmanager
     async def lifespan(application):
         async with original(application):
-            OUTPUT.mkdir(parents=True, exist_ok=True)
+            output.mkdir(parents=True, exist_ok=True)
             with SessionLocal() as session:
                 user = resolve_local_identity(session)
             bindings = get_sample_bindings()
             fixtures = []
             try:
-                for marker in ('success', 'pending', 'truncated', 'conflict'):
+                for marker in markers:
                     workspace_id, task_id = uuid4().hex, uuid4().hex
                     with SessionLocal() as session, session.begin():
                         workspace = Workspace(external_id=workspace_id, name=f'补丁应用-{marker}', user_id=user.id)
@@ -46,7 +46,7 @@ def install_patch_application_fixture(app):
                     with bindings.borrow(**scope) as sample:
                         fixtures.append(dict(marker=marker, root=str(sample.root), **scope))
                 # 私有控制文件仅供测试进程，不通过网页传递路径或身份。
-                (OUTPUT / 'fixtures.json').write_text(json.dumps(fixtures))
+                (output / 'fixtures.json').write_text(json.dumps(fixtures))
                 yield
             finally:
                 for item in fixtures:
@@ -68,7 +68,7 @@ def install_patch_application_fixture(app):
                             session.delete(origin)
                         assert bindings._registry.close(binding.handle)
                     assert not Path(item['root']).exists()
-                (OUTPUT / 'cleanup.json').write_text(json.dumps({'samples_removed': len(fixtures)}))
+                (output / 'cleanup.json').write_text(json.dumps({'samples_removed': len(fixtures)}))
     app.router.lifespan_context = lifespan
 
 

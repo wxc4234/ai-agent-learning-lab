@@ -638,3 +638,56 @@ class TaskSampleCleanupPreflightResponse(BaseModel):
         "identity_matches_record",
         "inspection_unavailable",
     ]
+
+
+class ProjectWriteGrantIssueRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+    # 必须显式提交动作；空对象不视为同意，也不接收模型自报目标。
+    action: Literal["grant"]
+
+
+class ProjectWriteGrantRevokeRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+    grant_id: str = Field(pattern=r"^[0-9a-f]{32}$", min_length=32, max_length=32)
+    revision: int = Field(gt=0, le=2**63 - 1)
+
+
+class ProjectWriteGrantPublicRecord(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+    grant_id: str = Field(pattern=r"^[0-9a-f]{32}$")
+    revision: Literal[1, 2]
+    # 只表达持久记录状态，不提供can_write/eligible字段。
+    status: Literal["enabled", "revoked"]
+
+
+class ProjectWriteGrantResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+    workspace_id: str
+    task_id: str
+    proposal_id: str
+    # null是已授权查询确认不存在，读取异常不能返回null。
+    grant: ProjectWriteGrantPublicRecord | None
+
+
+class ProjectWriteAssessmentRequest(BaseModel):
+    """拟应用意图只用于诊断，不提交应用操作。"""
+
+    model_config = ConfigDict(extra="forbid", strict=True)
+    grant_id: str = Field(pattern=r"^[0-9a-f]{32}$", min_length=32, max_length=32)
+    revision: int = Field(gt=0, le=2**63 - 1)
+    apply_requested: bool
+
+
+class ProjectWriteAssessmentResponse(BaseModel):
+    """只读拒绝分类；本阶段无法证明排他访问，不公开可执行状态。"""
+
+    model_config = ConfigDict(extra="forbid", strict=True, frozen=True)
+    workspace_id: str
+    task_id: str
+    proposal_id: str
+    result: Literal[
+        "invalid_facts", "not_authorized", "apply_not_requested", "grant_missing",
+        "grant_revoked", "grant_changed", "target_changed", "proposal_not_approved",
+        "application_not_idle", "diff_incomplete", "baseline_changed", "candidate_changed",
+        "filesystem_unconfirmed", "platform_unsupported", "exclusive_access_unconfirmed",
+    ]

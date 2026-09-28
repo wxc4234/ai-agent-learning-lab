@@ -107,6 +107,9 @@ def test_no_approval_never_enters_writer(sample, engine, monkeypatch, kind):
         existing.gate.execute_sample_proposal(bindings, **identity)
     assert existing.state(engine) == 'idle'
     assert (path / 'example.txt').read_bytes() == b'old\n'
+    assert bindings.read_status(**scope).status == 'ready'
+    bindings.close(**scope)
+    assert not path.exists()
 
 
 @pytest.mark.parametrize('kind', ['baseline', 'candidate'])

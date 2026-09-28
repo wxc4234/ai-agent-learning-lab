@@ -24,7 +24,17 @@ export default function WorkbenchShell({
     children,
 }: WorkbenchShellProps) {
     const [detailsTarget, setDetailsTarget] = useState<HTMLDivElement | null>(null);
-    const { selection, localMode, leftOpen, rightOpen, setLeftOpen, setRightOpen } = useWorkbench();
+    const { selection, localMode, leftOpen, rightOpen, setLeftOpen, setRightOpen, detailsMode, setDetailsMode } = useWorkbench();
+
+    const openButtonRef = useRef<HTMLButtonElement>(null);
+    const closeButtonRef = useRef<HTMLButtonElement>(null);
+    function closeDetails() {
+        setRightOpen(false);
+        openButtonRef.current?.focus();
+    }
+    useEffect(() => {
+        if (rightOpen) closeButtonRef.current?.focus();
+    }, [rightOpen, detailsMode]);
 
     const containerRef = useRef<HTMLDivElement>(null);
     const dragRef = useRef<{ x: number; width: number } | null>(null);
@@ -112,18 +122,25 @@ export default function WorkbenchShell({
                             </h1>
                         </div>
 
-                        <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon-sm"
-                            title={rightOpen ? "收起详情" : "展开详情"}
-                            aria-label={rightOpen ? "收起详情" : "展开详情"}
-                            aria-controls="workbench-details"
-                            aria-expanded={rightOpen}
-                            onClick={() => setRightOpen(!rightOpen)}
-                        >
-                            <WorkbenchIcon name="right" />
-                        </Button>
+                        <div className="flex min-w-0 items-center gap-1 rounded-xl border border-border/60 px-2 py-1">
+                            <span className="max-w-48 truncate px-2 text-xs text-muted-foreground" title={selection?.workspace.name}>
+                                {selection?.workspace.name ?? "项目"}
+                            </span>
+                            <Button ref={openButtonRef} variant="ghost" size="sm" aria-controls="workbench-details"
+                                aria-expanded={rightOpen && detailsMode === "changes"}
+                                onClick={() => { setDetailsMode("changes"); setRightOpen(true); }}>
+                                查看改动
+                            </Button>
+                            <details className="relative">
+                                <summary aria-label="项目更多操作" className="cursor-pointer list-none rounded-md px-2 py-1 focus-visible:outline-2 [&::-webkit-details-marker]:hidden">⋯</summary>
+                                <div className="absolute right-0 top-full z-30 mt-2 w-36 rounded-xl border border-border bg-background p-1 shadow-sm">
+                                    <Button variant="ghost" size="sm" className="w-full" onClick={event => {
+                                        event.currentTarget.closest("details")?.removeAttribute("open");
+                                        setDetailsMode("advanced"); setRightOpen(true);
+                                    }}>高级详情</Button>
+                                </div>
+                            </details>
+                        </div>
                     </header>
 
                     {/* main 只占剩余高度，回复滚动区与底部输入由聊天组件排列。 */}
@@ -134,7 +151,8 @@ export default function WorkbenchShell({
 
                 <aside
                     id="workbench-details"
-                    aria-label="文件改动"
+                    aria-label={detailsMode === "changes" ? "文件改动" : "高级详情"}
+                    onKeyDown={event => { if (event.key === "Escape") { event.stopPropagation(); closeDetails(); } }}
                     hidden={!rightOpen}
                     className={`relative col-start-3 row-start-1 ${rightOpen ? "flex" : "hidden"} min-h-0 min-w-0 flex-col border-l border-border/60 bg-muted/10`}
                 >
@@ -177,9 +195,10 @@ export default function WorkbenchShell({
                             if (next !== null) { event.preventDefault(); resize(next); }
                         }}
                     />
-                    <h2 className="flex h-14 shrink-0 items-center border-b border-border/50 px-5 text-sm font-medium">
-                        文件改动
-                    </h2>
+                    <div className="flex h-14 shrink-0 items-center justify-between border-b border-border/50 px-5">
+                        <h2 className="text-sm font-medium">{detailsMode === "changes" ? "文件改动" : "高级详情"}</h2>
+                        <Button ref={closeButtonRef} variant="ghost" size="sm" aria-label="关闭详情" onClick={closeDetails}>关闭</Button>
+                    </div>
                     {/* 滚动内容与拖动边界分开，改变宽度不重建当前聊天或详情。 */}
                     <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-5">
                         <div ref={setDetailsTarget} />

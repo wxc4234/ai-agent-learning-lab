@@ -1,3 +1,4 @@
+import { openAdvancedDetails } from './workbench-navigation.mjs';
 import assert from 'node:assert/strict';
 import { mkdir } from 'node:fs/promises';
 import { createRequire } from 'node:module';
@@ -32,7 +33,7 @@ try {
         await page.getByRole('button',{name:'发送',exact:true}).click();
         await page.getByText('隔离模型：认证聊天成功。',{exact:true}).waitFor();
         // 运行详情默认收起，展开后观察工具事件与取消终态。
-        await page.getByRole('button', { name: '展开详情', exact: true }).click();
+        await openAdvancedDetails(page);
         await page.getByLabel('你的问题').fill('[cancel-test] 本机取消');
         await page.getByRole('button',{name:'发送',exact:true}).click();
         await page.getByRole('button',{name:'停止生成',exact:true}).waitFor();

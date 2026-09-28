@@ -82,6 +82,16 @@ try:
             destination = web / "app/api" / route
             destination.mkdir(parents=True, exist_ok=True)
             shutil.copyfile(ROOT / "apps/web/src/app/api" / route / "route.ts", destination / "route.ts")
+        if os.environ.get("BROWSER_TEST_SCRIPT") == "project-write-grant-integration.mjs":
+            from project_write_grant_fixture import seed
+
+            seed(engine, web)
+            proposal_route = "workspaces/[workspaceId]/tasks/[taskId]/file-edit-proposals/[proposalId]"
+            for suffix in ("write-grant", "write-grant/revoke"):
+                route = f"{proposal_route}/{suffix}"
+                destination = web / "app/api" / route
+                destination.mkdir(parents=True, exist_ok=True)
+                shutil.copyfile(ROOT / "apps/web/src/app/api" / route / "route.ts", destination / "route.ts")
         (web / "app/api/auth/me").mkdir(parents=True)
         shutil.copyfile(
             ROOT / "apps/web/src/app/api/auth/me/route.ts",
@@ -254,6 +264,18 @@ try:
                 timeout=720,
                 env=os.environ | browser_fixture | {"AUTH_TEST_BASE_URL": "http://localhost:13000", "BROWSER_APP_MODE": test_mode, "BROWSER_TEST_DIRECTORY": env.get("BROWSER_TEST_DIRECTORY", "")},
             )
+            if os.environ.get("BROWSER_TEST_SCRIPT") == "project-write-grant-integration.mjs":
+                from project_write_grant_fixture import verify
+
+                verify(engine)
+            if os.environ.get("BROWSER_TEST_SCRIPT") == "coding-loop.mjs":
+                from coding_loop_model import verify_coding_loop_rows
+
+                verify_coding_loop_rows(engine)
+            if os.environ.get("BROWSER_TEST_SCRIPT") == "git-diff.mjs":
+                from git_diff_model import verify_git_diff_rows
+
+                verify_git_diff_rows(engine)
             if os.environ.get("BROWSER_TEST_SCRIPT") == "git-status.mjs":
                 from git_status_model import verify_git_status_rows
 
@@ -299,6 +321,37 @@ try:
                 except subprocess.TimeoutExpired:
                     process.kill()
                     process.wait()
+        if os.environ.get("BROWSER_TEST_SCRIPT") == "coding-loop.mjs":
+            import json
+            output = ROOT / "apps/web/output/playwright/coding-loop"
+            assert json.loads((output / "cleanup.json").read_text()) == {"samples_removed": 3}
+            assert json.loads((output / "resources.json").read_text()) == {
+                "completed_verifications": 3, "containers_absent": True, "snapshots_cleaned": True,
+            }
+        if os.environ.get("BROWSER_TEST_SCRIPT") == "task-sample-diff.mjs":
+            import json
+            output = ROOT / "apps/web/output/playwright/task_sample_diff"
+            assert json.loads((output / "server-evidence.json").read_text()) == {
+                "calls": 3, "runs": 3, "source_unchanged": True, "directory_removed": True,
+            }
+        if os.environ.get("BROWSER_TEST_SCRIPT") == "verification.mjs":
+            import json
+            output = ROOT / "apps/web/output/playwright/verification"
+            assert json.loads((output / "server-evidence.json").read_text()) == {
+                "calls": 6, "runs": 6, "source_unchanged": True, "directory_removed": True,
+            }
+        if os.environ.get("BROWSER_TEST_SCRIPT") == "git-diff.mjs":
+            # Uvicorn的lifespan断言需明确读回证据，不能只信浏览器退出码。
+            import json
+            output = ROOT / "apps/web/output/playwright/git-diff"
+            evidence = json.loads((output / "server-evidence.json").read_text())
+            assert evidence == {
+                "files_unchanged": True, "project_binding_unchanged": True,
+                "sample_count": 4, "read_calls": 5,
+            }
+            assert json.loads((output / "cleanup-evidence.json").read_text()) == {
+                "owned_git_directories_removed": 4,
+            }
 finally:
     for process in reversed(processes):
         if process.poll() is None:

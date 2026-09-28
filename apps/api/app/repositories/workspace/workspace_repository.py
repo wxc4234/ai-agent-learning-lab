@@ -127,3 +127,19 @@ def require_owned_workspace_for_update(
 
     # 此处不能 commit：绑定服务还需要在同一个事务里检查并保存路径。
     return workspace
+
+
+def set_locked_workspace_root(workspace: Workspace, root_path: str | None) -> None:
+    """调用方须已重新授权并持有Workspace行锁；不提交、不读取文件系统。
+
+    所有应用内根目录变更复用本函数，路径与修订随外层事务一起回滚。
+    修订不跟踪手工SQL、外部文件替换或未flush的临时属性变化，不构成CAS。
+    """
+    if workspace.root_path == root_path:
+        return
+    revision = workspace.binding_revision
+    # 溢出前拒绝，不能把版本绕回旧值；新建行须先flush取得初始版本。
+    if type(revision) is not int or not 1 <= revision < 2**63 - 1:
+        raise ValueError("workspace_binding_revision_unavailable")
+    workspace.root_path = root_path
+    workspace.binding_revision = revision + 1

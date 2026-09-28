@@ -49,7 +49,7 @@ try {
         assert.equal(await page.getByText('项目标识', { exact: true }).count(), 0);
         assert.equal(creations, 0);
         assert.equal(await page.getByRole('button', { name: '对话交互项目', exact: true }).evaluate(n => getComputedStyle(n).fontSize), '18px');
-        assert.equal(await page.getByRole('button', { name: '展开详情', exact: true }).count(), 1);
+        assert.equal(await page.getByRole('button', { name: '查看改动', exact: true }).count(), 1);
         for (const [width, height] of [[1366, 768], [1920, 1080], [2560, 1318]]) {
             await page.setViewportSize({ width, height });
             const title = await page.getByRole('heading', { name: '今天想完成什么？' }).boundingBox();

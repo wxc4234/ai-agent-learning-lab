@@ -1,3 +1,4 @@
+import { openAdvancedDetails } from './workbench-navigation.mjs';
 import assert from 'node:assert/strict';
 import { access, readFile, writeFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
@@ -66,8 +67,7 @@ try {
         const failures = run.events.filter(event => event.event_type === 'TOOL_CALL_ERROR');
         const starts = run.events.filter(event => event.event_type === 'TOOL_CALL_START');
         assert.equal(starts.length, 1);
-        const expand = page.getByRole('button', { name: '展开详情', exact: true });
-        if (await expand.isVisible()) await expand.click();
+        await openAdvancedDetails(page);
         await page.getByText('run_command', { exact: true }).waitFor();
         if (mode === 'success' || mode === 'nonzero') {
             assert.equal(results.length, 1);

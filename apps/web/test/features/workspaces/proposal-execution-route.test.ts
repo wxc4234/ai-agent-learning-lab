@@ -115,7 +115,7 @@ for (const kind of ["missing-type", "wrong-type", "malformed", "empty"]) {
     });
 }
 for (const [status, code] of [
-    [400, "invalid_workspace_request"], [401, "invalid_login_session"], [403, "local_mode_required"], [403, "local_access_rejected"], [403, "workspace_origin_rejected"], [404, "workspace_not_accessible"], [409, "sample_execution_unavailable"], [415, "unsupported_workspace_content_type"], [422, "invalid_proposal_execution_input"], [500, "proposal_execution_uncertain"],
+    [400, "invalid_workspace_request"], [401, "invalid_login_session"], [403, "local_mode_required"], [403, "local_access_rejected"], [403, "workspace_origin_rejected"], [404, "workspace_not_accessible"], [409, "sample_execution_unavailable"], [409, "proposal_not_approved"], [415, "unsupported_workspace_content_type"], [422, "invalid_proposal_execution_input"], [500, "proposal_execution_uncertain"],
 ] as const) {
     test(`fixed error ${status}/${code}`, async (t) => {
         const mock = t.mock.method(globalThis, "fetch", async () => Response.json({ code, message: "PRIVATE", user_id: 1 }, { status, headers: { "Set-Cookie": "PRIVATE" } }));

@@ -143,6 +143,24 @@ from tests.local.test_local_mode import HEADERS
 
 文件修改提案：`apps/api/app/models.py` 的 FileEditProposal 与 `migrations/versions/4eb108c473ab_add_file_edit_proposals.py` 管理待审批记录；`repositories/workspace/file_edit_proposal_repository.py` 负责归属锁和flush，`services/workspace/proposals/file_edit_proposal_service.py` 负责读文件前后的事务边界及提交；字符串替换与 `create_task_file_patch_proposal` 共用保存事务，补丁专项为 `tests/workspace/proposals/test_file_patch_proposal_service.py`。配套为 `tests/workspace/proposals/test_file_edit_proposal_service.py`、`tests/migrations/test_file_edit_proposal_migration.py`。既有提案查询/工具入口见下文；补丁创建工具适配见下文，普通项目文件写入尚未开放。
 
+目录绑定修订：`Workspace.binding_revision` 由 `repositories/workspace/workspace_repository.py` 的 `set_locked_workspace_root` 在调用方已授权并持有行锁的事务内维护；普通首次绑定、样例绑定/解绑共用，迁移为 `a4f5d3e8b21c`。新旧记录初始为1，同路径幂等不增，历史修订不能通过降级丢弃；内部字段不自动授予写入权。专项为 `test_binding_revision.py`、`test_binding_revision_migration.py`。
+
+可信目标快照：`services/workspace/proposals/project_write_snapshot.py` 的内部宿主实例生成运行身份，通过授权联表投影和 `services/workspace/files/project_file_observation.py` 的无跟随描述符观察组装 `ProjectWriteTarget`。只读两阶段核对，不签发许可、不建立排他条件；数据库Session不跨文件I/O。专项：`tests/workspace/proposals/test_project_write_snapshot.py`。
+
+普通项目写入策略：`apps/api/app/services/workspace/proposals/project_write_policy.py` 仅消费可信宿主快照，判定具体许可、审批、应用状态、目录/文件对象和内容版本；结果不是执行凭据。内部许可宿主assess已调用纯策略，不提供普通项目写入入口。纯策略专项：`apps/api/tests/workspace/proposals/test_project_write_policy.py`。
+
+许可持久化：`services/workspace/proposals/project_write_grants.py` 提供内部发放/查询/显式撤销及assess只读判定，`repositories/workspace/project_write_grant_repository.py` 查询记录，`ProjectWriteGrantRecord` 每提案唯一，迁移为 `b5a6e4f9c32d`。撤销是终态，提交未知不重试；HTTP管理已接入，实际写入未开放。assess与发放共用快照实例，双阶段授权读取夹住无事务文件观察，排他条件固定未确认。专项为 `test_project_write_grants.py`、`test_project_write_grant_migration.py`、`test_project_write_assessment.py`。
+
+许可HTTP管理：`routers/workspace/project_write_grants.py` 提供提案下 `write-grant` GET/POST 和 `write-grant/revoke` POST；`main.py` 在local应用生命周期持有独立宿主，缺失时不临时创建。公开记录仅ID/修订/状态；409表示已知冲突，500区分读取失败与变更结果未确认。专项为 `test_project_write_grant_api.py`、`test_project_write_grant_lifespan.py`；BFF与PC管理已接入，真实后端联合验收已有专项。
+
+许可BFF：`apps/web/src/app/api/_shared/project-write-grant-proxy.ts` 实现read/issue/revoke，提案下`write-grant`及`write-grant/revoke`路由仅传递路径参数。服务端凭证、严格正文、资源/状态/修订回执核对、错误白名单和取消阶段区分共用；专项为 `apps/web/test/features/workspaces/project-write-grant-route.test.ts`。
+
+PC许可管理：`apps/web/src/features/chat/components/project-write-grant-actions.tsx` 在现有详情内按需展开，`features/workbench/project-write-grant-data.ts` 校验公开数据及未知操作的观察结果。单元专项 `test/features/workspaces/project-write-grant-data.test.ts`，浏览器组件专项 `test/browser/project-write-grant/run.mjs`（使用可用Playwright/Chrome，受控API，不连接数据库）。
+
+前置检查HTTP：`apps/api/app/routers/workspace/project_write_grants.py` 的 `POST .../write-grant/assessment` 复用应用宿主，只返回资源ID与固定拒绝分类；输入意图不是应用指令，未知读取返回独立500，意外eligible不对外开放。定向测试：`apps/api/tests/workspace/proposals/test_project_write_assessment_api.py`，无BFF/UI及项目写入。
+
+许可联合验收：`apps/web/test/browser/project-write-grant-integration.mjs` 经真实PC工作台/BFF/API运行，`project_write_grant_fixture.py` 仅向随机隔离库准备临时项目并独立对账实际宿主、许可和文件；由 `run-isolated.py` 使用 `BROWSER_TEST_SCRIPT=project-write-grant-integration.mjs` 启动/清理。证据输出 `apps/web/output/playwright/project-write-grant-integration/`，不连接开发业务表。
+
 提案授权查询复用上述workspace仓库/服务文件：`read_owned_file_edit_proposal` 单条联表授权并仅选择公开列，`get_task_file_edit_proposal` 返回只读审阅快照；专项位于 `apps/api/tests/workspace/proposals/test_file_edit_proposal_query.py`。查询不检查当前文件或绑定，历史审阅与未来应用校验分别负责。
 
 提案创建工具：`apps/api/app/tools/create_file_edit_proposal.py` 复用预览参数校验并调用保存服务，在registry.py独立注册；测试为 `apps/api/tests/tools/test_create_file_edit_proposal_tool.py` 及 `test_file_edit_proposal_integration.py`。原预览工具不变，创建仅返回pending回执。

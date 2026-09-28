@@ -4,6 +4,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from app.local_boundary import local_access_boundary
+from app.services.workspace.proposals.project_write_grants import ProjectWriteGrantService
 
 from app.config import settings
 from app.services.runtime.execution.execution_budget import ExecutionBudget
@@ -23,6 +24,7 @@ from app.services.runtime.execution.command_recovery_store import (
     CommandRecoveryStore,
 )
 from app.services.runtime.execution.task_sample_recovery_store import TaskSampleRecoveryStore
+from app.services.runtime.execution.verification_recovery_store import VerificationRecoveryStore
 from app.services.workspace.git.application_samples import start_git_samples, stop_git_samples
 
 
@@ -36,10 +38,17 @@ async def lifespan(application: FastAPI) -> AsyncGenerator[None, None]:
     )
     application.state.command_recovery_store = CommandRecoveryStore()
     application.state.task_sample_recovery_store = TaskSampleRecoveryStore()
+    application.state.verification_recovery_store = VerificationRecoveryStore()
+
+    # 每个local应用启动持有独立宿主，跨请求共享；绝不从DB恢复runtime_id。
+    if settings.app_mode == "local":
+        application.state.project_write_grants = ProjectWriteGrantService()
 
     try:
         yield
     finally:
+        if hasattr(application.state, "project_write_grants"):
+            del application.state.project_write_grants
         try:
             await close_cancellation_broker()
         finally:
@@ -47,6 +56,8 @@ async def lifespan(application: FastAPI) -> AsyncGenerator[None, None]:
                 await stop_git_samples(application)
             finally:
                 # 恢复记录只封闭内存登记，不推断Docker已清理；Git关闭失败也须收尾。
+                application.state.verification_recovery_store.close()
+                del application.state.verification_recovery_store
                 application.state.task_sample_recovery_store.close()
                 del application.state.task_sample_recovery_store
                 del application.state.command_recovery_store

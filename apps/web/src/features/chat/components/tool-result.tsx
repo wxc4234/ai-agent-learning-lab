@@ -1,3 +1,9 @@
+import { parseTaskSampleDiff } from "../task-sample-diff-view";
+import TaskSampleDiffCard from "./task-sample-diff-card";
+import { parseVerification } from "../verification-view";
+import VerificationCard from "./verification-card";
+import { parseGitDiff } from "../git-diff-view";
+import GitDiffCard from "./git-diff-card";
 import { parseFileEditProposal } from "../file-edit-proposal-view";
 import FileEditProposalCard from "./file-edit-proposal-card";
 import { commandStatusLabel, parseCommandResult } from "../command-result-view";
@@ -17,6 +23,21 @@ export default function ToolResult({
         taskId: string;
     };
 }) {
+    if (toolName === "read_task_sample_diff") {
+        const diff = parseTaskSampleDiff(toolName, result);
+        return diff ? <TaskSampleDiffCard value={diff} /> : (
+            <p className="mt-3 text-sm" role="status">应用样例差异格式未识别，无法确认差异结果。</p>
+        );
+    }
+    if (toolName === "verify_task_sample") {
+        const verification = parseVerification(toolName, result);
+        return verification ? <VerificationCard value={verification} /> : (
+            <p className="mt-3 text-sm" role="status">验证结果格式未识别，无法确认验证结论。</p>
+        );
+    }
+    const gitDiff = parseGitDiff(toolName, result);
+    if (gitDiff !== null) return <GitDiffCard value={gitDiff} />;
+
     const proposal = parseFileEditProposal(toolName, result);
 
     if (proposal !== null) {
@@ -50,7 +71,9 @@ export default function ToolResult({
     if (!command) {
         let formatMessage: string | null = null;
 
-        if (toolName === "run_command") {
+        if (toolName === "git_sample_diff") {
+            formatMessage = "Git 差异结果格式未识别，显示原始文本";
+        } else if (toolName === "run_command") {
             formatMessage = "命令结果格式未识别，显示原始文本";
         } else if (toolName === "create_file_edit_proposal" || toolName === "create_file_patch_proposal") {
             formatMessage = "提案回执格式未识别，显示原始文本";

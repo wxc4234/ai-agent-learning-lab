@@ -1,3 +1,4 @@
+import { openAdvancedDetails } from './workbench-navigation.mjs';
 import assert from 'node:assert/strict';
 import { mkdir } from 'node:fs/promises';
 import { createRequire } from 'node:module';
@@ -43,11 +44,11 @@ try {
         await page.keyboard.press('Enter');
         await geometry(page, false, true);
         assert.equal(await page.getByLabel('你的问题').inputValue(), '保留输入');
-        await page.getByRole('button', { name: '收起详情' }).click();
+        await page.getByRole('button', { name: '关闭详情' }).click();
         await geometry(page, false, false);
         await page.getByRole('button', { name: '展开导航' }).click();
         await geometry(page, true, false);
-        await page.getByRole('button', { name: '展开详情' }).click();
+        await openAdvancedDetails(page);
         await geometry(page, true, true);
         assert.equal(await page.getByLabel('你的问题').inputValue(), '保留输入');
     });
@@ -60,11 +61,11 @@ try {
         await page.getByRole('button', { name: '发送', exact: true }).click();
         await page.getByText('calculate_rectangle_area', { exact: true }).waitFor();
         await page.getByRole('button', { name: '收起导航' }).click();
-        await page.getByRole('button', { name: '收起详情' }).click();
+        await page.getByRole('button', { name: '关闭详情' }).click();
         await geometry(page, false, false);
         assert.equal(await page.getByLabel('你的问题').isDisabled(), true);
         await page.getByRole('button', { name: '展开导航' }).click();
-        await page.getByRole('button', { name: '展开详情' }).click();
+        await openAdvancedDetails(page);
         const result = page.waitForResponse(r => r.url().includes('/cancel'));
         await page.getByRole('button', { name: '停止生成', exact: true }).click();
         assert.equal((await result).status(), 204);

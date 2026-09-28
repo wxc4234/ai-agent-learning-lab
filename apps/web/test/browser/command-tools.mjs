@@ -1,3 +1,4 @@
+import { openAdvancedDetails } from './workbench-navigation.mjs';
 import assert from 'node:assert/strict';
 import { mkdir } from 'node:fs/promises';
 import { createRequire } from 'node:module';
@@ -58,8 +59,7 @@ try {
         assert.equal(result.oom_killed, false);
         assert.equal(result.daemon_error, false);
         for (const key of ['execution_token', 'container_id', 'recovery_journal']) assert.ok(!JSON.stringify(run.events).includes(key));
-        const expand = page.getByRole('button', { name: '展开详情', exact: true });
-        if (await expand.isVisible()) await expand.click();
+        await openAdvancedDetails(page);
         await page.getByText('run_command', { exact: true }).waitFor();
         await page.getByText(code === 0 ? '命令成功' : '命令失败', { exact: true }).waitFor();
         await page.getByText('调用完成', { exact: true }).waitFor();
@@ -103,8 +103,7 @@ try {
     await page.getByText('已停止生成', { exact: true }).waitFor({ state: 'attached' });
     const stopped = await detail(cancelled, 'aborted');
     assert.equal(stopped.events.filter(event => event.event_type === 'TOOL_CALL_RESULT').length, 0);
-    const expandStopped = page.getByRole('button', { name: '展开详情', exact: true });
-    if (await expandStopped.isVisible()) await expandStopped.click();
+    await openAdvancedDetails(page);
     await page.getByText('已停止生成', { exact: true }).waitFor({ state: 'visible' });
     await page.getByText('结果未确认', { exact: true }).waitFor({ state: 'visible' });
     await page.screenshot({ path: `${output}/command-cancel.png` });

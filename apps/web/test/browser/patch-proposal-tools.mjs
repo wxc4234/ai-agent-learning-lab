@@ -1,3 +1,4 @@
+import { openAdvancedDetails } from './workbench-navigation.mjs';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { mkdir, mkdtemp, realpath, readFile, writeFile, rm } from 'node:fs/promises';
@@ -70,8 +71,7 @@ async function send(prompt, answer) {
         await new Promise(resolve => setTimeout(resolve, 100));
     }
     assert.equal(events.filter(event => event.type === 'RUN_FINISHED').length, 1);
-    const expand = page.getByRole('button', { name: '展开详情', exact: true });
-    if (await expand.isVisible()) await expand.click();
+    await openAdvancedDetails(page);
     return { events, runId };
 }
 const evidence = [];
@@ -178,8 +178,7 @@ try {
         for (const [name, content] of Object.entries(sources)) {
             assert.deepEqual(await readFile(`${root}/${name}.txt`), Buffer.from(content));
         }
-        const expandHistory = page.getByRole('button', { name: '展开详情', exact: true });
-        if (await expandHistory.isVisible()) await expandHistory.click();
+        await openAdvancedDetails(page);
         await page.getByRole('button', { name: `查看运行 ${runId}`, exact: true }).click();
         if (!failed) {
             await page.getByRole('region', { name: '文件修改提案回执', exact: true }).waitFor();

@@ -1,3 +1,4 @@
+import { openAdvancedDetails } from './workbench-navigation.mjs';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { mkdir, mkdtemp, realpath, readFile, writeFile, rm } from 'node:fs/promises';
@@ -66,8 +67,7 @@ async function send(prompt, answer) {
         await new Promise(resolve => setTimeout(resolve, 100));
     }
     assert.equal(events.filter(event => event.type === 'RUN_FINISHED').length, 1);
-    const expand = page.getByRole('button', { name: '展开详情', exact: true });
-    if (await expand.isVisible()) await expand.click();
+    await openAdvancedDetails(page);
     return { events, runId };
 }
 try {
@@ -147,8 +147,7 @@ try {
         }
         report.push({ marker, run_id: Number(runId), result_count: results.length, error_count: failures.length, reload_no_replay: true });
         // 从真实历史运行入口恢复卡片，不能只验证消息文本。
-        const expandHistory = page.getByRole('button', { name: '展开详情', exact: true });
-        if (await expandHistory.isVisible()) await expandHistory.click();
+        await openAdvancedDetails(page);
         await page.getByRole('button', { name: `查看运行 ${runId}`, exact: true }).click();
         if (marker !== 'conflict') await page.getByLabel('文件修改预览', { exact: true }).waitFor();
         console.log(`PASS ${marker}: preview-only/real file unchanged/hash/PC/persistence/no replay`);

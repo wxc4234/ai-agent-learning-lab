@@ -40,6 +40,8 @@ type Session = {
     localMode: boolean;
     leftOpen: boolean;
     rightOpen: boolean;
+    detailsMode: "changes" | "advanced";
+    setDetailsMode: (value: "changes" | "advanced") => void;
     setLeftOpen: (value: boolean) => void;
     setRightOpen: (value: boolean) => void;
     projects: WorkspaceListItem[];
@@ -81,6 +83,7 @@ export function WorkbenchProvider({
 }) {
     const [leftOpen, setLeftOpen] = useState(true);
     const [rightOpen, setRightOpen] = useState(false);
+    const [detailsMode, setDetailsMode] = useState<"changes" | "advanced">("changes");
     const [projects, setProjects] = useState<WorkspaceListItem[]>([]);
     const [selection, setSelection] = useState<Selection | null>(null);
     const [busy, setBusyState] = useState(false);
@@ -647,6 +650,8 @@ export function WorkbenchProvider({
                 localMode,
                 leftOpen,
                 rightOpen,
+                detailsMode,
+                setDetailsMode,
                 setLeftOpen,
                 setRightOpen,
                 projects: visibleProjects,

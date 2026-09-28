@@ -19,6 +19,7 @@ from app.schemas import (
 )
 from app.services.workspace.samples.sample_execution_runtime import get_sample_bindings
 from app.services.workspace.samples.sample_proposal_execution import (
+    SampleApprovalRequired,
     execute_sample_proposal,
 )
 from app.services.workspace.samples.task_sample_binding import (
@@ -49,7 +50,7 @@ router = APIRouter(
         },
         409: {
             "model": WorkspaceErrorResponse,
-            "description": "当前任务没有可用的服务端样例登记",
+            "description": "提案未满足批准条件或当前任务没有可用的样例登记",
         },
         415: {
             "model": WorkspaceErrorResponse,
@@ -104,6 +105,12 @@ def apply_sample_file_edit_proposal(
             workspace_id=workspace_id,
             task_id=task_id,
             proposal_id=proposal_id,
+        )
+    except SampleApprovalRequired:
+        return _error_response(
+            409,
+            code="proposal_not_approved",
+            message="提案未满足批准条件，未启动本次应用",
         )
     except TaskSampleBindingError:
         # 只说明当前登记不可用，不推断此前请求是否已经产生副作用。

@@ -1,3 +1,4 @@
+import { openAdvancedDetails } from './workbench-navigation.mjs';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { mkdir, mkdtemp, realpath, readFile, writeFile, rm } from 'node:fs/promises';
@@ -65,8 +66,7 @@ async function send(prompt, answer) {
         await new Promise(resolve => setTimeout(resolve, 100));
     }
     assert.equal(events.filter(event => event.type === 'RUN_FINISHED').length, 1);
-    const expand = page.getByRole('button', { name: '展开详情', exact: true });
-    if (await expand.isVisible()) await expand.click();
+    await openAdvancedDetails(page);
     return { events, runId };
 }
 try {

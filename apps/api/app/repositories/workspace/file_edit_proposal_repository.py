@@ -181,6 +181,8 @@ def read_owned_proposal_application_source(
             Workspace.id.label("workspace_pk"),
             Conversation.id.label("conversation_pk"),
             Workspace.root_path.label("current_root"),
+            Workspace.binding_revision,
+            FileEditProposal.application_status,
             FileEditProposal.bound_root,
             FileEditProposal.relative_path,
             FileEditProposal.status,

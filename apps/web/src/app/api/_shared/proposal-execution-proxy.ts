@@ -22,6 +22,7 @@ const ERRORS: Record<number, Record<string, string>> = {
         workspace_not_accessible: "资源不存在或不可访问",
     },
     409: {
+        proposal_not_approved: "提案未满足批准条件，未启动本次应用",
         sample_execution_unavailable:
             "当前任务没有可用的服务端样例登记，不能启动本次应用",
     },

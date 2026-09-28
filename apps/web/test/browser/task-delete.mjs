@@ -1,3 +1,4 @@
+import { openAdvancedDetails } from './workbench-navigation.mjs';
 import assert from 'node:assert/strict';
 import { mkdir } from 'node:fs/promises';
 import { createRequire } from 'node:module';
@@ -131,7 +132,7 @@ try {
         assert.equal((await started).status(), 200);
         console.log('READY execution started');
         await page.bringToFront();
-        await page.getByRole('button', { name: '展开详情', exact: true }).click();
+        await openAdvancedDetails(page);
         const execution = page.getByRole('region', { name: '会话执行占用' });
         await execution.getByRole('button', { name: '查询状态', exact: true }).click();
         await execution.getByText('查询时存在执行占用', { exact: true }).waitFor();
@@ -139,7 +140,7 @@ try {
         await execution.getByRole('button', { name: '检查并恢复异常运行', exact: true }).click();
         assert.equal((await recoveryRefused).status(), 409);
         await execution.getByText('无法确认原执行进程已退出，未解除占用。进程存活、身份未知或非本机执行时均会拒绝。', { exact: true }).waitFor();
-        await page.getByRole('button', { name: '收起详情', exact: true }).click();
+        await page.getByRole('button', { name: '关闭详情', exact: true }).click();
         await page.getByLabel('你的问题').fill('删除拒绝后保留草稿');
         let requests = 0;
         page.on('request', request => { if (request.method() === 'DELETE') requests++; });

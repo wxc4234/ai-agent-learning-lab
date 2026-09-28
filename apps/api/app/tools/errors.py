@@ -2,6 +2,26 @@
 
 
 _SAFE_MESSAGES = {
+    "task_sample_diff_request_rejected": "应用样例差异查询不接受额外参数",
+    "task_sample_diff_unavailable": "应用样例差异无法确认，请核对来源与状态",
+    "task_sample_diff_output_limit": "应用样例差异超过输出预算，不返回部分结果",
+    "verification_recovery_unavailable": "验证记录不可用或作用域不匹配，本次未启动验证",
+    "verification_execution_unconfirmed": "验证准备或执行未确认；需要核对已保存记录，不要自动重试",
+    "verification_cleanup_unconfirmed": "验证已有执行证据，但资源清理未确认；不要重新执行",
+    "verification_timeout_unconfirmed": "验证等待超时；需要核对已保存的停止与资源证据，不要自动重试",
+    "verification_request_rejected": "验证只接受固定计划sample_unittest_v1，不能覆盖执行策略",
+    "verification_result_unavailable": "验证结果无法安全确认；需要核对已保存的执行记录，不要自动重试",
+    "verification_result_too_large": "验证公开结果超过输出预算；不要重新执行验证",
+    "git_diff_request_rejected": "Git差异查询只接受worktree或staged范围",
+    "git_diff_invalid_scope": "Git差异比较范围不受支持",
+    "git_diff_unavailable": "任务Git样例差异暂时无法确认",
+    "git_diff_timeout": "Git差异采集超时，结果未确认",
+    "git_diff_output_limit": "Git差异超过采集预算，未返回部分结果",
+    "git_diff_command_failed": "Git差异命令失败，不能解释为空差异",
+    "git_diff_platform_unsupported": "当前平台不支持Git样例差异采集",
+    "git_diff_invalid_encoding": "Git差异不是有效UTF-8文本，未返回替换后的内容",
+    "git_diff_result_too_large": "Git差异公开结果超过输出预算",
+
     "git_status_request_rejected": "Git状态查询不接受模型提供的参数",
     "git_status_unavailable": "任务Git样例状态暂时无法确认",
     "task_git_sample_unavailable": "当前任务没有可查询的Git样例登记",

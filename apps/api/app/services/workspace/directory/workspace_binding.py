@@ -9,6 +9,7 @@ from app.repositories.workspace.proposal_application_guard import require_no_act
 
 from app.repositories.workspace.workspace_repository import (
     require_owned_workspace_for_update,
+    set_locked_workspace_root,
 )
 from app.services.workspace.directory.workspace_directory import validate_workspace_directory
 
@@ -76,7 +77,7 @@ def bind_workspace_directory(
 
         # 相同路径不重复赋值；首次绑定由 commit 自动刷新到数据库。
         if workspace.root_path is None:
-            workspace.root_path = normalized_path
+            set_locked_workspace_root(workspace, normalized_path)
 
         # 提交前复制普通字段，避免提交后读取过期 ORM 属性开启新事务。
         result = WorkspaceBindingResult(

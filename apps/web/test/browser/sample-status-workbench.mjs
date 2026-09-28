@@ -1,3 +1,4 @@
+import { openAdvancedDetails } from './workbench-navigation.mjs';
 import assert from 'node:assert/strict';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
@@ -54,7 +55,7 @@ try {
     await page.goto(base);
     const taskList = page.getByRole('list', { name: '状态验收项目 任务', exact: true });
     await taskList.getByRole('button', { name: '登记任务甲', exact: true }).click();
-    await page.getByRole('button', { name: '展开详情', exact: true }).click();
+    await openAdvancedDetails(page);
     const panel = page.locator('#workbench-details')
         .getByRole('region', { name: '受限样例登记状态', exact: true });
     const preflightPanel = page.locator('#workbench-details')
@@ -100,9 +101,9 @@ try {
     assert.equal(await preflightPanel.getByRole('button', { name: /执行清理|恢复登记|重试应用/ }).count(), 0);
 
     // 收起会卸载查询状态；重新展开不能自动请求或沿用旧快照。
-    await page.getByRole('button', { name: '收起详情', exact: true }).click();
+    await page.getByRole('button', { name: '关闭详情', exact: true }).click();
     assert.equal(await panel.count(), 0);
-    await page.getByRole('button', { name: '展开详情', exact: true }).click();
+    await openAdvancedDetails(page);
     await panel.getByText('尚未查询当前任务的样例登记。').waitFor();
     await preflightPanel.getByText('尚未查询当前任务的清理诊断。').waitFor();
     assert.equal(sampleRequests().length, 1);

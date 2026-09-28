@@ -3,7 +3,7 @@
 import asyncio
 import logging
 from collections.abc import AsyncGenerator, Callable
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Annotated
 
 from fastapi import Depends, Request
@@ -31,6 +31,7 @@ from app.services.runtime.execution.command_recovery_store import (
 from app.services.runtime.sandbox.command_recovery_journal import (
     CommandRecoveryJournalUnavailable,
 )
+from app.tools.task_sample_diff import make_task_sample_diff_definition
 from app.tools.run_command import CommandToolExecutionError, run_command
 
 
@@ -39,12 +40,20 @@ from app.services.runtime.execution.task_sample_recovery_store import TaskSample
 from app.services.workspace.samples.task_sample_binding import TaskSampleBindings
 from app.services.workspace.samples.sample_execution_runtime import get_sample_bindings
 from app.tools.context import ToolExecutionContext
-from app.tools.registry import CommandToolBinding, GitStatusExecutor
+from app.tools.registry import CommandToolBinding, GitStatusExecutor, ToolDefinition
 from app.tools.git_sample_status import make_git_sample_status_executor
+from app.tools.git_sample_diff import make_git_sample_diff_definition
 from app.services.workspace.git.application_samples import get_git_samples
 from app.services.workspace.git.task_git_samples import TaskGitSamples
 from app.tools.task_sample_command import TaskSampleCommandToolContext, run_task_sample_command_tool
 from app.tools.errors import SafeToolExecutionError
+
+
+from app.services.runtime.execution.verification_recovery_store import VerificationRecoveryScope, VerificationRecoveryStore
+from app.services.runtime.verification.contracts import VerificationRequest
+from app.services.runtime.verification.sandbox_verification import SandboxVerificationResult
+from app.tools.recorded_task_verification import make_recorded_task_verification_executor
+from app.tools.task_verification import make_task_verification_definition
 
 
 logger = logging.getLogger(__name__)
@@ -74,6 +83,9 @@ class ChatExecution:
     task_sample_recovery_store: TaskSampleRecoveryStore | None = None
     sample_bindings: TaskSampleBindings | None = None
     sample_scope: TaskSampleRecoveryScope | None = field(default=None, init=False)
+
+    verification_recovery_store: VerificationRecoveryStore | None = None
+    verification_scope: VerificationRecoveryScope | None = field(default=None, init=False)
 
     # 延迟读取当前应用所有者：普通无Task聊天不需要Git能力，也不临时创建manager。
     git_samples_provider: Callable[[], TaskGitSamples] | None = None
@@ -107,6 +119,108 @@ class ChatExecution:
             return adapter(context=context)
 
         return execute
+
+    def bind_git_diff_tool(self, context: ToolExecutionContext) -> ToolDefinition:
+        """只绑定当前请求能力；原定义与执行器共享参数模型和输出协议。"""
+        if (
+            self._command_closed or not isinstance(context, ToolExecutionContext)
+            or context.user_id != self.user_id or context.conversation_id != self.body.session_id
+            or self.git_samples_provider is None
+        ):
+            raise SafeToolExecutionError('task_git_sample_unavailable')
+        try:
+            definition = make_git_sample_diff_definition(self.git_samples_provider())
+        except Exception:  # noqa: BLE001 -- 应用资源失败不回显内部异常。
+            raise SafeToolExecutionError('task_git_sample_unavailable') from None
+        adapter = definition.executor
+        if adapter is None:
+            raise SafeToolExecutionError('task_git_sample_unavailable')
+        expected_context = context
+
+        def execute(*, context: ToolExecutionContext, **arguments: object) -> str:
+            if self._command_closed or context is not expected_context:
+                raise SafeToolExecutionError('task_git_sample_unavailable')
+            # 在线程中重新加载会话身份；短事务结束后进入Task授权和Git采集。
+            try:
+                current = load_tool_execution_context(
+                    user_id=self.user_id, conversation_id=self.body.session_id,
+                )
+            except Exception:  # noqa: BLE001 -- 只公开固定授权错误。
+                raise SafeToolExecutionError('workspace_not_accessible') from None
+            if current != expected_context or self._command_closed:
+                raise SafeToolExecutionError('workspace_not_accessible')
+            return adapter(context=context, **arguments)
+
+        return replace(definition, executor=execute)
+
+    async def bind_sample_diff_tool(self, context: ToolExecutionContext) -> ToolDefinition | None:
+        """ready只决定展示能力；调用仍重新授权并借用当前来源。"""
+        if (self._command_closed or not isinstance(context, ToolExecutionContext)
+                or context.user_id != self.user_id or context.conversation_id != self.body.session_id):
+            raise SafeToolExecutionError('task_sample_diff_unavailable')
+        if not isinstance(self.sample_bindings, TaskSampleBindings):
+            return None
+        status = await self.threads.run(
+            self.sample_bindings.read_status, user_id=context.user_id,
+            workspace_id=context.workspace_id, task_id=context.task_id,
+        )
+        if self._command_closed:
+            raise SafeToolExecutionError('task_sample_diff_unavailable')
+        if status.status != 'ready':
+            return None
+        definition = make_task_sample_diff_definition(self.sample_bindings)
+        adapter = definition.executor
+        expected = context
+
+        def execute(*, context: ToolExecutionContext, **arguments: object) -> str:
+            if self._command_closed or context is not expected or adapter is None:
+                raise SafeToolExecutionError('task_sample_diff_unavailable')
+            # 同步执行器由Runtime受跟踪线程执行；服务层重新加载身份及借用来源。
+            return adapter(context=context, **arguments)
+
+        return replace(definition, executor=execute)
+
+    async def bind_verification_tool(self, context: ToolExecutionContext) -> ToolDefinition | None:
+        """状态只决定能力快照；执行时重新授权，不让普通聊天提前占用记录名额。"""
+        if (self._command_closed or not isinstance(context, ToolExecutionContext)
+                or context.user_id != self.user_id or context.conversation_id != self.body.session_id):
+            raise SafeToolExecutionError('verification_recovery_unavailable')
+        if not isinstance(self.sample_bindings, TaskSampleBindings) or not isinstance(
+            self.verification_recovery_store, VerificationRecoveryStore,
+        ):
+            return None
+        status = await self.threads.run(
+            self.sample_bindings.read_status, user_id=context.user_id,
+            workspace_id=context.workspace_id, task_id=context.task_id,
+        )
+        if self._command_closed:
+            raise SafeToolExecutionError('verification_recovery_unavailable')
+        if status.status != 'ready':
+            return None
+        expected_context = context
+
+        async def execute(*, request: VerificationRequest, context: ToolExecutionContext) -> SandboxVerificationResult:
+            if (self._command_closed or context is not expected_context
+                    or self.creation is None or not self.creation.done() or self.creation.cancelled()):
+                raise SafeToolExecutionError('verification_recovery_unavailable')
+            try:
+                current = await self.threads.run(
+                    load_tool_execution_context, user_id=self.user_id, conversation_id=self.body.session_id,
+                )
+                if current != expected_context or self._command_closed:
+                    raise ValueError('context changed')
+                store = self.verification_recovery_store
+                bindings = self.sample_bindings
+                if not isinstance(store, VerificationRecoveryStore) or not isinstance(bindings, TaskSampleBindings):
+                    raise TypeError('resources unavailable')
+                scope = store.acquire(context=current, run_id=self.creation.result())
+            except Exception:  # noqa: BLE001 -- 查询或资源未知不能降级执行。
+                raise SafeToolExecutionError('verification_recovery_unavailable') from None
+            self.verification_scope = scope
+            adapter = make_recorded_task_verification_executor(bindings=bindings, journal=scope.journal)
+            return await adapter(request=request, context=expected_context)
+
+        return make_task_verification_definition(execute)
 
     async def bind_command_tool(self, context: ToolExecutionContext) -> CommandToolBinding | None:
         """查询只决定请求能力快照；实际执行仍重新授权并借用，不缓存 ready 为许可。"""
@@ -230,6 +344,8 @@ class ChatExecution:
         """停止新命令，关闭异步资源，再排空线程并整理恢复记录。"""
 
         self._command_closed = True
+        if self.verification_scope is not None:
+            self.verification_scope.journal.close()
         if self.sample_scope is not None:
             self.sample_scope.journal.close()
         if self.command_scope is not None:
@@ -274,6 +390,9 @@ class ChatExecution:
                     (self.user_id, self.body.session_id),
                     None,
                 )
+
+                if self.verification_scope is not None and self.verification_recovery_store is not None:
+                    self.verification_recovery_store.close_scope(self.verification_scope)
 
                 if self.sample_scope is not None and self.task_sample_recovery_store is not None:
                     self.task_sample_recovery_store.close_scope(self.sample_scope)
@@ -341,6 +460,10 @@ async def require_chat_execution(
         None,
     )
 
+    verification_store = getattr(request.app.state, 'verification_recovery_store', None)
+    if not isinstance(verification_store, VerificationRecoveryStore):
+        raise RuntimeError('验证恢复存储尚未初始化')  # noqa: TRY004 -- 应用装配缺失是生命周期错误
+
     # 应用资源只能在生命周期中统一装配，不能按请求临时创建。
     if not isinstance(budget, ExecutionBudget):
         raise RuntimeError("应用执行预算尚未初始化")  # noqa: TRY004
@@ -365,6 +488,7 @@ async def require_chat_execution(
                 command_recovery_store=recovery_store,
                 task_sample_recovery_store=getattr(request.app.state, 'task_sample_recovery_store', None),
                 sample_bindings=get_sample_bindings(),
+                verification_recovery_store=verification_store,
                 git_samples_provider=lambda: get_git_samples(request),
             )
 

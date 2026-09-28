@@ -605,15 +605,15 @@ function TaskChat() {
     return (
         <>
             <WorkbenchDetails>
-                {workbench.localMode && workbench.selection?.task ? (
+                {workbench.rightOpen && workbench.detailsMode === "changes" && (workbench.localMode && workbench.selection?.task ? (
                     <TaskChangesPanel
                         key={`${workbench.selection.workspace.external_id}:${workbench.selection.task.external_id}`}
                         workspaceId={workbench.selection.workspace.external_id}
                         taskId={workbench.selection.task.external_id}
                         refreshKey={`${activeRunId}:${chatState.status}:${chatState.tools.filter(tool => tool.result).length}`}
                     />
-                ) : <p className="text-sm text-muted-foreground">选择任务后查看文件改动。</p>}
-                <details className="mt-6 border-t border-border pt-4">
+                ) : <p className="text-sm text-muted-foreground">选择任务后查看文件改动。</p>)}
+                {workbench.rightOpen && workbench.detailsMode === "advanced" && <details open className="space-y-4">
                     <summary className="cursor-pointer text-sm text-muted-foreground">运行记录与诊断</summary>
                     <div className="mt-4 space-y-4">
                     <section className="pb-1">
@@ -757,7 +757,7 @@ function TaskChat() {
                             </>
                         )}
                     </div>
-                </details>
+                </details>}
             </WorkbenchDetails>
             <div
                 className={`flex min-h-0 flex-1 flex-col ${emptyConversation ? "justify-center overflow-y-auto pb-[8vh]" : ""}`}

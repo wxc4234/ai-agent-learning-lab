@@ -163,6 +163,7 @@ def test_lock_query_refreshes_stale_identity_and_does_not_flush(engine, setup_bi
         session.add(pending)
         record = require_owned_workspace_for_update(session, user_id=owner, workspace_id="workspace")
         assert record is cached and record.root_path == str(first.resolve())
+        assert record.binding_revision == 2
         assert pending.id is None and pending in session.new
         session.rollback()
 
@@ -218,3 +219,6 @@ def test_concurrent_binding_waits_and_observes_committed_path(engine, setup_bind
         second_result = second_future.result(timeout=10)
     assert second_result == (first_result if same_directory else "conflict")
     assert stored(engine) == str(first.resolve())
+
+    with Session(engine) as session:
+        assert session.scalar(select(Workspace.binding_revision)) == 2

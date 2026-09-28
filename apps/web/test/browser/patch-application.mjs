@@ -1,3 +1,4 @@
+import { openAdvancedDetails } from './workbench-navigation.mjs';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { readFile, writeFile, stat } from 'node:fs/promises';
@@ -29,8 +30,7 @@ try {
         assert.equal(response.status(), 200);
         const runId = response.headers()['x-run-id'];
         await page.getByText('补丁提案已保存，请审阅后决定是否批准', { exact: true }).waitFor();
-        const expand = page.getByRole('button', { name: '展开详情', exact: true });
-        if (await expand.isVisible()) await expand.click();
+        await openAdvancedDetails(page);
         const card = page.getByRole('region', { name: '文件修改提案回执', exact: true });
         await card.waitFor();
         const run = await (await page.request.get(`${base}/api/runs/${runId}`)).json();
@@ -86,11 +86,11 @@ try {
         }
         await page.goto(`${base}/?workspace=${workspace}&task=${task}`);
         await page.getByText('补丁提案已保存，请审阅后决定是否批准', { exact: true }).waitFor();
-        const history = page.getByRole('button', { name: '展开详情', exact: true });
-        if (await history.isVisible()) await history.click();
+        await openAdvancedDetails(page);
         await page.getByRole('button', { name: `查看运行 ${runId}`, exact: true }).click();
         await panel.getByRole('button', { name: '查看提案详情', exact: true }).click();
         await panel.getByLabel('提案 Diff', { exact: true }).waitFor();
+        await panel.getByText('高级状态核对', { exact: true }).click();
         await panel.getByRole('button', { name: '查询应用状态', exact: true }).click();
         const status = await (await page.request.get(`${endpoint}/application-status`)).json();
         assert.equal(status.application_status, marker === 'success' ? 'applied' : marker === 'conflict' ? 'not_applied' : 'idle');

@@ -94,3 +94,17 @@ def _is_sample_cleanup_preflight_request(request: Request) -> bool:
     return request.method == "GET" and getattr(request.scope.get("route"), "path", None) == (
         "/workspaces/{workspace_id}/tasks/{task_id}/sample-cleanup-preflight"
     )
+
+
+def _is_project_write_grant_request(request: Request) -> bool:
+    base = "/workspaces/{workspace_id}/tasks/{task_id}/file-edit-proposals/{proposal_id}/write-grant"
+    path = getattr(request.scope.get("route"), "path", None)
+    return ((path == base and request.method in {"GET", "POST"})
+            or (path == base + "/revoke" and request.method == "POST"))
+
+
+def _is_project_write_assessment_request(request: Request) -> bool:
+    route = request.scope.get("route")
+    return request.method == "POST" and getattr(route, "path", None) == (
+        "/workspaces/{workspace_id}/tasks/{task_id}/file-edit-proposals/{proposal_id}/write-grant/assessment"
+    )

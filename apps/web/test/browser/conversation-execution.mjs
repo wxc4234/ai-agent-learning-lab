@@ -1,3 +1,4 @@
+import { openAdvancedDetails } from './workbench-navigation.mjs';
 import assert from 'node:assert/strict';
 import { mkdir } from 'node:fs/promises';
 import { createRequire } from 'node:module';
@@ -39,7 +40,7 @@ try {
         await loaded;
         await current.waitForFunction(() => { const input = document.querySelector('textarea'); return input && !input.disabled; });
     }
-    if (await page.getByRole('button', { name: '展开详情', exact: true }).isVisible()) await page.getByRole('button', { name: '展开详情', exact: true }).click();
+    await openAdvancedDetails(page);
     await panel().getByText('尚未查询，可手动查看会话占用。', { exact: true }).waitFor();
     const queryButton = panel().getByRole('button', { name: '查询状态', exact: true });
     await queryButton.focus();
@@ -122,9 +123,9 @@ try {
     await page.evaluate(() => { window.executionTest.mode = 'hold'; });
     await panel().getByRole('button', { name: '刷新状态', exact: true }).click();
     await panel().getByRole('button', { name: '查询中…', exact: true }).waitFor();
-    await page.getByRole('button', { name: '收起详情', exact: true }).click();
+    await page.getByRole('button', { name: '关闭详情', exact: true }).click();
     assert.equal(await page.evaluate(() => window.executionTest.pending[0].signal.aborted), true);
-    await page.getByRole('button', { name: '展开详情', exact: true }).click();
+    await openAdvancedDetails(page);
     await panel().getByText('尚未查询，可手动查看会话占用。', { exact: true }).waitFor();
     await page.evaluate(sessionId => {
         window.executionTest.pending.shift().resolve(Response.json({ session_id: sessionId, occupied: true, acquired_at: '2000-01-01T00:00:00Z' }));

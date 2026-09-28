@@ -20,6 +20,8 @@ from app.routers.workspace.errors import _workspace_failure_response
 from app.routers.workspace.http import _error_response
 from app.routers.workspace.request_kinds import (
     _is_directory_request,
+    _is_project_write_assessment_request,
+    _is_project_write_grant_request,
     _is_proposal_application_status_request,
     _is_proposal_decision_request,
     _is_proposal_execution_request,
@@ -48,6 +50,165 @@ from app.services.workspace.directory.workspace_binding import (
 from app.services.workspace.directory.workspace_directory import WorkspaceDirectoryError
 
 
+def _validation_error_response(request: Request) -> Response:
+    """参数错误分类独立于请求执行流程，避免错误边界的分支组合过多。"""
+    if _is_project_write_assessment_request(request):
+        return _error_response(422, code="invalid_project_write_assessment_input",
+                               message="前置检查参数无效")
+    if _is_project_write_grant_request(request):
+        return _error_response(422, code="invalid_project_write_grant_input",
+                               message="许可请求参数不符合要求")
+    if _is_sample_cleanup_preflight_request(request):
+        return _error_response(
+            422,
+            code="invalid_sample_cleanup_preflight_input",
+            message="样例清理诊断路径参数不符合要求",
+        )
+    if _is_sample_status_request(request):
+        return _error_response(
+            422,
+            code="invalid_sample_status_input",
+            message="样例登记查询参数不符合要求",
+        )
+    if _is_proposal_execution_request(request):
+        return _error_response(
+            422,
+            code="invalid_proposal_execution_input",
+            message="提案应用请求参数不符合要求",
+        )
+    # 路径和正文校验错误统一脱敏，不返回原始输入。
+    if _is_proposal_application_status_request(request):
+        return _error_response(
+            422,
+            code="invalid_proposal_application_status_input",
+            message="提案应用状态查询参数不符合要求",
+        )
+
+    if _is_proposal_decision_request(request):
+        return _error_response(
+            422,
+            code="invalid_proposal_decision_input",
+            message="提案审批请求参数不符合要求",
+        )
+
+    if _is_task_run_list_request(request):
+        return _error_response(
+            422,
+            code=InvalidTaskRunQueryError.code,
+            message="任务运行历史查询参数不符合要求",
+        )
+
+    if _is_task_create_request(request) or _is_task_delete_request(request):
+        return _error_response(
+            422,
+            code="invalid_task_input",
+            message="任务请求参数不符合要求",
+        )
+
+    return _error_response(
+        422,
+        code="invalid_workspace_input",
+        message="工作空间请求参数不符合要求",
+    )
+
+
+async def _request_error_response(request: Request) -> Response | None:
+    """身份解析前的模式、来源及正文形态检查；通过时继续原handler。"""
+    # Task 主流程目前仅服务本地工作台。
+    # 在身份解析和数据库操作之前拒绝非本地模式。
+    if (
+        "/tasks" in getattr(request.scope.get("route"), "path", "")
+        and settings.app_mode != "local"
+    ):
+        return _error_response(
+            403,
+            code="local_mode_required",
+            message="任务功能仅支持本地模式",
+        )
+
+    # 目录读取和绑定都仅供本地工作台使用。
+    # 在身份解析及数据库查询前拒绝非本地模式。
+    if _is_directory_request(request) and settings.app_mode != "local":
+        return _error_response(
+            403,
+            code="local_mode_required",
+            message="项目目录功能仅支持本地模式",
+        )
+
+    if _is_task_delete_request(request):
+        # 删除也是写操作，即使没有 JSON 正文，也必须检查来源。
+        # 内部凭证和本机 Host 继续由既有本地访问边界检查。
+        origin = request.headers.get("origin")
+
+        if origin not in settings.login_allowed_origins:
+            return _error_response(
+                403,
+                code="workspace_origin_rejected",
+                message="工作空间请求来源不被允许",
+            )
+
+        # 删除目标完全由路径确定，不接受正文中的身份或资源字段。
+        # 不要求 Content-Type，也不把空 JSON 对象当作无正文。
+        if await request.body():
+            return _error_response(
+                422,
+                code="invalid_task_input",
+                message="任务删除请求不接受正文",
+            )
+
+    # 创建和绑定都是写操作，都要求可信来源与 JSON 正文。
+    if request.method in {"POST", "PUT"}:
+        # 沿用现有允许来源配置，精确匹配，不使用前缀匹配。
+        origin = request.headers.get("origin")
+
+        if origin not in settings.login_allowed_origins:
+            return _error_response(
+                403,
+                code="workspace_origin_rejected",
+                message="工作空间请求来源不被允许",
+            )
+
+        # 接受 application/json; charset=utf-8 等合法参数形式。
+        content_type = (
+            request.headers.get("content-type", "")
+            .split(";", 1)[0]
+            .strip()
+            .lower()
+        )
+
+        if content_type != "application/json":
+            return _error_response(
+                415,
+                code="unsupported_workspace_content_type",
+                message="工作空间请求必须使用 application/json",
+            )
+
+    # 只读查询仅使用路径资源，不接受另一套查询身份或正文选项。
+    if _is_sample_status_request(request) and (request.query_params or await request.body()):
+        return _error_response(
+            422,
+            code="invalid_sample_status_input",
+            message="样例登记查询不接受查询参数或正文",
+        )
+
+    if _is_sample_cleanup_preflight_request(request) and (request.query_params or await request.body()):
+        return _error_response(
+            422,
+            code="invalid_sample_cleanup_preflight_input",
+            message="样例清理诊断不接受查询参数或正文",
+        )
+
+    if _is_project_write_assessment_request(request) and request.query_params:
+        return _validation_error_response(request)
+
+    if _is_project_write_grant_request(request) and (
+        request.query_params or (request.method == "GET" and await request.body())
+    ):
+        return _error_response(422, code="invalid_project_write_grant_input",
+                               message="许可请求不接受查询参数，查询不接受正文")
+    return None
+
+
 class WorkspaceRoute(APIRoute):
     """覆盖依赖求解、路由执行以及响应生成阶段的错误。"""
 
@@ -58,89 +219,9 @@ class WorkspaceRoute(APIRoute):
 
         async def safe_handler(request: Request) -> Response:
             try:
-                # Task 主流程目前仅服务本地工作台。
-                # 在身份解析和数据库操作之前拒绝非本地模式。
-                if (
-                    "/tasks" in getattr(request.scope.get("route"), "path", "")
-                    and settings.app_mode != "local"
-                ):
-                    return _error_response(
-                        403,
-                        code="local_mode_required",
-                        message="任务功能仅支持本地模式",
-                    )
-
-                # 目录读取和绑定都仅供本地工作台使用。
-                # 在身份解析及数据库查询前拒绝非本地模式。
-                if _is_directory_request(request) and settings.app_mode != "local":
-                    return _error_response(
-                        403,
-                        code="local_mode_required",
-                        message="项目目录功能仅支持本地模式",
-                    )
-
-                if _is_task_delete_request(request):
-                    # 删除也是写操作，即使没有 JSON 正文，也必须检查来源。
-                    # 内部凭证和本机 Host 继续由既有本地访问边界检查。
-                    origin = request.headers.get("origin")
-
-                    if origin not in settings.login_allowed_origins:
-                        return _error_response(
-                            403,
-                            code="workspace_origin_rejected",
-                            message="工作空间请求来源不被允许",
-                        )
-
-                    # 删除目标完全由路径确定，不接受正文中的身份或资源字段。
-                    # 不要求 Content-Type，也不把空 JSON 对象当作无正文。
-                    if await request.body():
-                        return _error_response(
-                            422,
-                            code="invalid_task_input",
-                            message="任务删除请求不接受正文",
-                        )
-
-                # 创建和绑定都是写操作，都要求可信来源与 JSON 正文。
-                if request.method in {"POST", "PUT"}:
-                    # 沿用现有允许来源配置，精确匹配，不使用前缀匹配。
-                    origin = request.headers.get("origin")
-
-                    if origin not in settings.login_allowed_origins:
-                        return _error_response(
-                            403,
-                            code="workspace_origin_rejected",
-                            message="工作空间请求来源不被允许",
-                        )
-
-                    # 接受 application/json; charset=utf-8 等合法参数形式。
-                    content_type = (
-                        request.headers.get("content-type", "")
-                        .split(";", 1)[0]
-                        .strip()
-                        .lower()
-                    )
-
-                    if content_type != "application/json":
-                        return _error_response(
-                            415,
-                            code="unsupported_workspace_content_type",
-                            message="工作空间请求必须使用 application/json",
-                        )
-
-                # 只读查询仅使用路径资源，不接受另一套查询身份或正文选项。
-                if _is_sample_status_request(request) and (request.query_params or await request.body()):
-                    return _error_response(
-                        422,
-                        code="invalid_sample_status_input",
-                        message="样例登记查询不接受查询参数或正文",
-                    )
-
-                if _is_sample_cleanup_preflight_request(request) and (request.query_params or await request.body()):
-                    return _error_response(
-                        422,
-                        code="invalid_sample_cleanup_preflight_input",
-                        message="样例清理诊断不接受查询参数或正文",
-                    )
+                error = await _request_error_response(request)
+                if error is not None:
+                    return error
 
                 # 原始 handler 会解析请求、执行 CurrentUser 依赖并调用接口。
                 response = await original_handler(request)
@@ -155,58 +236,7 @@ class WorkspaceRoute(APIRoute):
                 )
 
             except RequestValidationError:
-                if _is_sample_cleanup_preflight_request(request):
-                    return _error_response(
-                        422,
-                        code="invalid_sample_cleanup_preflight_input",
-                        message="样例清理诊断路径参数不符合要求",
-                    )
-                if _is_sample_status_request(request):
-                    return _error_response(
-                        422,
-                        code="invalid_sample_status_input",
-                        message="样例登记查询参数不符合要求",
-                    )
-                if _is_proposal_execution_request(request):
-                    return _error_response(
-                        422,
-                        code="invalid_proposal_execution_input",
-                        message="提案应用请求参数不符合要求",
-                    )
-                # 路径和正文校验错误统一脱敏，不返回原始输入。
-                if _is_proposal_application_status_request(request):
-                    return _error_response(
-                        422,
-                        code="invalid_proposal_application_status_input",
-                        message="提案应用状态查询参数不符合要求",
-                    )
-
-                if _is_proposal_decision_request(request):
-                    return _error_response(
-                        422,
-                        code="invalid_proposal_decision_input",
-                        message="提案审批请求参数不符合要求",
-                    )
-
-                if _is_task_run_list_request(request):
-                    return _error_response(
-                        422,
-                        code=InvalidTaskRunQueryError.code,
-                        message="任务运行历史查询参数不符合要求",
-                    )
-
-                if _is_task_create_request(request) or _is_task_delete_request(request):
-                    return _error_response(
-                        422,
-                        code="invalid_task_input",
-                        message="任务请求参数不符合要求",
-                    )
-
-                return _error_response(
-                    422,
-                    code="invalid_workspace_input",
-                    message="工作空间请求参数不符合要求",
-                )
+                return _validation_error_response(request)
 
             except InvalidTaskRunQueryError:
                 # 服务层也会校验参数，统一映射为同一份安全 HTTP 契约。

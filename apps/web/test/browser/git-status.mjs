@@ -1,3 +1,4 @@
+import { openAdvancedDetails } from './workbench-navigation.mjs';
 import assert from 'node:assert/strict';
 import { readFile, writeFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
@@ -32,8 +33,7 @@ try {
         await page.getByText(answer, { exact: true }).waitFor();
         console.log(`Observed ${mode}: answer visible`);
         const runId = response.headers()['x-run-id'];
-        const expanded = page.getByRole('button', { name: '展开详情', exact: true });
-        if (await expanded.isVisible()) await expanded.click();
+        await openAdvancedDetails(page);
         const stored = await page.request.get(`${base}/api/runs/${runId}`);
         assert.equal(stored.status(), 200);
         const run = await stored.json();
@@ -72,8 +72,7 @@ try {
         await page.reload();
         await page.getByText(answer, { exact: true }).waitFor();
         console.log(`Observed ${mode}: answer visible`);
-        const details = page.getByRole('button', { name: '展开详情', exact: true });
-        if (await details.isVisible()) await details.click();
+        await openAdvancedDetails(page);
         await page.getByRole('button', { name: `查看运行 ${runId}`, exact: true }).click();
         await page.getByText('git_sample_status', { exact: true }).first().waitFor();
         assert.equal(await page.getByText('git_sample_status', { exact: true }).count(), 2);

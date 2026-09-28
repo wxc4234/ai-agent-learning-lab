@@ -9,6 +9,7 @@ from typing import Literal, cast
 
 from app.config import settings
 from app.database import SessionLocal
+from app.repositories.workspace.workspace_repository import set_locked_workspace_root
 from app.models import WorkspaceSampleOrigin
 from app.repositories.workspace.file_edit_proposal_repository import lock_owned_proposal_task
 from app.repositories.workspace.proposal_application_guard import require_no_active_proposal_application
@@ -188,7 +189,7 @@ class TaskSampleBindings:
                         # 身份取自本次借用的已核验样例；绑定、来源及身份同事务提交。
                         parent_dev, parent_ino = sample.parent_identity
                         root_dev, root_ino = sample.root_identity
-                        workspace.root_path = binding.root
+                        set_locked_workspace_root(workspace, binding.root)
                         session.add(WorkspaceSampleOrigin(
                             workspace_id=workspace.id,
                             task_id=task.id,
@@ -282,7 +283,7 @@ class TaskSampleBindings:
                     require_no_active_proposal_application(session, workspace_id=workspace.id)
                     # 同事务解绑并保留来源待办；提交未确认时绝不猜测能否清理。
                     origin.lifecycle_state = 'cleanup_pending'
-                    workspace.root_path = None
+                    set_locked_workspace_root(workspace, None)
                     session.flush()
                     attempted = True
                     session.commit()

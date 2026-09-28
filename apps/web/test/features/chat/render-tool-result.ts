@@ -1,3 +1,7 @@
+import { grantChangeObserved, readGrantReceipt } from "../../../src/features/workbench/project-write-grant-data.ts";
+import { parseGitDiff } from "../../../src/features/chat/git-diff-view.ts";
+import { createProposalExecutionRequest } from "../../../src/features/workbench/proposal-execution-request.ts";
+import { readProposalExecutionReceipt } from "../../../src/features/workbench/proposal-execution-data.ts";
 import { readProposalApplicationStatus } from "../../../src/features/workbench/proposal-application-status-data.ts";
 import { readTaskSampleStatus } from "../../../src/features/workbench/task-sample-status-data.ts";
 import { readFileEditProposalDecisionReceipt } from "../../../src/features/workbench/file-edit-proposal-decision-data.ts";
@@ -49,8 +53,23 @@ const TaskSampleStatusPanel = compileComponent("../../workbench/components/task-
         return createElement("button", props);
     },
 });
+// 新增组合组件时同步提供真实依赖，避免无关卡片更新让旧夹具失效。
+const plainButton = ({ variant, size, ...props }: Record<string, unknown>) => {
+    void variant; void size;
+    return createElement("button", props);
+};
+const ProjectWriteGrantActions = compileComponent("project-write-grant-actions.tsx", "ProjectWriteGrantActions", {
+    useEffect, useRef, useState, isProposalIdentifier, grantChangeObserved, readGrantReceipt, Button: plainButton,
+});
+const ProposalExecutionResultPanel = compileComponent("proposal-execution-result.tsx", "ProposalExecutionResultPanel", {
+    readProposalExecutionReceipt,
+});
+const ProposalExecutionActions = compileComponent("proposal-execution-actions.tsx", "ProposalExecutionActions", {
+    useEffect, useRef, useState, createProposalExecutionRequest, ProposalExecutionResultPanel, Button: plainButton,
+});
+const GitDiffCard = compileComponent("git-diff-card.tsx", "GitDiffCard", {});
 const FileEditProposalDetailPanel = compileComponent("file-edit-proposal-detail.tsx", "FileEditProposalDetailPanel", {
-    useEffect, useRef, useState, isProposalIdentifier, readFileEditProposalDetail, FileEditProposalActions, ProposalApplicationStatusPanel, TaskSampleStatusPanel,
+    useEffect, useRef, useState, isProposalIdentifier, readFileEditProposalDetail, FileEditProposalActions, ProposalApplicationStatusPanel, TaskSampleStatusPanel, ProjectWriteGrantActions, ProposalExecutionActions,
     // 只替换UI按钮外观，状态与详情组件使用真实React和TSX。
     Button: ({ variant, size, ...props }: Record<string, unknown>) => {
         void variant;
@@ -59,7 +78,7 @@ const FileEditProposalDetailPanel = compileComponent("file-edit-proposal-detail.
     },
 });
 const ToolResult = compileComponent("tool-result.tsx", "ToolResult", {
-    commandStatusLabel, parseCommandResult, parseFileEditPreview, FileEditPreviewCard,
+    commandStatusLabel, parseCommandResult, parseFileEditPreview, FileEditPreviewCard, parseGitDiff, GitDiffCard,
     parseFileEditProposal, FileEditProposalCard, FileEditProposalDetailPanel,
 });
 export function renderToolResult(toolName: string, result: string, taskScope?: { workspaceId: string; taskId: string }): string {
@@ -71,7 +90,7 @@ export function renderProposalDetailSnapshot(
     detail: NonNullable<ReturnType<typeof readFileEditProposalDetail>>,
 ): string {
     const Panel = compileComponent("file-edit-proposal-detail.tsx", "FileEditProposalDetailPanel", {
-        useEffect, useRef, isProposalIdentifier, readFileEditProposalDetail, FileEditProposalActions, ProposalApplicationStatusPanel, TaskSampleStatusPanel,
+        useEffect, useRef, isProposalIdentifier, readFileEditProposalDetail, FileEditProposalActions, ProposalApplicationStatusPanel, TaskSampleStatusPanel, ProjectWriteGrantActions, ProposalExecutionActions,
         useState: () => [{ status: "ready", detail }, () => {}],
         Button: ({ variant, size, ...props }: Record<string, unknown>) => {
             void variant;

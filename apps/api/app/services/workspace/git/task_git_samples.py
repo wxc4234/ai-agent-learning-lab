@@ -1,11 +1,15 @@
 """进程内Task专属Git样例；不绑定Workspace.root_path或开放普通目录。"""
 
-from contextlib import AbstractContextManager
+from collections.abc import Generator
+from contextlib import AbstractContextManager, contextmanager
 from dataclasses import dataclass
 from threading import RLock
 
 from app.database import SessionLocal
 from app.services.tasks.task_workspace import owned_task
+from app.services.workspace.git.diff_capture import (
+    GitDiffScope, GitDiffSnapshot, collect_sample_git_diff,
+)
 from app.services.workspace.git.status_capture import (
     GitStatusSample, collect_sample_git_status, temporary_git_status_sample,
 )
@@ -62,7 +66,19 @@ class TaskGitSamples:
             self._bindings[key] = _Binding(identities, lifetime, sample)
 
     def read_status(self, *, user_id: int, workspace_id: str, task_id: str) -> GitStatusSnapshot:
-        key = (user_id, workspace_id, task_id)
+        with self._borrow((user_id, workspace_id, task_id)) as sample:
+            return collect_sample_git_status(sample)
+
+    def read_diff(
+        self, *, user_id: int, workspace_id: str, task_id: str, scope: GitDiffScope,
+    ) -> GitDiffSnapshot:
+        """固定范围的内部读取；基线由可信夹具准备，不自动提交或暂存。"""
+        with self._borrow((user_id, workspace_id, task_id)) as sample:
+            return collect_sample_git_diff(sample, scope=scope)
+
+    @contextmanager
+    def _borrow(self, key: tuple[int, str, str]) -> Generator[GitStatusSample, None, None]:
+        # status与diff共用同一借用门禁，避免不同读操作相互绕过busy。
         with self._lock:
             binding = self._bindings.get(key)
             if self._closed or binding is None or binding.busy or binding.sealed:
@@ -70,9 +86,11 @@ class TaskGitSamples:
             # 标记跨越授权、进程采集和异常收尾，关闭不能越过这个借用边界。
             binding.busy = True
         try:
+            # 授权事务在返回时已关闭，不跨越Git进程等待；这是身份快照，
+            # 不是与数据库删除共享的原子撤权或文件内容快照。
             if _authorize(key) != binding.identities:
                 raise TaskGitSampleError()
-            return collect_sample_git_status(binding.sample)
+            yield binding.sample
         finally:
             with self._lock:
                 binding.busy = False
