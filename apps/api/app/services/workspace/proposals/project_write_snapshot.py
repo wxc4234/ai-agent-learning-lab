@@ -22,7 +22,7 @@ class ProjectWriteSnapshotReader:
     """可信宿主应长生命周期持有；每次构造生成新实例身份，fork后拒绝使用。
 
     构造器不接受runtime_id、目录、摘要或许可参数。此实例尚未装配进HTTP/工具。
-    快照成功仅描述一次观察，不设置filesystem_checked或exclusive_access_confirmed。
+    快照成功仅描述一次观察，不领取执行机会，也不证明排他访问。
     """
 
     def __init__(self) -> None:

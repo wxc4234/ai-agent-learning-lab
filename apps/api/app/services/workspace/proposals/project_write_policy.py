@@ -1,4 +1,4 @@
-"""普通项目单文件应用的纯策略契约；尚未接入HTTP、工具或文件执行器。
+"""普通项目单文件应用的只读策略契约；执行入口仍独立重新授权与占用。
 
 所有事实必须由可信宿主重新授权和观察，不接受浏览器/模型提供的许可对象。
 本模块不读数据库/文件、不领取执行占用、不签发凭据，也不保存许可或撤销状态。
@@ -78,8 +78,7 @@ class ProjectWriteFacts(_Snapshot):
     candidate_sha256: Digest | None = None
     filesystem_checked: bool = False
     platform_supported: bool = False
-    # 现有原子替换不是CAS。无可确认的排他条件时，策略仍拒绝普通项目写入。
-    exclusive_access_confirmed: bool = False
+    # 采用乐观版本检测；内部串行与执行占用由真实执行器提供，不由调用者声明。
 
 
 PolicyCode = Literal[
@@ -142,6 +141,4 @@ def evaluate_project_write_policy(facts: ProjectWriteFacts) -> ProjectWriteDecis
         return ProjectWriteDecision('filesystem_unconfirmed')
     if not value.platform_supported:
         return ProjectWriteDecision('platform_unsupported')
-    if not value.exclusive_access_confirmed:
-        return ProjectWriteDecision('exclusive_access_unconfirmed')
     return ProjectWriteDecision('eligible')

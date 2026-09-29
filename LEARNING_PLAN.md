@@ -161,7 +161,7 @@ image: pgvector/pgvector:0.8.6-pg17-bookworm
 | 第 2 周 | 08-31 ～ 09-06 | 后端底座与跨平台：分层、配置、异步、PostgreSQL、ORM、迁移、测试、Docker | FastAPI 成为分层项目；macOS/Windows 使用相同数据库环境 | 已完成 |
 | 第 3 周 | 09-07 ～ 09-13 | 流式 Agent UI + **最小 Agent Runtime**：状态、取消、Tool Registry、参数校验、顺序循环、结构化事件、run_id 与冒烟评测 | 浏览器能观察并取消真实多步骤工具运行；任意运行可按 run_id 还原 | 已完成全部验收 |
 | 第 4 周 | 09-14 ～ 09-20 | 本地工作台：Workspace、Task、会话恢复、幂等、执行互斥与并发预算 | PC 工作台及有边界的历史删除、进程退出恢复 | 已完成 |
-| 第 5 周 | 09-21 ～ 09-27 | **Coding Tools + Sandbox**：文件、搜索、Shell、Apply Patch、Git Diff、测试、审批策略 | Agent 在隔离样例仓库完成一次小改动，展示 Diff 并通过测试 | 进行中；阶段能力见课程大纲，接续见交接 |
+| 第 5 周 | 09-21 ～ 09-27 | **Coding Tools + Sandbox**：文件、搜索、Shell、Apply Patch、Git Diff、测试、审批策略 | Agent 完成普通项目与隔离副本的审批修改、Diff、验证及恢复闭环 | 已完成全部验收；见第五周复盘 |
 | 第 6 周 | 09-28 ～ 10-04 | **代码上下文工程 + RAG**：仓库扫描、符号/关键词/向量检索、混合排序、引用、Token 裁剪和检索评测；Obsidian Vault 只读接入实践 | Agent 能为跨文件任务找到正确上下文，并说明引用来源；能检索授权笔记库并给出可核验引用 | 未开始 |
 | 第 7 周 | 10-05 ～ 10-11 | **高级 Agent Runtime**：Plan、Memory、Compaction、Reflection、LangGraph Checkpoint、暂停/恢复、轨迹评测 | 长任务可中断恢复；失败后能修正；轨迹指标可度量 | 未开始；基础 Runtime 已在第 3 周完成 |
 | 第 8 周 | 10-12 ～ 10-18 | **可扩展与安全协作**：MCP、Skills/仓库指令、审批三态、有限子 Agent 委派、Prompt Injection 防护；开始投递 | 自建 MCP 与 Skill 可用；危险操作必须审批；独立子任务可安全合并 | 未开始 |
@@ -174,11 +174,11 @@ image: pgvector/pgvector:0.8.6-pg17-bookworm
 
 Obsidian 接入已纳入本项目实践：当前 Sandbox 执行链路完成后，第 6 周先复用 Workspace 与文件工具实现 Vault 选择、关键词检索、受限读取及来源引用；第 8 周在 Diff、审批和并发冲突检测具备后接入笔记写入。双向链接、标签和语义检索按实际需求增强，Obsidian 内聊天及专用插件/MCP 集成为可选扩展。它是自研 Agent 的知识库使用场景，不新增独立项目或必修工具搭建课；分阶段范围与验收见 LEARNING_CURRICULUM.md 的“Obsidian Vault 接入实践”。
 
-> 状态列按整周验收计算：截至 2026-09-20，正式周进度为 4 / 12（33.3%）。提前实现只记为预完成，不能代替该周其他验收。详细完成项、缺口和下一课以 [LEARNING_HANDOFF.md](LEARNING_HANDOFF.md) 为准。
+> 状态列按整周验收计算：截至 2026-09-29，正式周进度为 5 / 12（41.7%）。提前实现只记为预完成，不能代替该周其他验收。详细完成项、缺口和下一课以 [LEARNING_HANDOFF.md](LEARNING_HANDOFF.md) 为准。
 
 ## 8. 已完成周次
 
-第 1～3 周见 [周记录](week-learning/README.md)，第 2 周原始逐日计划已移至 [历史学习记录](docs/history/learning-through-2026-09-23.md#第-2-周原始逐日计划)。完成课程不重复教学；正式周状态只在本文件的路线表维护。
+第 1～3 周及第 5 周归档见 [周记录](week-learning/README.md)，第 2 周原始逐日计划已移至 [历史学习记录](docs/history/learning-through-2026-09-23.md#第-2-周原始逐日计划)。完成课程不重复教学；正式周状态只在本文件的路线表维护。
 
 ## 9. 作品集
 

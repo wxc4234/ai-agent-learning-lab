@@ -7,6 +7,7 @@ import {
     type FileEditProposalDetail,
 } from "../../workbench/file-edit-proposal-data";
 import { Button } from "@/components/ui/button";
+import ProposalRecoveryActions from "./proposal-recovery-actions";
 import ProjectWriteGrantActions from "./project-write-grant-actions";
 import ProposalExecutionActions from "./proposal-execution-actions";
 import FileEditProposalActions from "./file-edit-proposal-actions";
@@ -316,6 +317,8 @@ export default function FileEditProposalDetailPanel({
                         proposalId={state.detail.proposal_id}
                         approved={state.detail.status === "approved"}
                     />
+
+                    <ProposalRecoveryActions workspaceId={workspaceId} taskId={taskId} proposalId={proposalId} />
 
                     {/* 批准仅改变审批状态；应用仍需独立确认并在服务端重新授权。 */}
                     {state.detail.status === "approved" && (

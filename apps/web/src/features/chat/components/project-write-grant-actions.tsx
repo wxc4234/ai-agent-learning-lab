@@ -5,6 +5,9 @@ import { Button } from "@/components/ui/button";
 import { isProposalIdentifier } from "../../workbench/file-edit-proposal-data";
 import { grantChangeObserved, readGrantReceipt, type GrantReceipt } from "../../workbench/project-write-grant-data";
 
+import ProjectApplyActions from "./project-apply-actions";
+import ProjectWriteAssessmentActions from "./project-write-assessment-actions";
+
 type Props = { workspaceId: string; taskId: string; proposalId: string; approved: boolean };
 
 export default function ProjectWriteGrantActions(props: Props) {
@@ -13,6 +16,7 @@ export default function ProjectWriteGrantActions(props: Props) {
 }
 
 function GrantActions({ workspaceId, taskId, proposalId, approved }: Props) {
+    const [expanded, setExpanded] = useState(false);
     const [receipt, setReceipt] = useState<GrantReceipt | null>(null);
     const [busy, setBusy] = useState(false);
     const [blocked, setBlocked] = useState(true);
@@ -76,9 +80,9 @@ function GrantActions({ workspaceId, taskId, proposalId, approved }: Props) {
         }
     }
 
-    return <details className="space-y-3" aria-label="普通项目写入许可">
+    return <details className="space-y-3" aria-label="普通项目写入许可" onToggle={event => setExpanded(event.currentTarget.open)}>
         <summary className="cursor-pointer font-medium">普通项目写入许可</summary>
-        <p className="text-xs text-muted-foreground">许可与提案审批分开。启用只表示许可记录，当前尚未开放普通项目写入。</p>
+        <p className="text-xs text-muted-foreground">许可与提案审批分开。应用前会重新核对文件；请避免其他编辑器同时修改同一文件。</p>
         <div className="flex flex-wrap gap-2">
             <Button size="sm" variant="outline" disabled={!available || busy} onClick={() => void run("read")}>{busy ? "正在处理许可…" : "查询许可状态"}</Button>
             {receipt && !blocked && !busy && (receipt.grant === null
@@ -88,6 +92,14 @@ function GrantActions({ workspaceId, taskId, proposalId, approved }: Props) {
         {receipt && <p role="status" className="text-xs">查询时许可：{receipt.grant === null ? "未发放" : receipt.grant.status === "enabled" ? "已启用（不代表当前可写）" : "已撤销，不可重新启用"}</p>}
         {!approved && <p className="text-xs text-muted-foreground">发放前需先审阅并批准提案。</p>}
         {message && <p role="alert" className="text-xs text-destructive">{message}</p>}
+        {/* 收起、重新查询或进入许可变更时卸载诊断，旧结果不能跨许可快照沿用。 */}
+        {expanded && receipt?.grant && !blocked && !busy && !confirm && <ProjectWriteAssessmentActions
+            workspaceId={workspaceId} taskId={taskId} proposalId={proposalId} grant={receipt.grant}
+        />}
+        {receipt?.grant?.status === "enabled" && approved && !blocked && !busy && <ProjectApplyActions
+            workspaceId={workspaceId} taskId={taskId} proposalId={proposalId}
+            grantId={receipt.grant.grant_id} revision={receipt.grant.revision}
+        />}
         {confirm && <div className="space-y-2 text-xs">
             <p>{confirm === "issue" ? "确认仅为这份提案发放许可？此操作不会应用文件修改。" : "确认撤销这份提案的许可？撤销后不能重新启用。"}</p>
             <Button size="sm" disabled={busy} onClick={() => void run(confirm)}>{confirm === "issue" ? "确认发放许可" : "确认撤销许可"}</Button>

@@ -492,6 +492,11 @@ export function WorkbenchProvider({
                 return;
             }
 
+            if (response.status === 409 && code === "task_artifact_retained") {
+                updateDeletion({ ...target, phase: "rejected", message: "任务仍保留变更组恢复记录或隔离副本，暂不能删除。" });
+                return;
+            }
+
             if (response.status === 409 && code === "task_sample_bound") {
                 // 来源记录仍指向此任务；明确拒绝不能显示为提交结果未确认。
                 updateDeletion({

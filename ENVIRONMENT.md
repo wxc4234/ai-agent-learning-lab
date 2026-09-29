@@ -45,6 +45,8 @@ Copy-Item .env.example .env
 
 在根目录 `.env` 填写自己的 `DEEPSEEK_API_KEY`，按 `.env.example` 配置 `DATABASE_URL`、Redis 与模型设置。不要把服务端变量加上 `NEXT_PUBLIC_` 前缀。VS Code 的 Python 解释器选择项目 `.venv/bin/python`（Windows 为 `.venv\Scripts\python.exe`）。
 
+普通项目应用、变更组恢复、持久隔离副本、快照命令与专项验证入口见 [项目执行](docs/project-execution.md)。
+
 ## 3. 数据库服务与迁移
 
 启动 Docker Desktop 后，从根目录运行：
@@ -70,7 +72,7 @@ cd ../..
 
 Windows 将上述解释器替换为 `..\..\.venv\Scripts\python.exe`。迁移前确认连接目标是本机预期数据库；重要数据先备份。预期 current 与源码 heads 一致，check 无新增结构操作；不要在文档里永久写死某课的 migration head。
 
-API 启动只核对版本，不自动建表/升级。目录绑定修订迁移为旧记录建立初始版本；已有非初始修订时拒绝降级，不能通过回退/重升重置授权相关版本。项目写入许可迁移不从approved推导许可；许可表非空时拒绝降级，以免丢失发放/撤销历史。已有表但迁移缺失时停止排查，不能盲目 `stamp head`；版本一致也不保证没有手工结构漂移。同步代码前先核对 `git status --short --branch`，保留未提交学习改动，不用强制 reset。
+API 启动只核对版本，不自动建表/升级。目录绑定修订迁移为旧记录建立初始版本；已有非初始修订时拒绝降级，不能通过回退/重升重置授权相关版本。项目写入许可迁移不从approved推导许可；许可表非空时拒绝降级，以免丢失发放/撤销历史。审计/原文备份迁移同样拒绝丢失已有恢复证据的降级。已有表但迁移缺失时停止排查，不能盲目 `stamp head`；版本一致也不保证没有手工结构漂移。同步代码前先核对 `git status --short --branch`，保留未提交学习改动，不用强制 reset。
 
 ## 4. 启动与停止 PC 工作台
 
@@ -127,7 +129,7 @@ node --experimental-strip-types --test test/features/workspaces/task-sample-stat
 pnpm exec eslint src/app/api/_shared/task-sample-status-proxy.ts
 ```
 
-许可管理联合验收：根目录运行 `BROWSER_APP_MODE=local BROWSER_TEST_SCRIPT=project-write-grant-integration.mjs .venv/bin/python apps/web/test/browser/run-isolated.py`，复用上述隔离PG与Playwright/Chrome配置，真实服务与临时项目自动清理，证据在 `apps/web/output/playwright/project-write-grant-integration/`。简洁工作台自动验收：仓库根运行 `BROWSER_APP_MODE=local BROWSER_TEST_SCRIPT=workbench-simple.mjs .venv/bin/python apps/web/test/browser/run-isolated.py`，按下述方式配置Playwright/Chrome。工作台布局交互验收：仓库根目录运行 `BROWSER_APP_MODE=local BROWSER_TEST_SCRIPT=workbench-layout-wait.mjs .venv/bin/python apps/web/test/browser/run-isolated.py`，待服务就绪后浏览器访问 `http://localhost:13000/`。`apps/web/output/playwright/layout/fixture.json` 给出两组临时项目/任务 ID（含提案、空列表），通过侧栏选任务；输入 `[layout]` 触发固定用量回答；输入 `[typewriter]` 经真实流式适配器读取延迟 SDK chunk，用于检查逐片段 Markdown、停止与历史恢复。此夹具只准备显示状态，不执行真实文件应用。检查完在仓库根运行 `touch apps/web/output/playwright/layout/done`，启动器退出并清理临时服务与隔离数据库；650 秒未结束则超时失败。不连接开发业务数据。
+前置检查联合验收：根目录运行`BROWSER_APP_MODE=local BROWSER_TEST_SCRIPT=project-write-assessment-integration.mjs .venv/bin/python apps/web/test/browser/run-isolated.py`，使用下述隔离PG及Playwright/Chrome配置；每次assessment独立对账许可/提案/目录绑定和文件，最终核对真实撤销及测试制造的外部编辑。报告/截图位于`apps/web/output/playwright/project-write-assessment-integration/`，包含审批响应诊断；不自动重试失败的写操作。许可管理联合验收：根目录运行 `BROWSER_APP_MODE=local BROWSER_TEST_SCRIPT=project-write-grant-integration.mjs .venv/bin/python apps/web/test/browser/run-isolated.py`，复用上述隔离PG与Playwright/Chrome配置，真实服务与临时项目自动清理，证据在 `apps/web/output/playwright/project-write-grant-integration/`。简洁工作台自动验收：仓库根运行 `BROWSER_APP_MODE=local BROWSER_TEST_SCRIPT=workbench-simple.mjs .venv/bin/python apps/web/test/browser/run-isolated.py`，按下述方式配置Playwright/Chrome。工作台布局交互验收：仓库根目录运行 `BROWSER_APP_MODE=local BROWSER_TEST_SCRIPT=workbench-layout-wait.mjs .venv/bin/python apps/web/test/browser/run-isolated.py`，待服务就绪后浏览器访问 `http://localhost:13000/`。`apps/web/output/playwright/layout/fixture.json` 给出两组临时项目/任务 ID（含提案、空列表），通过侧栏选任务；输入 `[layout]` 触发固定用量回答；输入 `[typewriter]` 经真实流式适配器读取延迟 SDK chunk，用于检查逐片段 Markdown、停止与历史恢复。此夹具只准备显示状态，不执行真实文件应用。检查完在仓库根运行 `touch apps/web/output/playwright/layout/done`，启动器退出并清理临时服务与隔离数据库；650 秒未结束则超时失败。不连接开发业务数据。
 
 Git diff PC 展示专项：仓库根目录运行 `BROWSER_APP_MODE=local BROWSER_TEST_SCRIPT=git-diff.mjs .venv/bin/python apps/web/test/browser/run-isolated.py`。需要可用的 Playwright 与 Chrome；不在默认模块路径时分别通过 `PLAYWRIGHT_MODULE`、`CHROME_EXECUTABLE` 指定本机安装。该入口使用隔离 PostgreSQL、临时 Git 和受控模型，覆盖两种比较范围、空结果、未登记/缺少HEAD及刷新无重放，证据保存在忽略目录 `apps/web/output/playwright/git-diff/`；不连接开发业务数据。
 
@@ -243,3 +245,8 @@ Task 快照到命令执行的真实 PostgreSQL + Docker 专项，从 `apps/api` 
 | 旧练习 input 等待 | 在终端输入并回车；第 1 周练习按该周 README 运行，不混入当前 API 启动链 |
 
 `.env`、`.env.local`、`.venv`、node_modules 和数据库文件/卷不进入 Git；配置示例只放占位符。新增环境故障仅记录可复用原因与解决步骤，不追加某次验收的完整流水。
+
+普通项目写入前置检查PC组件专项：在`apps/web`运行`node test/browser/project-write-grant/run.mjs --assessment`；同一入口不带参数运行许可交互回归。复用本机Playwright/Chrome（必要时设置`PLAYWRIGHT_MODULE`和`CHROME_EXECUTABLE`），仅启动临时loopback组件服务并拦截API，不连接数据库。截图与本轮报告位于`apps/web/output/playwright/project-write-assessment/`；此专项不代替真实BFF/API联调。
+
+间歇404隔离诊断：根目录运行`BROWSER_APP_MODE=local BROWSER_TEST_SCRIPT=project-write-404.mjs BROWSER_TRACE_UI=1 .venv/bin/python apps/web/test/browser/run-isolated.py`，沿用Playwright/Chrome配置。每轮证据独立保存在`apps/web/output/playwright/project-write-404/<run-id>/`：浏览器、临时BFF副本与FastAPI按追踪ID关联，404保留只读归属快照，服务停止后保存最终数据库状态。失败立即停止，不重放写请求；缺日志只表示证据缺口。追踪只改临时副本，不进入生产或记录凭证。
+离线复核：`node apps/web/test/browser/review-project-write-trace.mjs <上述run-id目录>`；仅输出JSON，退出码0=已记录场景符合预期、1=观察到异常响应、2=证据不足；均不证明根因或修复。专项：`node --test apps/web/test/diagnostics/project-write-trace.test.mjs`。

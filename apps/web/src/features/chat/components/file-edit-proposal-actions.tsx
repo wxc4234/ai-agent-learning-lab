@@ -256,7 +256,7 @@ export default function FileEditProposalActions({
         return (
             <p role="status" className="text-xs font-medium">
                 {terminal === "approved"
-                    ? "已确认批准此提案，尚未应用到文件。"
+                    ? "已确认批准此提案。应用状态以执行结果为准。"
                     : "已确认拒绝此提案。"}
             </p>
         );

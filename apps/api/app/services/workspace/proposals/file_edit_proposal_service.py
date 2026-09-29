@@ -6,6 +6,7 @@ from datetime import datetime
 from hashlib import sha256
 
 from app.database import SessionLocal
+from app.models import ProposalAuditEvent
 from app.repositories.workspace.file_edit_proposal_repository import (
     insert_file_edit_proposal,
     lock_owned_proposal_task,
@@ -155,6 +156,8 @@ def _create_task_file_proposal(
             diff=source.preview.diff,
             diff_truncated=source.preview.diff_truncated,
         )
+
+        session.add(ProposalAuditEvent(proposal_id=proposal.id, actor_id=user_id, event='created'))
 
         # 提交前复制普通字段，避免离开Session后读取ORM对象。
         result = CreatedFileEditProposal(

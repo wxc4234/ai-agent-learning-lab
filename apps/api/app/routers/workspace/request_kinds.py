@@ -100,7 +100,8 @@ def _is_project_write_grant_request(request: Request) -> bool:
     base = "/workspaces/{workspace_id}/tasks/{task_id}/file-edit-proposals/{proposal_id}/write-grant"
     path = getattr(request.scope.get("route"), "path", None)
     return ((path == base and request.method in {"GET", "POST"})
-            or (path == base + "/revoke" and request.method == "POST"))
+            or (path in (base + "/revoke", base + "/apply", base + "/restore-proposal") and request.method == "POST")
+            or (path == base + "/audit" and request.method == "GET"))
 
 
 def _is_project_write_assessment_request(request: Request) -> bool:

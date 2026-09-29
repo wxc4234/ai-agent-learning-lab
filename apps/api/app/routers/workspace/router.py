@@ -4,6 +4,9 @@ from fastapi import APIRouter
 
 from app.routers.workspace import (
     directories,
+    change_sets,
+    owned_areas,
+    git_staged,
     execution,
     projects,
     proposals,
@@ -13,5 +16,5 @@ from app.routers.workspace import (
 )
 
 router = APIRouter()
-for domain in (projects, directories, tasks, proposals, execution, samples, project_write_grants):
+for domain in (projects, change_sets, owned_areas, directories, tasks, proposals, execution, samples, project_write_grants, git_staged):
     router.include_router(domain.router)

@@ -22,7 +22,7 @@ def assessment_args(grants, ready):
     return {**ready[0], 'grant_id': grant.grant_id, 'revision': grant.revision, 'apply_requested': True}
 
 
-def test_valid_target_builds_verified_facts_but_denies_without_exclusivity(grants, assessment_args, ready, engine, monkeypatch):
+def test_valid_target_builds_verified_facts_without_executing(grants, assessment_args, ready, engine, monkeypatch):
     file = ready[1]
     before = file.read_bytes(), file.stat().st_mtime_ns
     evaluate = service.evaluate_project_write_policy
@@ -32,8 +32,8 @@ def test_valid_target_builds_verified_facts_but_denies_without_exclusivity(grant
         return evaluate(value)
     monkeypatch.setattr(service, 'evaluate_project_write_policy', capture)
     result = grants.assess(**assessment_args)
-    assert asdict(result) == {'code': 'exclusive_access_unconfirmed'}
-    assert not result.eligible
+    assert asdict(result) == {'code': 'eligible'}
+    assert result.eligible
     assert len(facts) == 1
     value = facts[0]
     assert value.target == value.observed_target
@@ -41,7 +41,6 @@ def test_valid_target_builds_verified_facts_but_denies_without_exclusivity(grant
     assert value.authorized and value.filesystem_checked and value.platform_supported
     assert value.current_sha256 == value.target.baseline_sha256
     assert value.candidate_sha256 == value.target.proposed_sha256
-    assert not value.exclusive_access_confirmed
     assert (file.read_bytes(), file.stat().st_mtime_ns) == before
     with Session(engine) as session:
         proposal = require_value(session.scalar(select(FileEditProposal)))

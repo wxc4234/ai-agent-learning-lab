@@ -51,7 +51,7 @@ def test_readonly_valid_target_and_repeat(local_client, ready, engine):
         parts = path.split('/')
         assert response.json() == {
             'workspace_id': parts[2], 'task_id': parts[4], 'proposal_id': parts[6],
-            'result': 'exclusive_access_unconfirmed',
+            'result': 'eligible',
         }
         assert str(file.parent) not in response.text
     assert snapshot(engine, file) == before
@@ -164,7 +164,7 @@ def test_mode_origin_and_json_boundary(local_client, ready, monkeypatch):
     check(assess(local_client, ready[0], BODY), 403, 'local_mode_required')
 
 
-@pytest.mark.parametrize('failure', ['host', 'file', 'database', 'protocol', 'eligible'])
+@pytest.mark.parametrize('failure', ['host', 'file', 'database', 'protocol'])
 def test_unknown_is_read_failure_never_denial(local_client, ready, engine, monkeypatch, failure):
     path, file = ready
     body = issued(local_client, path)
@@ -197,5 +197,4 @@ def test_openapi_deny_only_contract(local_client):
     assert set(request['required']) == {'grant_id', 'revision', 'apply_requested'}
     assert not request['additionalProperties'] and not response['additionalProperties']
     assert set(response['properties']) == {'workspace_id', 'task_id', 'proposal_id', 'result'}
-    assert 'eligible' not in response['properties']['result']['enum']
-    assert 'exclusive_access_unconfirmed' in response['properties']['result']['enum']
+    assert 'eligible' in response['properties']['result']['enum']

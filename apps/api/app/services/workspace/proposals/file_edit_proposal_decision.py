@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from typing import Literal
 
 from app.database import SessionLocal
+from app.models import ProposalAuditEvent
 from app.repositories.workspace.file_edit_proposal_repository import (
     lock_file_edit_proposal_for_decision,
     lock_owned_proposal_task,
@@ -90,6 +91,7 @@ def decide_task_file_edit_proposal(
                 )
 
         proposal.status = decision
+        session.add(ProposalAuditEvent(proposal_id=proposal.id, actor_id=user_id, event=decision))
 
         # flush让数据库检查状态与Diff约束，但此时还不代表提交成功。
         session.flush()

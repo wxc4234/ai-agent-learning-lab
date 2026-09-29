@@ -574,6 +574,8 @@ class FileEditProposal(Base):
     __tablename__ = "file_edit_proposals"
 
     __table_args__ = (
+        CheckConstraint("baseline_content IS NULL OR octet_length(baseline_content) <= 262144",
+                        name="ck_file_edit_proposals_backup_size"),
         # 审批决定与应用生命周期分开；已领取记录永不回到idle。
         CheckConstraint(
             "application_status IN ('idle', 'running', 'applied', 'not_applied', 'uncertain')",
@@ -662,6 +664,8 @@ class FileEditProposal(Base):
         String(20), server_default="idle", nullable=False,
     )
     application_token: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    # 原文备份仅服务端保存；恢复须创建新提案，不能自动覆盖后续编辑。
+    baseline_content: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
@@ -692,3 +696,50 @@ class ProjectWriteGrantRecord(Base):
     target: Mapped[dict] = mapped_column(JSONB, nullable=False)
     revision: Mapped[int] = mapped_column(BigInteger, nullable=False)
     enabled: Mapped[bool] = mapped_column(Boolean, nullable=False)
+
+
+class ProposalAuditEvent(Base):
+    """与状态变更同事务提交的审计事件，不存执行令牌或文件正文。"""
+    __tablename__ = 'proposal_audit_events'
+    id: Mapped[int] = mapped_column(primary_key=True)
+    proposal_id: Mapped[int] = mapped_column(
+        ForeignKey('file_edit_proposals.id', ondelete='CASCADE'), nullable=False, index=True,
+    )
+    actor_id: Mapped[int] = mapped_column(nullable=False)
+    event: Mapped[str] = mapped_column(String(40), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+
+class TaskChangeSet(Base):
+    """一组不可变候选与持久执行现场；正文和目录只在服务端使用。"""
+    __tablename__ = 'task_change_sets'
+    __table_args__ = (
+        CheckConstraint("status IN ('pending','approved','rejected','running','applied','rolled_back','uncertain')",
+                        name='ck_task_change_sets_status'),
+    )
+    id: Mapped[int] = mapped_column(primary_key=True)
+    external_id: Mapped[str] = mapped_column(String(32), unique=True, nullable=False)
+    task_id: Mapped[int] = mapped_column(ForeignKey('tasks.id', ondelete='RESTRICT'), index=True)
+    bound_root: Mapped[str] = mapped_column(Text)
+    binding_revision: Mapped[int] = mapped_column(BigInteger)
+    root_identity: Mapped[list] = mapped_column(JSONB)
+    entries: Mapped[list] = mapped_column(JSONB)
+    diff: Mapped[str] = mapped_column(Text)
+    status: Mapped[str] = mapped_column(String(20), server_default='pending')
+    journal: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    audit: Mapped[list] = mapped_column(JSONB, default=list)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class OwnedWorkArea(Base):
+    """跨请求持有的隔离项目副本及导出基线；删除Task前必须显式处理副本。"""
+    __tablename__ = 'owned_work_areas'
+    id: Mapped[int] = mapped_column(primary_key=True)
+    source_task_id: Mapped[int] = mapped_column(ForeignKey('tasks.id', ondelete='RESTRICT'), index=True)
+    task_id: Mapped[int] = mapped_column(ForeignKey('tasks.id', ondelete='RESTRICT'), unique=True)
+    bound_root: Mapped[str] = mapped_column(Text)
+    root_identity: Mapped[list] = mapped_column(JSONB)
+    baseline: Mapped[dict] = mapped_column(JSONB)
+    source_root: Mapped[str] = mapped_column(Text)
+    source_revision: Mapped[int] = mapped_column(BigInteger)
+    exported_id: Mapped[str | None] = mapped_column(String(32), nullable=True)

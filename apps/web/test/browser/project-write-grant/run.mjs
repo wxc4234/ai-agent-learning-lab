@@ -4,7 +4,8 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import http from 'node:http';
-import { verify } from './verify.mjs';
+// 共用真实提案详情夹具，按入口选择本课专项，默认仍运行许可专项。
+const { verify } = await import(process.argv.includes('--assessment') ? './assessment-verify.mjs' : './verify.mjs');
 
 const require = createRequire(import.meta.url);
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');

@@ -1,5 +1,6 @@
-"""临时样例的提案应用装配；尚未开放为HTTP或模型工具。"""
+"""单文件提案执行装配；样例与普通项目分别在可信入口检查来源。"""
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Literal
 
@@ -10,6 +11,7 @@ from app.repositories.workspace.file_edit_proposal_repository import (
 )
 from app.services.workspace.proposals.file_edit_proposal_application import (
     ApplicationOutcome,
+    ProposalApplicationResult,
     ProposalApplicationError,
     claim_task_file_edit_proposal,
     finish_task_file_edit_proposal,
@@ -134,6 +136,9 @@ def execute_task_file_edit_proposal(
     expected_bound_root: str | None = None,
     expected_relative_path: str | None = None,
     expected_parent_identity: tuple[int, int] | None = None,
+    claim_operation: Callable[[], ProposalApplicationResult] | None = None,
+    expected_root_identity: tuple[int, int] | None = None,
+    expected_file_identity: tuple[int, int] | None = None,
 ) -> ProposalExecutionResult:
     """领取一次、核对一次、尝试替换一次、登记一次；不自动重试。"""
 
@@ -145,7 +150,8 @@ def execute_task_file_edit_proposal(
     }
 
     try:
-        claim = claim_task_file_edit_proposal(**identity)
+        claim = (claim_operation() if claim_operation is not None
+                 else claim_task_file_edit_proposal(**identity))
     except Exception:  # noqa: BLE001 -- 领取提交或回执失败可能意味着占用已经成立
         # 没收到令牌就绝不操作文件，也不能猜测数据库仍为idle。
         # 不尝试补领、释放或登记，因为本调用没有确认取得执行权。
@@ -206,6 +212,8 @@ def execute_task_file_edit_proposal(
             baseline_sha256=latest.baseline_sha256,
             proposed_content=latest.proposed_content,
             proposed_sha256=latest.proposed_sha256,
+            **({"expected_root_identity": expected_root_identity} if expected_root_identity is not None else {}),
+            **({"expected_file_identity": expected_file_identity} if expected_file_identity is not None else {}),
             **({"expected_parent_identity": expected_parent_identity}
                if expected_parent_identity is not None else {}),
         )

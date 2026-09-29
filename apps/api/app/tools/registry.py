@@ -12,6 +12,9 @@ from app.tools.read_file import ReadTextFileArguments, read_text_file
 from app.tools.list_directory import ListDirectoryArguments, list_directory
 from app.tools.search_file import SearchTextFileArguments, search_text_file
 from app.tools.run_command import RunCommandArguments
+from app.tools.verify_project_git import VerifyProjectGitArguments, verify_project_git
+from app.tools.create_change_set import ChangeSetArguments, create_change_set_tool
+from app.tools.create_patch_proposals import PatchBatchArguments, create_patch_proposals
 from app.tools.find_files import FindFilesArguments, find_files
 from app.tools.preview_file_edit import (
     PreviewFileEditArguments,
@@ -342,6 +345,30 @@ REGISTERED_TOOLS: tuple[ToolDefinition, ...] = (
         requires_context=True,
     ),
     ToolDefinition(
+        name="verify_project_git",
+        description=("只读校验当前项目HEAD与index引用的Git叶对象，包括loose和自包含pack。"
+                     "校验类型、长度、SHA-1与完整来源；不支持的格式、缺失或损坏拒绝。"
+                     "最多256个唯一叶对象、总计8MiB；不证明工作区干净、不授予写权限。"),
+        arguments_model=VerifyProjectGitArguments, executor=verify_project_git, requires_context=True,
+    ),
+    ToolDefinition(
+        name="create_change_set",
+        description=("保存1到16个文件操作为统一审批的变更组：create新增UTF-8文本、update精确LF统一补丁、"
+                     "delete删除文件、move重命名且保留内容和元数据。所有路径相对当前项目，父目录必须已存在；"
+                     "目标不能是Git元数据或链接，不覆盖重命名目标。只保存pending候选，用户在改动面板审阅并批准后显式应用。"
+                     "失败会尝试整组恢复，外部变化保留冲突；未知提交不要重试。"),
+        arguments_model=ChangeSetArguments, executor=create_change_set_tool, requires_context=True, timeout_seconds=15.0,
+    ),
+    ToolDefinition(
+        name="create_patch_proposals",
+        description=("为当前项目1至16个已有文本文件保存统一Diff补丁提案。每项包含relative_path和patch。"
+                     "使用--- a/路径、+++ b/路径和精确上下文；所有候选成功才同事务保存。"
+                     "支持跨文件修复；每个文件独立审批与应用，不宣称多文件写入原子性。"
+                     "不支持新增、删除、重命名、二进制和模糊匹配。结果为pending，不能自行批准。"
+                     "失败或超时可能已提交，先查询提案列表，不自动重试。"),
+        arguments_model=PatchBatchArguments, executor=create_patch_proposals, requires_context=True,
+    ),
+    ToolDefinition(
         name="create_file_patch_proposal",
         description=(
             "为当前任务项目内的已有文件保存单文件统一Diff补丁待审批提案。"
@@ -396,6 +423,7 @@ CommandExecutor = Callable[..., Awaitable[str]]
 class CommandToolBinding:
     executor: CommandExecutor
     sample_snapshot: bool = False
+    project_snapshot: bool = False
 
 
 GitStatusExecutor = Callable[..., str]
@@ -415,6 +443,7 @@ def tools_for_execution(
     context: ToolExecutionContext | None,
     command_executor: CommandExecutor | None = None,
     sample_snapshot: bool = False,
+    project_snapshot: bool = False,
     git_status_executor: GitStatusExecutor | None = None,
     git_diff_definition: ToolDefinition | None = None,
     verification_definition: ToolDefinition | None = None,
@@ -543,8 +572,11 @@ def tools_for_execution(
             "在隔离的临时容器中执行程序。"
             "argv第一项必须是容器内程序的绝对路径，"
             "后续项分别作为参数，不自动进行Shell字符串展开。"
-            "working_directory只能为.，实际使用容器临时目录；"
+            + ("working_directory为项目内相对路径；" if project_snapshot else "working_directory只能为.，实际使用容器临时目录；")
             + (
+                "已绑定时使用当前项目的有界独立副本，工作目录/tmp/project；修改不写回宿主。未绑定则仅提供临时容器。"
+                "排除.git、依赖目录和.env；超限拒绝，固定镜像仅提供已有工具。"
+                if project_snapshot else
                 "只读挂载当前 Task 固定样例文件的独立快照，文件为/workspace/example.txt；"
                 "不挂载原目录，不能写回当前项目。"
                 if sample_snapshot else "没有挂载当前项目，也不能访问宿主机文件。"

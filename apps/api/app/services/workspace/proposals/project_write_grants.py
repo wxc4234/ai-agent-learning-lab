@@ -5,10 +5,11 @@ import re
 from typing import TypedDict
 from uuid import uuid4
 
+from sqlalchemy import select, text
 from sqlalchemy.orm import Session
 
 from app.database import SessionLocal
-from app.models import ProjectWriteGrantRecord
+from app.models import FileEditProposal, ProjectWriteGrantRecord, ProposalAuditEvent, TaskChangeSet
 from app.repositories.workspace.file_edit_proposal_repository import (
     lock_file_edit_proposal_for_decision,
     lock_owned_proposal_task,
@@ -17,10 +18,15 @@ from app.repositories.workspace.file_edit_proposal_repository import (
 from app.repositories.workspace.project_write_grant_repository import find_project_write_grant
 from app.repositories.workspace.workspace_repository import WorkspaceNotAccessibleError
 from app.services.workspace.files.workspace_file_replace import _validate_content
+from app.services.workspace.files.workspace_file import read_task_text_file
 from app.services.workspace.proposals.project_write_policy import (
     ProjectWriteDecision, ProjectWriteFacts, ProjectWriteGrant, ProjectWriteTarget, evaluate_project_write_policy,
 )
 from app.services.workspace.proposals.project_write_snapshot import ProjectWriteSnapshotReader
+from app.services.workspace.proposals.file_edit_proposal_application import ProposalApplicationResult
+from app.services.workspace.proposals.file_edit_proposal_execution import (
+    ProposalExecutionResult, execute_task_file_edit_proposal,
+)
 
 
 class GrantScope(TypedDict):
@@ -74,7 +80,7 @@ def _decode(record: ProjectWriteGrantRecord, source: dict, user_id: int) -> Proj
 class ProjectWriteGrantService:
     """宿主长期持有，内部构造可信读取器；不接收调用方自报的目标。
 
-    查询仅返回历史许可事实；执行时仍需新快照、策略核对和排他条件。
+    查询仅返回历史许可事实；执行时仍需新快照、许可核对、内部占用与文件基线复核。
     一个提案仅一次发放。撤销/进程重启后需新提案和新的显式许可。
     """
 
@@ -108,6 +114,7 @@ class ProjectWriteGrantService:
                     grant_id=result.grant_id, proposal_id=target.proposal_id,
                     target=target.model_dump(mode='json'), revision=1, enabled=True,
                 ))
+                session.add(ProposalAuditEvent(proposal_id=target.proposal_id, actor_id=user_id, event='grant_issued'))
                 session.flush()
             # 只有确认提交成功后才返回；唯一约束和提案锁阻止重复发放。
             return result
@@ -138,8 +145,10 @@ class ProjectWriteGrantService:
                 record = find_project_write_grant(session, source['proposal_pk'])
                 # 撤销不要求文件仍存在或提案仍idle；允许撤销已经失效的许可。
                 if (record is None or type(revision) is not int or type(grant_id) is not str
-                        or record.grant_id != grant_id or record.revision != revision or not record.enabled):
+                        or record.grant_id != grant_id or record.revision != revision or not record.enabled
+                        or source['application_status'] == 'running'):
                     raise ProjectWriteGrantConflictError()
+                session.add(ProposalAuditEvent(proposal_id=source['proposal_pk'], actor_id=user_id, event='grant_revoked'))
                 record.enabled = False
                 record.revision += 1
                 session.flush()
@@ -150,6 +159,72 @@ class ProjectWriteGrantService:
         except Exception:  # noqa: BLE001 -- 未知DB/提交失败统一拒绝，不捕获中断或自动重试。
             raise ProjectWriteGrantError() from None
 
+
+    def apply(self, *, user_id: int, workspace_id: str, task_id: str, proposal_id: str,
+              grant_id: str, revision: int) -> ProposalExecutionResult:
+        """显式应用一次。已领取的请求不重放；取消HTTP等待不撤销文件副作用。
+
+        快照与文件写入之间采用乐观冲突检测，不声称排除外部编辑器。
+        撤销在领取前生效，领取后返回冲突，不误报已停止正在执行的写入。
+        """
+        scope: GrantScope = {'user_id': user_id, 'workspace_id': workspace_id,
+                             'task_id': task_id, 'proposal_id': proposal_id}
+        observed = self._reader.read(**scope)
+        original = read_task_text_file(user_id=user_id, workspace_id=workspace_id,
+                                       task_id=task_id, relative_path=observed.relative_path)
+        if sha256(original.content.encode()).hexdigest() != observed.baseline_sha256:
+            raise ProjectWriteGrantConflictError()
+
+        def claim() -> ProposalApplicationResult:
+            # 锁序仍为Workspace→Task→Conversation→Proposal；只在短事务内核对和占用。
+            with SessionLocal.begin() as session:
+                source = _authorize(session, scope)
+                record = find_project_write_grant(session, source['proposal_pk'])
+                grant = None if record is None else _decode(record, source, user_id)
+                if (grant is None or not grant.enabled or grant.grant_id != grant_id
+                        or type(revision) is not int or grant.revision != revision
+                        or grant.target != observed):
+                    raise ProjectWriteGrantConflictError()
+                if (source['status'] != 'approved' or source['application_status'] != 'idle'
+                        or source['diff_truncated'] or source['current_root'] != source['bound_root']
+                        or source['binding_revision'] != observed.binding_revision
+                        or source['relative_path'] != observed.relative_path
+                        or source['baseline_sha256'] != observed.baseline_sha256
+                        or source['proposed_sha256'] != observed.proposed_sha256):
+                    raise ProjectWriteGrantConflictError()
+                _validate_content(source['proposed_content'], observed.proposed_sha256)
+                # 同一路径即使由不同Workspace绑定也串行领取；锁仅覆盖应用内部。
+                key = int.from_bytes(sha256(source['bound_root'].encode()).digest()[:8], 'big', signed=True)
+                if not session.scalar(text('SELECT pg_try_advisory_xact_lock(:key)'), {'key': key}):
+                    raise ProjectWriteGrantConflictError()
+                busy = session.scalar(select(FileEditProposal.id).where(
+                    FileEditProposal.bound_root == source['bound_root'],
+                    FileEditProposal.application_status.in_(('running', 'uncertain')),
+                ).limit(1))
+                changes_busy = session.scalar(select(TaskChangeSet.id).where(
+                    TaskChangeSet.bound_root == source['bound_root'],
+                    TaskChangeSet.status.in_(('running', 'uncertain')),
+                ).limit(1))
+                if busy is not None or changes_busy is not None:
+                    raise ProjectWriteGrantConflictError()
+                proposal = session.get(FileEditProposal, source['proposal_pk'])
+                if proposal is None:
+                    raise ProjectWriteGrantConflictError()
+                token = uuid4().hex
+                proposal.baseline_content = original.content
+                session.add(ProposalAuditEvent(proposal_id=proposal.id, actor_id=user_id, event='application_started'))
+                proposal.application_status = 'running'
+                proposal.application_token = token
+                session.flush()
+                result = ProposalApplicationResult(proposal_id, workspace_id, task_id, 'running', token)
+            # 只有提交已确认才返回令牌。提交确认丢失由执行器返回unknown，绝不写文件。
+            return result
+
+        return execute_task_file_edit_proposal(
+            **scope, claim_operation=claim,
+            expected_root_identity=(observed.root_identity.device, observed.root_identity.inode),
+            expected_file_identity=(observed.file_identity.device, observed.file_identity.inode),
+        )
 
     def assess(self, *, user_id: int, workspace_id: str, task_id: str, proposal_id: str,
                grant_id: str, revision: int, apply_requested: bool) -> ProjectWriteDecision:
@@ -205,8 +280,6 @@ class ProjectWriteGrantService:
                 # observed的基线已被reader从原始文件字节计算并匹配，非裸DB声明。
                 current_sha256=observed.baseline_sha256, candidate_sha256=sha256(candidate).hexdigest(),
                 filesystem_checked=True, platform_supported=True,
-                # 现有观察器不提供排他访问；服务没有任何参数可将其开启。
-                exclusive_access_confirmed=False,
             )
             return evaluate_project_write_policy(facts)
         except (WorkspaceNotAccessibleError, ProjectWriteGrantConflictError):

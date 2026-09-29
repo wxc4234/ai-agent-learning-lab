@@ -679,7 +679,7 @@ class ProjectWriteAssessmentRequest(BaseModel):
 
 
 class ProjectWriteAssessmentResponse(BaseModel):
-    """只读拒绝分类；本阶段无法证明排他访问，不公开可执行状态。"""
+    """只读条件分类；eligible不表示文件已执行或获得执行占用。"""
 
     model_config = ConfigDict(extra="forbid", strict=True, frozen=True)
     workspace_id: str
@@ -689,5 +689,5 @@ class ProjectWriteAssessmentResponse(BaseModel):
         "invalid_facts", "not_authorized", "apply_not_requested", "grant_missing",
         "grant_revoked", "grant_changed", "target_changed", "proposal_not_approved",
         "application_not_idle", "diff_incomplete", "baseline_changed", "candidate_changed",
-        "filesystem_unconfirmed", "platform_unsupported", "exclusive_access_unconfirmed",
+        "filesystem_unconfirmed", "platform_unsupported", "exclusive_access_unconfirmed", "eligible",
     ]

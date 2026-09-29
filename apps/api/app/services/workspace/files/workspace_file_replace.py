@@ -192,6 +192,8 @@ def replace_workspace_text_file(
     proposed_content: str,
     proposed_sha256: str,
     expected_parent_identity: tuple[int, int] | None = None,
+    expected_root_identity: tuple[int, int] | None = None,
+    expected_file_identity: tuple[int, int] | None = None,
 ) -> FileReplaceResult:
     """替换现有文件；调用者必须自行完成授权与单次执行占用。
 
@@ -268,7 +270,7 @@ def replace_workspace_text_file(
             # 不先resolve再普通open，避免悄悄跟随变化后的链接。
             components = root.parts[1:] + relative.parts[:-1]
 
-            for component in components:
+            for index, component in enumerate(components, start=1):
                 child_fd = os.open(
                     component,
                     directory_flags,
@@ -277,6 +279,9 @@ def replace_workspace_text_file(
                 stack.callback(close_descriptor, child_fd)
                 links.append((parent_fd, component, child_fd))
                 parent_fd = child_fd
+                if (index == len(root.parts) - 1 and expected_root_identity is not None
+                        and _identity(os.fstat(parent_fd)) != expected_root_identity):
+                    raise FileReplaceRejected("file_replace_directory_changed")
 
             # 样例门禁提供实际父目录身份；打开后、访问文件前再次核对。
             if expected_parent_identity is not None and _identity(os.fstat(parent_fd)) != expected_parent_identity:
@@ -288,6 +293,9 @@ def replace_workspace_text_file(
                 dir_fd=parent_fd,
                 follow_symlinks=False,
             )
+
+            if expected_file_identity is not None and _identity(original) != expected_file_identity:
+                raise FileReplaceRejected("file_replace_target_changed")
 
             # 本阶段仅处理当前用户拥有且具有owner写权限的普通文件。
             # 多硬链接会使“替换路径”和“修改共享对象”的语义不同，拒绝。

@@ -88,6 +88,7 @@ export async function proposalExecutionProxy(
     workspaceId: string,
     taskId: string,
     proposalId: string,
+    projectGrant = false,
 ): Promise<Response> {
     let headers: Record<string, string>;
 
@@ -152,6 +153,7 @@ export async function proposalExecutionProxy(
         return notSubmitted();
     }
 
+    let body: Record<string, unknown> = { action: "apply" };
     try {
         const raw: unknown = await request.json();
 
@@ -160,13 +162,18 @@ export async function proposalExecutionProxy(
             return notSubmitted();
         }
 
-        if (!isApplyRequest(raw)) {
+        const grant = raw as Record<string, unknown> | null;
+        const validGrant = grant && typeof grant === "object" && !Array.isArray(grant)
+            && Object.keys(grant).length === 2 && typeof grant.grant_id === "string"
+            && isProposalIdentifier(grant.grant_id) && grant.revision === 1;
+        if (projectGrant ? !validGrant : !isApplyRequest(raw)) {
             return failure(
                 422,
                 "invalid_proposal_execution_input",
                 "提案应用正文只允许action=apply",
             );
         }
+        if (projectGrant && grant) body = { grant_id: grant.grant_id, revision: grant.revision };
     } catch {
         if (request.signal.aborted) {
             return notSubmitted();
@@ -193,7 +200,7 @@ export async function proposalExecutionProxy(
         const response = await fetch(
             `${process.env.API_BASE_URL ?? "http://127.0.0.1:8000"}`
                 + `/workspaces/${workspaceId}/tasks/${taskId}`
-                + `/file-edit-proposals/${proposalId}/apply`,
+                + `/file-edit-proposals/${proposalId}/${projectGrant ? "write-grant/apply" : "apply"}`,
             {
                 method: "POST",
                 headers: {
@@ -202,7 +209,7 @@ export async function proposalExecutionProxy(
                     "Content-Type": "application/json",
                 },
                 // 重建严格正文，不透传原始浏览器输入。
-                body: JSON.stringify({ action: "apply" }),
+                body: JSON.stringify(body),
                 signal,
                 cache: "no-store",
                 redirect: "error",

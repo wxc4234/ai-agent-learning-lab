@@ -237,7 +237,32 @@ class ChatExecution:
         if self._command_closed:
             raise SafeToolExecutionError('command_recovery_unavailable')
         if status.status == 'missing':
-            return CommandToolBinding(self.execute_command)
+            async def execute_project(*, argv: list[str], working_directory: str = '.') -> str:
+                from app.services.runtime.command.command_contracts import CommandRequest
+                from app.services.runtime.sandbox.project_command import run_project_command
+                from app.services.runtime.sandbox.project_snapshot import has_bound_project
+                if (self._command_closed or self.creation is None or not self.creation.done()
+                        or self.creation.cancelled() or self.task_sample_recovery_store is None):
+                    raise SafeToolExecutionError('command_recovery_unavailable')
+                current = await self.threads.run(load_tool_execution_context,
+                    user_id=self.user_id, conversation_id=self.body.session_id)
+                if current != context or self._command_closed:
+                    raise SafeToolExecutionError('command_recovery_unavailable')
+                if not await self.threads.run(has_bound_project, context):
+                    return await self.execute_command(argv=argv, working_directory=working_directory)
+                scope = self.task_sample_recovery_store.acquire(
+                    user_id=self.user_id, conversation_id=self.body.session_id, run_id=self.creation.result(),
+                )
+                self.sample_scope = scope
+                try:
+                    result = await run_project_command(
+                        request=CommandRequest(argv=argv, working_directory=working_directory),
+                        context=context, journal=scope.journal,
+                    )
+                    return result.command.model_dump_json()
+                except Exception:  # noqa: BLE001 -- 公开工具错误不回显宿主路径和恢复证据。
+                    raise SafeToolExecutionError('command_result_unavailable') from None
+            return CommandToolBinding(execute_project, project_snapshot=True)
         if status.status != 'ready':
             return None
 

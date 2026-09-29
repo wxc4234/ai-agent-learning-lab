@@ -61,7 +61,7 @@ try {
     assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
     assert.equal(executions, 0);
     await approve.click();
-    await changes.getByText('已确认批准此提案，尚未应用到文件。', { exact: true }).waitFor();
+    await changes.getByText('已确认批准此提案。应用状态以执行结果为准。', { exact: true }).waitFor();
     assert.equal(executions, 0);
     await page.screenshot({ path: `${output}/simple-proposal.png` });
     await page.getByRole('button', { name: '关闭详情', exact: true }).press('Escape');

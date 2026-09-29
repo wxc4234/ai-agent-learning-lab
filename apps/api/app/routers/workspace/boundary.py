@@ -35,7 +35,7 @@ from app.services.auth.login_session_resolver import InvalidLoginSessionError
 from app.services.runtime.execution.conversation_execution_service import (
     ConversationBusyError,
 )
-from app.services.tasks.task_deletion_service import TaskRunUnsettledError, TaskSampleBoundError
+from app.services.tasks.task_deletion_service import TaskRunUnsettledError, TaskSampleBoundError, TaskArtifactRetainedError
 from app.services.tasks.task_run_query import InvalidTaskRunQueryError
 from app.services.tasks.task_service import (
     InvalidTaskRequestKeyError,
@@ -312,6 +312,10 @@ class WorkspaceRoute(APIRoute):
                     code=TaskRunUnsettledError.code,
                     message="存在未确认结束的运行，暂不能删除",
                 )
+
+            except TaskArtifactRetainedError:
+                return _error_response(409, code=TaskArtifactRetainedError.code,
+                                       message="任务仍保留变更组恢复记录或隔离副本，暂不能删除")
 
             except TaskSampleBoundError:
                 # 来源记录仍指向此Task；不能以删除绕过受控样例关闭。

@@ -380,10 +380,12 @@ async def stream_chat_reply(
         # tools_for_execution还会要求有效的任务上下文。
         selected_executor = command_executor if settings.app_mode == "local" else None
         sample_snapshot = False
+        project_snapshot = False
         if tool_context is not None and command_binding_provider is not None:
             binding = await command_binding_provider(tool_context)
             selected_executor = None if binding is None else binding.executor
             sample_snapshot = binding is not None and binding.sample_snapshot
+            project_snapshot = binding is not None and binding.project_snapshot
         git_status_executor = None
         if tool_context is not None and git_status_binding_provider is not None:
             git_status_executor = git_status_binding_provider(tool_context)
@@ -399,6 +401,7 @@ async def stream_chat_reply(
         tool_definitions = tools_for_execution(
             context=tool_context, command_executor=selected_executor,
             sample_snapshot=sample_snapshot,
+            project_snapshot=project_snapshot,
             git_status_executor=git_status_executor,
             git_diff_definition=git_diff_definition,
             verification_definition=verification_definition,

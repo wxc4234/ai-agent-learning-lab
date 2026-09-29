@@ -201,7 +201,7 @@ def test_old_confirmation_denied_after_persisted_revocation(grants, ready):
         confirmed_grant=original, current_grant=current, authorized=True, apply_requested=True,
         proposal_status='approved', application_status='idle', diff_complete=True,
         current_sha256=original.target.baseline_sha256, candidate_sha256=original.target.proposed_sha256,
-        filesystem_checked=True, platform_supported=True, exclusive_access_confirmed=True,
+        filesystem_checked=True, platform_supported=True,
     )
     # 其余条件均由测试设为真，仅隔离验证数据库撤销使旧确认失效。
     assert not evaluate_project_write_policy(facts).eligible

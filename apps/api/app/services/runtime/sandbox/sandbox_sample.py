@@ -24,6 +24,7 @@ SAMPLE_FILENAME = "example.txt"
 SAMPLE_CONTENT = b"sandbox sample\n"
 # 目标工厂独立校验输入预算，不能只依赖调用方已经限制来源大小。
 MAX_SANDBOX_SNAPSHOT_BYTES = 256 * 1024
+MAX_PROJECT_SNAPSHOT_BYTES = 16 * 1024 * 1024
 
 
 class SandboxSampleError(ValueError):
@@ -186,13 +187,14 @@ def _create_sandbox_sample(
     *,
     content: bytes,
     file_mode: int,
+    max_bytes: int = MAX_SANDBOX_SNAPSHOT_BYTES,
 ) -> SandboxSample:
     """统一创建原探针与内容快照，不接受外部目录或文件名。"""
 
     # 所有纯输入检查都在文件系统副作用之前完成。
     if type(content) is not bytes:
         raise TypeError("快照内容必须是 bytes")
-    if len(content) > MAX_SANDBOX_SNAPSHOT_BYTES:
+    if max_bytes not in (MAX_SANDBOX_SNAPSHOT_BYTES, MAX_PROJECT_SNAPSHOT_BYTES) or len(content) > max_bytes:
         raise SandboxSampleError()
     if file_mode not in (0o444, 0o666):
         raise SandboxSampleError()
@@ -292,6 +294,11 @@ def create_sandbox_snapshot(*, content: bytes) -> SandboxSample:
         content=content,
         file_mode=0o444,
     )
+
+def create_project_sandbox_snapshot(*, content: bytes) -> SandboxSample:
+    """服务端项目快照专用预算，不改变样例输入上限或接收模型策略字段。"""
+    return _create_sandbox_sample(content=content, file_mode=0o444, max_bytes=MAX_PROJECT_SNAPSHOT_BYTES)
+
 
 def confirm_sandbox_sample_source(sample: SandboxSample) -> str:
     """返回本次核对过的源路径；结果不是长期有效的操作授权。"""

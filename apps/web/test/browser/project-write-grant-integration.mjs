@@ -40,7 +40,7 @@ try {
         await pane.getByText('查询时许可：未发放', { exact: true }).waitFor();
         assert.ok(await pane.getByRole('button', { name: '发放本提案许可', exact: true }).isDisabled());
         await pane.getByRole('button', { name: '批准提案', exact: true }).press('Enter');
-        await pane.getByText('已确认批准此提案，尚未应用到文件。', { exact: true }).waitFor();
+        await pane.getByText('已确认批准此提案。应用状态以执行结果为准。', { exact: true }).waitFor();
         assert.equal(await get(item), null);
         await pane.getByRole('button', { name: '发放本提案许可', exact: true }).click();
         if (item === unknown) {

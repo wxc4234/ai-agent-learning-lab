@@ -131,7 +131,7 @@ from tests.local.test_local_mode import HEADERS
 
 统一 Diff 补丁候选：`apps/api/app/services/workspace/edits/workspace_unified_patch.py` 严格解析单文件 LF 子集，校验路径语法、双侧坐标、上下文/行数、块顺序及预算后返回完整内存候选；不读取文件或写入，不将已有 JSON 转义审阅 Diff 当输入。测试：`apps/api/tests/workspace/edits/test_workspace_unified_patch.py`。
 
-授权补丁预览：`apps/api/app/services/workspace/edits/workspace_patch_preview.py` 组合一次 Task 授权读取、规范目标匹配、纯内存补丁候选和既有审阅 Diff；复用 `WorkspaceFileEditPreview`/`TextEditPreview`，原文摘要不重读文件，不持有跨计算事务。专项：`apps/api/tests/workspace/edits/test_workspace_patch_preview.py`；只读工具及内部提案保存入口见下文，普通项目写入尚未开放。
+授权补丁预览：`apps/api/app/services/workspace/edits/workspace_patch_preview.py` 组合一次 Task 授权读取、规范目标匹配、纯内存补丁候选和既有审阅 Diff；复用 `WorkspaceFileEditPreview`/`TextEditPreview`，原文摘要不重读文件，不持有跨计算事务。专项：`apps/api/tests/workspace/edits/test_workspace_patch_preview.py`；只读工具及内部提案保存入口见下文，普通项目写入见[执行协议](project-execution.md)。
 
 补丁工具适配：`apps/api/app/tools/preview_file_patch.py` 提供严格参数模型和只读结果投影，异常映射至 `tools/errors.py` 固定白名单，取消透传；专项 `apps/api/tests/tools/test_preview_file_patch_tool.py`。由 registry 按可信上下文注册，不回传完整候选；模型往返见 `test_patch_tool_registration.py`，真实授权/聊天服务/数据库集成见 `tests/chat/test_patch_preview_chat.py`。Runtime 校验错误投影移除 Pydantic input/ctx，保留定位和规则。
 
@@ -141,15 +141,15 @@ from tests.local.test_local_mode import HEADERS
 
 预览卡片：`apps/web/src/features/chat/file-edit-preview-view.ts` 校验公开协议，`components/file-edit-preview-card.tsx` 展示只读状态和Diff；组件分派由 `tool-result.tsx` 负责，补丁工具与字符串替换共用卡片/校验，历史运行也复用只读展示。补丁专项为 `test/features/chat/file-patch-preview.test.ts`，PC真实链路为 `test/browser/patch-preview-tools.mjs`/`patch_preview_model.py`（隔离启动器收尾核对零提案）。测试 `file-edit-preview.test.ts` 和 `command-result.test.ts` 共用 `render-tool-result.ts` 编译真实组件，浏览器沿用preview-tools.mjs。
 
-文件修改提案：`apps/api/app/models.py` 的 FileEditProposal 与 `migrations/versions/4eb108c473ab_add_file_edit_proposals.py` 管理待审批记录；`repositories/workspace/file_edit_proposal_repository.py` 负责归属锁和flush，`services/workspace/proposals/file_edit_proposal_service.py` 负责读文件前后的事务边界及提交；字符串替换与 `create_task_file_patch_proposal` 共用保存事务，补丁专项为 `tests/workspace/proposals/test_file_patch_proposal_service.py`。配套为 `tests/workspace/proposals/test_file_edit_proposal_service.py`、`tests/migrations/test_file_edit_proposal_migration.py`。既有提案查询/工具入口见下文；补丁创建工具适配见下文，普通项目文件写入尚未开放。
+文件修改提案：`apps/api/app/models.py` 的 FileEditProposal 与 `migrations/versions/4eb108c473ab_add_file_edit_proposals.py` 管理待审批记录；`repositories/workspace/file_edit_proposal_repository.py` 负责归属锁和flush，`services/workspace/proposals/file_edit_proposal_service.py` 负责读文件前后的事务边界及提交；字符串替换与 `create_task_file_patch_proposal` 共用保存事务，补丁专项为 `tests/workspace/proposals/test_file_patch_proposal_service.py`。配套为 `tests/workspace/proposals/test_file_edit_proposal_service.py`、`tests/migrations/test_file_edit_proposal_migration.py`。既有提案查询/工具入口见下文；补丁创建工具适配见下文，普通项目文件写入见[执行协议](project-execution.md)。
 
 目录绑定修订：`Workspace.binding_revision` 由 `repositories/workspace/workspace_repository.py` 的 `set_locked_workspace_root` 在调用方已授权并持有行锁的事务内维护；普通首次绑定、样例绑定/解绑共用，迁移为 `a4f5d3e8b21c`。新旧记录初始为1，同路径幂等不增，历史修订不能通过降级丢弃；内部字段不自动授予写入权。专项为 `test_binding_revision.py`、`test_binding_revision_migration.py`。
 
 可信目标快照：`services/workspace/proposals/project_write_snapshot.py` 的内部宿主实例生成运行身份，通过授权联表投影和 `services/workspace/files/project_file_observation.py` 的无跟随描述符观察组装 `ProjectWriteTarget`。只读两阶段核对，不签发许可、不建立排他条件；数据库Session不跨文件I/O。专项：`tests/workspace/proposals/test_project_write_snapshot.py`。
 
-普通项目写入策略：`apps/api/app/services/workspace/proposals/project_write_policy.py` 仅消费可信宿主快照，判定具体许可、审批、应用状态、目录/文件对象和内容版本；结果不是执行凭据。内部许可宿主assess已调用纯策略，不提供普通项目写入入口。纯策略专项：`apps/api/tests/workspace/proposals/test_project_write_policy.py`。
+普通项目写入策略：`apps/api/app/services/workspace/proposals/project_write_policy.py` 仅消费可信宿主快照，判定具体许可、审批、应用状态、目录/文件对象和内容版本；结果不是执行凭据。内部许可宿主assess调用纯策略，apply执行时重新复核。纯策略专项：`apps/api/tests/workspace/proposals/test_project_write_policy.py`。
 
-许可持久化：`services/workspace/proposals/project_write_grants.py` 提供内部发放/查询/显式撤销及assess只读判定，`repositories/workspace/project_write_grant_repository.py` 查询记录，`ProjectWriteGrantRecord` 每提案唯一，迁移为 `b5a6e4f9c32d`。撤销是终态，提交未知不重试；HTTP管理已接入，实际写入未开放。assess与发放共用快照实例，双阶段授权读取夹住无事务文件观察，排他条件固定未确认。专项为 `test_project_write_grants.py`、`test_project_write_grant_migration.py`、`test_project_write_assessment.py`。
+许可持久化：`services/workspace/proposals/project_write_grants.py` 提供内部发放/查询/显式撤销及assess只读判定，`repositories/workspace/project_write_grant_repository.py` 查询记录，`ProjectWriteGrantRecord` 每提案唯一，迁移为 `b5a6e4f9c32d`。撤销是终态，提交未知不重试；HTTP管理与显式apply已接入。assess与发放共用快照实例，双阶段授权读取夹住无事务文件观察，内部目录锁不提供外部写者排他保证。专项为 `test_project_write_grants.py`、`test_project_write_grant_migration.py`、`test_project_write_assessment.py`。
 
 许可HTTP管理：`routers/workspace/project_write_grants.py` 提供提案下 `write-grant` GET/POST 和 `write-grant/revoke` POST；`main.py` 在local应用生命周期持有独立宿主，缺失时不临时创建。公开记录仅ID/修订/状态；409表示已知冲突，500区分读取失败与变更结果未确认。专项为 `test_project_write_grant_api.py`、`test_project_write_grant_lifespan.py`；BFF与PC管理已接入，真实后端联合验收已有专项。
 
@@ -282,7 +282,7 @@ Git样例工具适配：`apps/api/app/tools/git_sample_status.py` 由可信宿�
 
 Git样例应用托管：`services/workspace/git/application_samples.py`由main.lifespan创建owner，get_git_samples从Request.app取当前manager。停止封闭新操作，线程清理确认后释放引用；忙碌/失败保留封闭owner并拒绝覆盖或自动重试，取消须等线程结果。专项：`tests/workspace/git/test_application_samples.py`。无HTTP登记/恢复入口，进程重启不恢复句柄。
 
-Git状态请求能力：`routers/chat/chat_execution.py`从Request.app取得manager并绑定执行器，调用前复核会话任务；`services/chat/chat_service.py`把同一工具快照交给模型与Runtime。`tools/registry.py`的tools_for_execution仅在提供可信执行器时加入git_sample_status，空参数、上下文对象门禁，不修改全局注册表。专项：`tests/tools/test_git_status_registration.py`、`tests/chat/test_git_status_chat.py`；未开放产品样例登记或普通项目Git访问。
+Git状态请求能力：`routers/chat/chat_execution.py`从Request.app取得manager并绑定执行器，调用前复核会话任务；`services/chat/chat_service.py`把同一工具快照交给模型与Runtime。`tools/registry.py`的tools_for_execution仅在提供可信执行器时加入git_sample_status，空参数、上下文对象门禁，不修改全局注册表。专项：`tests/tools/test_git_status_registration.py`、`tests/chat/test_git_status_chat.py`；普通项目Git暂存入口见[暂存协议](project-staged-api.md)。
 
 Git状态PC验收：`apps/web/test/browser/git-status.mjs`复用真实聊天/BFF，`git_status_model.py`只控制模型决策并在隔离应用生命周期登记样例；`run-isolated.py`独立核对PostgreSQL事件。包含真实有变更/空仓库/缺失样例/配置变更拒绝、PC双宽度、键盘、刷新历史无重放；产物位于 `apps/web/output/playwright/git-status/`，运行方式见ENVIRONMENT。未新增生产展示组件或样例HTTP入口。
 
@@ -291,3 +291,5 @@ Git状态PC验收：`apps/web/test/browser/git-status.mjs`复用真实聊天/BFF
 项目创建浮窗：`features/workspaces/components/create-workspace.tsx` 同时支持原页面与侧栏 Dialog 展示，复用创建请求/未确认结果保护；侧栏成功后刷新列表，不跳转或替换当前任务。创建成功后在浮窗内复用 `workspace-directory-panel.tsx` 绑定源文件夹。
 
 模型流式适配：`apps/api/app/services/model/streaming_model_decision.py` 扩展完整响应适配器，聚合 tool-call delta、核对终态并转发公开文本；Runtime 的 `ModelTextDelta` 与 chat_service 连接既有 NDJSON。工具参数、隐藏推理不作为正文转发；完整落库和取消边界见 docs/agent-ui-events.md。
+
+通用变更组由 `services/workspace/proposals/change_sets.py` 管理持久审批与执行状态，`files/change_set_files.py` 处理文件日志和恢复；持久隔离工作区位于 `services/workspace/areas/owned_areas.py`。对应 workspace 路由、Next.js BFF 与 workbench 按需面板各自保持分层。协议和测试入口见[普通项目执行](project-execution.md)。

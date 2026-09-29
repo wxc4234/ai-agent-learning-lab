@@ -2,12 +2,12 @@
 
 from dataclasses import dataclass
 
-from sqlalchemy import delete, select
+from sqlalchemy import or_, delete, select
 from sqlalchemy.orm import Session
 
 from app.repositories.workspace.proposal_application_guard import require_no_active_proposal_application
 
-from app.models import AgentRun, AgentRunEvent, Conversation, ConversationExecutionSlot, Message, Task, WorkspaceSampleOrigin
+from app.models import TaskChangeSet, OwnedWorkArea, AgentRun, AgentRunEvent, Conversation, ConversationExecutionSlot, Message, Task, WorkspaceSampleOrigin
 from app.repositories.workspace.workspace_repository import (
     WorkspaceNotAccessibleError,
     require_owned_workspace_for_update,
@@ -22,6 +22,11 @@ class TaskRunUnsettledError(Exception):
 
     def __init__(self) -> None:
         super().__init__("存在未确认结束的运行，暂不能删除")
+
+
+class TaskArtifactRetainedError(Exception):
+    """持有式副本或恢复记录仍依赖此Task，拒绝丢失可恢复现场。"""
+    code = 'task_artifact_retained'
 
 
 class TaskSampleBoundError(Exception):
@@ -92,6 +97,11 @@ def delete_workspace_task(
             # 正常创建事务会同时创建会话。
             # 缺失会话或归属错配时拒绝，不借删除服务修复异常数据。
             raise WorkspaceNotAccessibleError()
+
+        if (session.scalar(select(TaskChangeSet.id).where(TaskChangeSet.task_id == task.id).limit(1)) is not None
+                or session.scalar(select(OwnedWorkArea.id).where(or_(OwnedWorkArea.task_id == task.id,
+                    OwnedWorkArea.source_task_id == task.id)).limit(1)) is not None):
+            raise TaskArtifactRetainedError()
 
         # 样例来源以Task外键持久保存；在任何DELETE前明确拒绝删除来源任务。
         origin = session.get(WorkspaceSampleOrigin, workspace.id)

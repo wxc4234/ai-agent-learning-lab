@@ -123,7 +123,7 @@ try {
         if (scenario === 'approve') {
             // 同一事件循环连续触发，验证ref而非仅依赖React下一次渲染禁用。
             await approve().evaluate(button => { button.click(); button.click(); });
-            await panel.getByText('已确认批准此提案，尚未应用到文件。', { exact: true }).waitFor();
+            await panel.getByText('已确认批准此提案。应用状态以执行结果为准。', { exact: true }).waitFor();
             assert.equal(decisions, before + 1);
             expected = 'approved';
         } else if (scenario === 'reject' || scenario === 'truncated') {
@@ -209,7 +209,7 @@ try {
             release();
             await handled;
             assert.equal(await page.evaluate(key => sessionStorage.getItem(key), key), 'uncertain');
-            assert.equal(await page.getByText('已确认批准此提案，尚未应用到文件。', { exact: true }).count(), 0);
+            assert.equal(await page.getByText('已确认批准此提案。应用状态以执行结果为准。', { exact: true }).count(), 0);
             assert.equal(decisions, before + 1);
         }
         if (process.env.BROWSER_PROPOSAL_HISTORY === '1' && scenario !== 'unknown') {
@@ -223,7 +223,7 @@ try {
                 assert.equal(await reject().isDisabled(), true);
             } else {
                 await panel.getByText(expected === 'approved'
-                    ? '已确认批准此提案，尚未应用到文件。' : '已确认拒绝此提案。', { exact: true }).waitFor();
+                    ? '已确认批准此提案。应用状态以执行结果为准。' : '已确认拒绝此提案。', { exact: true }).waitFor();
                 assert.equal(await approve().count(), 0);
             }
         }

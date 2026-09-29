@@ -1,6 +1,9 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import OwnedAreaPanel from './owned-area-panel';
+import ChangeSetsPanel from './change-sets-panel';
+import StagedPanel from './staged-panel';
 import { Button } from '@/components/ui/button';
 import FileEditProposalDetailPanel from '@/features/chat/components/file-edit-proposal-detail';
 import { changeStatus, readTaskChanges, type TaskChanges } from '../task-changes-data';
@@ -34,6 +37,9 @@ export default function TaskChangesPanel({ workspaceId, taskId, refreshKey }: {
     const data = !loading ? state?.data : undefined;
     return (
         <section aria-label="任务文件改动" className="space-y-4">
+            <OwnedAreaPanel key={`area:${workspaceId}:${taskId}`} workspaceId={workspaceId} taskId={taskId} />
+            <ChangeSetsPanel key={`${workspaceId}:${taskId}`} workspaceId={workspaceId} taskId={taskId} />
+            <StagedPanel workspaceId={workspaceId} taskId={taskId} />
             <div className="flex items-center justify-between gap-3">
                 <h3 className="text-sm font-medium">修改提案</h3>
                 <Button variant="ghost" size="sm" onClick={() => setQuery({ before: null })} disabled={loading}>刷新改动</Button>

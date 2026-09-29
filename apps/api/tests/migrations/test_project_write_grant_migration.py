@@ -36,7 +36,9 @@ def test_upgrade_empty_no_implicit_grants_and_metadata_matches(engine, ready):
     with engine.connect() as connection:
         assert connection.scalar(text('SELECT count(*) FROM project_write_grants')) == 0
         assert compare_metadata(MigrationContext.configure(connection, opts={'compare_server_default': True}), Base.metadata) == []
-    downgrade(engine)
+    # 新审计迁移阻止丢弃已创建提案的历史；无许可不等于可无损回退。
+    with pytest.raises(RuntimeError, match='audit history'):
+        downgrade(engine)
     migrate(engine)
     with engine.connect() as connection:
         assert connection.scalar(text('SELECT count(*) FROM project_write_grants')) == 0
@@ -48,7 +50,7 @@ def test_downgrade_preserves_existing_history(engine, grants, ready, revoked):
     grant = grants.issue(**ready[0])
     if revoked:
         grant = grants.revoke(**ready[0], grant_id=grant.grant_id, revision=1)
-    with pytest.raises(RuntimeError, match='不能无损回退'):
+    with pytest.raises(RuntimeError, match='不能无损回退|audit history'):
         downgrade(engine)
     assert grants.read(**ready[0]) == grant
 

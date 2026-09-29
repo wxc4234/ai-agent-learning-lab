@@ -82,16 +82,35 @@ try:
             destination = web / "app/api" / route
             destination.mkdir(parents=True, exist_ok=True)
             shutil.copyfile(ROOT / "apps/web/src/app/api" / route / "route.ts", destination / "route.ts")
-        if os.environ.get("BROWSER_TEST_SCRIPT") == "project-write-grant-integration.mjs":
-            from project_write_grant_fixture import seed
+        if os.environ.get("BROWSER_TEST_SCRIPT") in ("project-write-grant-integration.mjs", "project-write-assessment-integration.mjs", "project-write-404.mjs", "project-apply.mjs"):
+            if os.environ.get("BROWSER_TEST_SCRIPT") == "project-write-assessment-integration.mjs":
+                from project_write_assessment_fixture import seed
+            else:
+                from project_write_grant_fixture import seed
 
             seed(engine, web)
             proposal_route = "workspaces/[workspaceId]/tasks/[taskId]/file-edit-proposals/[proposalId]"
-            for suffix in ("write-grant", "write-grant/revoke"):
+            for suffix in ("write-grant", "write-grant/revoke", "write-grant/assessment", "write-grant/apply", "write-grant/audit", "write-grant/restore-proposal"):
                 route = f"{proposal_route}/{suffix}"
                 destination = web / "app/api" / route
                 destination.mkdir(parents=True, exist_ok=True)
                 shutil.copyfile(ROOT / "apps/web/src/app/api" / route / "route.ts", destination / "route.ts")
+        for suffix in ("change-sets", "change-sets/[changeId]", "owned-area"):
+            route = f"workspaces/[workspaceId]/tasks/[taskId]/{suffix}"
+            destination = web / "app/api" / route
+            destination.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(ROOT / "apps/web/src/app/api" / route / "route.ts", destination / "route.ts")
+        if os.environ.get("BROWSER_TEST_SCRIPT") == "week5-completion.mjs":
+            from week5_completion_fixture import seed
+            seed(engine, web)
+        for suffix in ("staged", "binding"):
+            route = f"workspaces/[workspaceId]/tasks/[taskId]/git/{suffix}"
+            destination = web / "app/api" / route
+            destination.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(ROOT / "apps/web/src/app/api" / route / "route.ts", destination / "route.ts")
+        if os.environ.get("BROWSER_TEST_SCRIPT") == "staged.mjs":
+            from staged_fixture import seed
+            seed(engine, web)
         (web / "app/api/auth/me").mkdir(parents=True)
         shutil.copyfile(
             ROOT / "apps/web/src/app/api/auth/me/route.ts",
@@ -153,6 +172,24 @@ try:
         picked_directory = web / "选择的 项目目录"
         picked_directory.mkdir()
         env = os.environ.copy()
+        if os.environ.get("BROWSER_TEST_SCRIPT") == "project-write-404.mjs":
+            from uuid import uuid4
+
+            trace_directory = ROOT / "apps/web/output/playwright/project-write-404" / uuid4().hex
+            trace_directory.mkdir(parents=True)
+            env["BROWSER_TRACE_DIRECTORY"] = str(trace_directory)
+            shared = web / "src/app/api/_shared"
+            shutil.copyfile(ROOT / "apps/web/test/browser/project-write-trace-fetch.ts", shared / "isolated-trace.ts")
+            for name in ("file-edit-proposal-decision-proxy.ts", "project-write-grant-proxy.ts"):
+                proxy = shared / name
+                proxy.write_text('import { isolatedTraceFetch } from "./isolated-trace.ts";\n'
+                    + proxy.read_text().replace('await fetch(', 'await isolatedTraceFetch('))
+            runtime = web / "src/app/api/_shared/runtime.ts"
+            runtime.write_text(runtime.read_text().replace(
+                'return { "X-Local-Runtime-Token": token };',
+                'return { "X-Local-Runtime-Token": token, "X-Isolated-Trace-Id": request.headers.get("x-isolated-trace-id") ?? "" };',
+            ))
+            print(f"Isolated trace directory: {trace_directory}", flush=True)
         if os.environ.get("BROWSER_TEST_SCRIPT") == "workspace-directory.mjs":
             env["BROWSER_TEST_DIRECTORY"] = str(picked_directory.resolve())
         env.update(
@@ -262,9 +299,19 @@ try:
                 [require_value(NODE), str(ROOT / "apps/web/test/browser" / (os.environ.get("BROWSER_TEST_SCRIPT") or ("local-mode.mjs" if test_mode == "local" else "login-page.mjs")))],
                 check=True,
                 timeout=720,
-                env=os.environ | browser_fixture | {"AUTH_TEST_BASE_URL": "http://localhost:13000", "BROWSER_APP_MODE": test_mode, "BROWSER_TEST_DIRECTORY": env.get("BROWSER_TEST_DIRECTORY", "")},
+                env=os.environ | browser_fixture | {"AUTH_TEST_BASE_URL": "http://localhost:13000", "BROWSER_APP_MODE": test_mode, "BROWSER_TEST_DIRECTORY": env.get("BROWSER_TEST_DIRECTORY", ""), "BROWSER_TRACE_DIRECTORY": env.get("BROWSER_TRACE_DIRECTORY", "")},
             )
-            if os.environ.get("BROWSER_TEST_SCRIPT") == "project-write-grant-integration.mjs":
+            if os.environ.get("BROWSER_TEST_SCRIPT") == "week5-completion.mjs":
+                from week5_completion_fixture import verify
+                verify(engine)
+            if os.environ.get("BROWSER_TEST_SCRIPT") == "project-apply.mjs":
+                from project_apply_fixture import verify
+                verify(engine)
+            if os.environ.get("BROWSER_TEST_SCRIPT") == "project-write-assessment-integration.mjs":
+                from project_write_assessment_fixture import verify
+
+                verify(engine)
+            if os.environ.get("BROWSER_TEST_SCRIPT") in ("project-write-grant-integration.mjs", "project-write-404.mjs"):
                 from project_write_grant_fixture import verify
 
                 verify(engine)
@@ -321,6 +368,10 @@ try:
                 except subprocess.TimeoutExpired:
                     process.kill()
                     process.wait()
+            if os.environ.get("BROWSER_TEST_SCRIPT") == "project-write-404.mjs":
+                from project_write_trace import save_final_snapshot
+
+                save_final_snapshot(engine, env["BROWSER_TRACE_DIRECTORY"])
         if os.environ.get("BROWSER_TEST_SCRIPT") == "coding-loop.mjs":
             import json
             output = ROOT / "apps/web/output/playwright/coding-loop"

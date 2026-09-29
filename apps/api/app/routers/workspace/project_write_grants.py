@@ -1,5 +1,8 @@
-"""本地显式许可管理；不提供文件应用或模型调用入口。"""
+"""本地显式许可管理与用户发起的文件应用入口。"""
 
+from typing import Literal
+
+from pydantic import BaseModel, ConfigDict
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
 
@@ -22,6 +25,37 @@ router = APIRouter(
     responses={status: {'model': WorkspaceErrorResponse} for status in (401, 403, 404, 409, 415, 422, 500)},
 )
 BASE = '/{workspace_id}/tasks/{task_id}/file-edit-proposals/{proposal_id}/write-grant'
+
+
+@router.get(BASE + '/audit')
+def read_audit(workspace_id: ProposalDecisionIdentifier, task_id: ProposalDecisionIdentifier,
+               proposal_id: ProposalDecisionIdentifier, request: Request, current_user: CurrentUser):
+    from app.services.workspace.proposals.proposal_recovery import read_proposal_audit
+    if request.query_params:
+        return _error_response(422, code='invalid_project_write_grant_input', message='审计请求不接受查询参数')
+    events = read_proposal_audit(user_id=current_user.id, workspace_id=workspace_id,
+                                 task_id=task_id, proposal_id=proposal_id)
+    return {'workspace_id': workspace_id, 'task_id': task_id, 'proposal_id': proposal_id, 'events': events}
+
+
+class RestoreProposalRequest(BaseModel):
+    model_config = ConfigDict(extra='forbid', strict=True)
+    action: Literal['restore']
+
+
+@router.post(BASE + '/restore-proposal')
+def restore_proposal(workspace_id: ProposalDecisionIdentifier, task_id: ProposalDecisionIdentifier,
+                     proposal_id: ProposalDecisionIdentifier, payload: RestoreProposalRequest,
+                     request: Request, current_user: CurrentUser):
+    from app.services.workspace.proposals.proposal_recovery import create_restore_proposal
+    if request.query_params:
+        return _error_response(422, code='invalid_project_write_grant_input', message='恢复请求不接受查询参数')
+    try:
+        restored = create_restore_proposal(user_id=current_user.id, workspace_id=workspace_id,
+                                           task_id=task_id, proposal_id=proposal_id)
+    except ProjectWriteGrantConflictError:
+        return _error_response(409, code='project_write_grant_conflict', message='原应用未确认或文件已变化，不能生成恢复提案')
+    return {'workspace_id': workspace_id, 'task_id': task_id, 'proposal_id': proposal_id, 'restore_proposal_id': restored}
 
 
 def _host(request: Request) -> ProjectWriteGrantService:
@@ -94,8 +128,25 @@ def assess_grant(workspace_id: ProposalDecisionIdentifier, task_id: ProposalDeci
     )
     if not isinstance(decision, ProjectWriteDecision):
         raise TypeError('invalid_assessment_result')
-    # 白名单同时拦住意外eligible：服务演进不能悄悄扩大公开执行语义。
+    # 白名单区分观察结果；eligible不是执行回执，也不授予占用。
     return ProjectWriteAssessmentResponse.model_validate({
         'workspace_id': workspace_id, 'task_id': task_id, 'proposal_id': proposal_id,
         'result': decision.code,
     })
+
+
+@router.post(BASE + '/apply')
+def apply_grant(workspace_id: ProposalDecisionIdentifier, task_id: ProposalDecisionIdentifier,
+                proposal_id: ProposalDecisionIdentifier, payload: ProjectWriteGrantRevokeRequest,
+                request: Request, current_user: CurrentUser):
+    """重新授权后执行已批准提案；不接受客户端目标路径和候选内容。"""
+    from app.routers.workspace.proposal_execution_response import build_proposal_execution_response
+    if request.query_params:
+        return _error_response(422, code='invalid_project_write_grant_input', message='应用请求不接受查询参数')
+    result = _host(request).apply(
+        user_id=current_user.id, workspace_id=workspace_id, task_id=task_id,
+        proposal_id=proposal_id, grant_id=payload.grant_id, revision=payload.revision,
+    )
+    return build_proposal_execution_response(
+        workspace_id=workspace_id, task_id=task_id, proposal_id=proposal_id, result=result,
+    )

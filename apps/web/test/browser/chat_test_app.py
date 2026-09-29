@@ -29,6 +29,9 @@ class BrowserDecisionMaker:
             yield await self(observations)
 
     async def __call__(self, observations):
+        if "[week5-general]" in self.prompt:
+            from week5_completion_fixture import decision
+            return decision(observations)
         if "[coding-loop" in self.prompt:
             from coding_loop_model import coding_loop_decision
 
@@ -216,3 +219,22 @@ if os.environ.get("BROWSER_TEST_SCRIPT") == "project-write-grant-integration.mjs
     from project_write_grant_fixture import audit_host
 
     audit_host(app)
+
+if os.environ.get("BROWSER_TEST_SCRIPT") == "project-write-assessment-integration.mjs":
+    from project_write_assessment_fixture import audit_host
+
+    audit_host(app)
+
+if os.environ.get("BROWSER_TEST_SCRIPT") == "project-write-404.mjs":
+    from project_write_grant_fixture import audit_host
+    from project_write_trace import install_trace
+
+    audit_host(app)
+    install_trace(app)
+
+if os.environ.get("BROWSER_TEST_SCRIPT") == "week5-completion.mjs":
+    import json
+    from pathlib import Path
+    from week5_completion_fixture import OUTPUT
+    from app.services.workspace.areas import owned_areas
+    owned_areas.AREA_BASE = Path(json.loads((OUTPUT / 'fixture.json').read_text())['managed_base'])

@@ -28,7 +28,7 @@ def facts() -> ProjectWriteFacts:
         authorized=True, apply_requested=True, proposal_status='approved', application_status='idle',
         diff_complete=True, current_sha256=target.baseline_sha256,
         candidate_sha256=target.proposed_sha256, filesystem_checked=True,
-        platform_supported=True, exclusive_access_confirmed=True,
+        platform_supported=True,
     )
 
 
@@ -71,7 +71,6 @@ def test_default_facts_and_default_grant_deny(facts):
     ('candidate_sha256', 'c' * 64, 'candidate_changed'),
     ('filesystem_checked', False, 'filesystem_unconfirmed'),
     ('platform_supported', False, 'platform_unsupported'),
-    ('exclusive_access_confirmed', False, 'exclusive_access_unconfirmed'),
 ])
 def test_each_necessary_fact_denies_when_missing_or_changed(facts, field, value, code):
     result = evaluate_project_write_policy(facts.model_copy(update={field: value}))

@@ -6,6 +6,7 @@ from typing import Literal
 from uuid import uuid4
 
 from app.database import SessionLocal
+from app.models import ProposalAuditEvent
 from app.repositories.workspace.file_edit_proposal_repository import (
     lock_file_edit_proposal_for_decision,
     lock_owned_proposal_task,
@@ -53,6 +54,7 @@ def claim_task_file_edit_proposal(
         if workspace.root_path is None or workspace.root_path != proposal.bound_root:
             raise ProposalBindingChangedError()
         token = uuid4().hex
+        session.add(ProposalAuditEvent(proposal_id=proposal.id, actor_id=user_id, event='application_started'))
         proposal.application_status = 'running'
         proposal.application_token = token
         session.flush()
@@ -82,6 +84,7 @@ def finish_task_file_edit_proposal(
         # 不要求绑定仍相同：执行后的目录变化不能阻止登记已发生的结果。
         # 归属仍重新授权；失败时保持原状态，不能据此推断文件未写入。
         proposal.application_status = outcome
+        session.add(ProposalAuditEvent(proposal_id=proposal.id, actor_id=user_id, event=outcome))
         session.flush()
         result = ProposalApplicationResult(proposal_id, workspace_id, task_id, outcome, application_token)
     # 不接受终态重放或uncertain重新领取，也没有超时回收。

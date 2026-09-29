@@ -3,7 +3,7 @@
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models import FileEditProposal, Task
+from app.models import FileEditProposal, Task, TaskChangeSet
 
 
 class ProposalApplicationBusyError(Exception):
@@ -31,3 +31,11 @@ def require_no_active_proposal_application(
     with session.no_autoflush:
         if session.scalar(statement) is not None:
             raise ProposalApplicationBusyError()
+
+    changes = select(TaskChangeSet.id).join(Task).where(
+        Task.workspace_id == workspace_id, TaskChangeSet.status.in_(('running', 'uncertain')),
+    ).limit(1)
+    if task_id is not None:
+        changes = changes.where(Task.id == task_id)
+    if session.scalar(changes) is not None:
+        raise ProposalApplicationBusyError()
