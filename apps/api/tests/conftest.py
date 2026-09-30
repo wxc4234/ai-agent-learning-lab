@@ -50,7 +50,8 @@ def empty_engine(test_database_url: URL) -> Iterator[Engine]:
     admin = create_engine(test_database_url, hide_parameters=True)
     database = create_engine(
         test_database_url,
-        connect_args={"options": f"-csearch_path={schema}"},
+        # 应用表只在私有schema；public仅用于共享vector类型/函数。
+        connect_args={"options": f"-csearch_path={schema},public"},
         hide_parameters=True,
     )
     created = False
@@ -77,6 +78,9 @@ def empty_engine(test_database_url: URL) -> Iterator[Engine]:
 @pytest.fixture
 def engine(empty_engine: Engine) -> Engine:
     """Create current application tables exclusively inside the test schema."""
+    # create_all不运行Alembic；仅在本轮随机测试库显式准备同一个扩展。
+    with empty_engine.begin() as connection:
+        connection.execute(text("CREATE EXTENSION IF NOT EXISTS vector WITH SCHEMA public"))
     Base.metadata.create_all(empty_engine)
     return empty_engine
 

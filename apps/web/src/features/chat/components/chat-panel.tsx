@@ -25,6 +25,7 @@ import LoadingPlaceholder from "@/features/workbench/components/loading-placehol
 import TaskRunPanel from '@/features/workbench/components/task-run-panel';
 import ConversationExecutionPanel from '@/features/workbench/components/conversation-execution-panel';
 import ToolResult from "./tool-result";
+import { VAULT_MODEL_NOTICE, VAULT_SEARCH_FAILURE } from "../vault-search-view";
 import { useRestoredRunSummary } from "@/features/workbench/use-restored-run-summary";
 import RunMetricsFooter from "./run-metrics-footer";
 import TaskChangesPanel from "@/features/workbench/components/task-changes-panel";
@@ -663,6 +664,7 @@ function TaskChat() {
                                                               tool.toolName === "run_command"
                                                               || tool.toolName === "preview_file_edit"
                                                               || tool.toolName === "preview_file_patch"
+                                                              || tool.toolName === "search_vault"
                                                                   ? "调用完成"
                                                                   : "成功"
                                                           )
@@ -708,6 +710,9 @@ function TaskChat() {
                                                 <p className="mt-2 break-all text-destructive">
                                                     错误：{tool.errorMessage}
                                                 </p>
+                                            )}
+                                            {tool.status === "failed" && tool.toolName === "search_vault" && (
+                                                <p className="mt-2 text-sm text-muted-foreground">{VAULT_SEARCH_FAILURE}</p>
                                             )}
                                         </li>
                                     );
@@ -918,8 +923,15 @@ function TaskChat() {
                             你的问题
                         </Label>
 
+                        {workbench.localMode && (
+                            <p id="vault-model-notice" className="px-2 pb-1 text-xs text-muted-foreground">
+                                {VAULT_MODEL_NOTICE}
+                            </p>
+                        )}
+
                         <Textarea
                             id="prompt"
+                            aria-describedby={workbench.localMode ? "vault-model-notice" : undefined}
                             autoFocus
                             onKeyDown={(event) => {
                                 // 中文输入法确认候选词不能触发发送；Shift+Enter 保留换行。

@@ -6,6 +6,7 @@ import LoadingPlaceholder from './loading-placeholder';
 import TaskRunHistory from './task-run-history';
 import { readRunDetail, type RunDetail, type RunTimelineEvent } from '../run-detail-data';
 import ToolResult from '@/features/chat/components/tool-result';
+import { VAULT_SEARCH_FAILURE } from '@/features/chat/vault-search-view';
 import RunSummaryCard from '@/features/chat/components/run-summary-card';
 import { readHistoricalRunSummary } from '../historical-run-summary';
 
@@ -55,7 +56,8 @@ function EventContent({ event, taskScope }: {
                                 || payload.tool_name === 'preview_file_patch'
                                 || payload.tool_name === 'git_sample_diff'
                                 || payload.tool_name === 'verify_task_sample'
-                                || payload.tool_name === 'read_task_sample_diff') ? (
+                                || payload.tool_name === 'read_task_sample_diff'
+                                || payload.tool_name === 'search_vault') ? (
                             <ToolResult
                                 toolName={payload.tool_name}
                                 result={value}
@@ -67,6 +69,9 @@ function EventContent({ event, taskScope }: {
                     </div>
                 ) : null;
             })}
+            {event.event_type === 'TOOL_CALL_ERROR' && payload.tool_name === 'search_vault' && (
+                <p className="text-sm text-muted-foreground">{VAULT_SEARCH_FAILURE}</p>
+            )}
             {typeof payload.reason === 'string' && (
                 <p>{payload.reason === 'user' ? '用户取消' : payload.reason === 'timeout' ? '运行超时' : payload.reason === 'owner_process_exited' ? '已确认原执行进程退出；没有自动重跑工具或模型' : '原因未记录'}</p>
             )}

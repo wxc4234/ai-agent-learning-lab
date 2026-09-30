@@ -14,6 +14,7 @@ import { isProposalIdentifier, readFileEditProposalDetail } from "../../../src/f
 import ts from "typescript";
 import { commandStatusLabel, parseCommandResult } from "../../../src/features/chat/command-result-view.ts";
 import { classifyDiffLine, parseFileEditPreview } from "../../../src/features/chat/file-edit-preview-view.ts";
+import { parseVaultSearch, vaultSearchCoverage, VAULT_INCOMPLETE_LABELS, VAULT_SEARCH_FAILURE } from "../../../src/features/chat/vault-search-view.ts";
 
 const require = createRequire(import.meta.url);
 const { renderToStaticMarkup } = require("react-dom/server");
@@ -68,6 +69,9 @@ const ProposalExecutionActions = compileComponent("proposal-execution-actions.ts
     useEffect, useRef, useState, createProposalExecutionRequest, ProposalExecutionResultPanel, Button: plainButton,
 });
 const GitDiffCard = compileComponent("git-diff-card.tsx", "GitDiffCard", {});
+const VaultSearchCard = compileComponent("vault-search-card.tsx", "VaultSearchCard", {
+    vaultSearchCoverage, VAULT_INCOMPLETE_LABELS,
+});
 const FileEditProposalDetailPanel = compileComponent("file-edit-proposal-detail.tsx", "FileEditProposalDetailPanel", {
     useEffect, useRef, useState, isProposalIdentifier, readFileEditProposalDetail, FileEditProposalActions, ProposalApplicationStatusPanel, TaskSampleStatusPanel, ProjectWriteGrantActions, ProposalExecutionActions,
     // 只替换UI按钮外观，状态与详情组件使用真实React和TSX。
@@ -80,6 +84,7 @@ const FileEditProposalDetailPanel = compileComponent("file-edit-proposal-detail.
 const ToolResult = compileComponent("tool-result.tsx", "ToolResult", {
     commandStatusLabel, parseCommandResult, parseFileEditPreview, FileEditPreviewCard, parseGitDiff, GitDiffCard,
     parseFileEditProposal, FileEditProposalCard, FileEditProposalDetailPanel,
+    parseVaultSearch, VaultSearchCard,
 });
 export function renderToolResult(toolName: string, result: string, taskScope?: { workspaceId: string; taskId: string }): string {
     return renderToStaticMarkup(createElement(ToolResult, { toolName, result, taskScope }));
@@ -126,7 +131,7 @@ export function renderProposalActionsSnapshot(
 
 // 历史事件复用真实ToolResult，校验入口分派与当前任务范围传递。
 export function renderHistoricalEvent(event: unknown, taskScope: { workspaceId: string; taskId: string }): string {
-    const EventContent = compileComponent("../../workbench/components/task-run-panel.tsx", "EventContent", { ToolResult });
+    const EventContent = compileComponent("../../workbench/components/task-run-panel.tsx", "EventContent", { ToolResult, VAULT_SEARCH_FAILURE });
     return renderToStaticMarkup(createElement(EventContent, { event, taskScope }));
 }
 

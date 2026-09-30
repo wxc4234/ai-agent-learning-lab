@@ -10,6 +10,8 @@ import { commandStatusLabel, parseCommandResult } from "../command-result-view";
 import { parseFileEditPreview } from "../file-edit-preview-view";
 import FileEditPreviewCard from "./file-edit-preview-card";
 import FileEditProposalDetailPanel from "./file-edit-proposal-detail";
+import { parseVaultSearch } from "../vault-search-view";
+import VaultSearchCard from "./vault-search-card";
 
 export default function ToolResult({
     toolName,
@@ -23,6 +25,12 @@ export default function ToolResult({
         taskId: string;
     };
 }) {
+    if (toolName === "search_vault") {
+        const value = parseVaultSearch(toolName, result, taskScope);
+        return value ? <VaultSearchCard value={value} /> : (
+            <p className="mt-3 text-sm" role="status">Vault 检索结果无法确认，未显示笔记片段。</p>
+        );
+    }
     if (toolName === "read_task_sample_diff") {
         const diff = parseTaskSampleDiff(toolName, result);
         return diff ? <TaskSampleDiffCard value={diff} /> : (

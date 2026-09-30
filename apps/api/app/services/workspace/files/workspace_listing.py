@@ -183,16 +183,20 @@ def list_task_directory(
     workspace_id: str,
     task_id: str,
     relative_path: str = ".",
+    expected_bound_root: str | None = None,
+    require_direct_path: bool = False,
 ) -> WorkspaceDirectoryListing:
-    """授权后枚举单层目录，返回有限条目和明确的截断标记。"""
+    """授权后限量枚举目录，可由内部入口要求无链接路径。"""
 
-    # 复用现有任务授权、绑定目录及路径边界。
-    # 查询完成后 Session 已关闭，枚举不占用数据库事务。
+    # 每次枚举都重新检查任务归属与绑定。
+    # 查询 Session 关闭后才枚举目录，不让文件系统操作占用事务。
     path = resolve_task_workspace_path(
         user_id=user_id,
         workspace_id=workspace_id,
         task_id=task_id,
         relative_path=relative_path,
+        expected_bound_root=expected_bound_root,
+        require_direct_path=require_direct_path,
     )
 
     _require_supported_listing()

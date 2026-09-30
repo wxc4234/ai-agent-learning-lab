@@ -213,6 +213,25 @@ def test_owned_task_reads_only_and_closes_before_filesystem(database, target, ro
     assert database[1] and all(sql.lstrip().upper().startswith("SELECT") for sql in database[1])
 
 
+@pytest.mark.parametrize("kind", ["file", "directory"])
+def test_direct_path_rejects_internal_alias_but_default_still_allows(database, target, root, kind):
+    # Vault 的严格选项不改变既有通用入口的项目内链接行为。
+    link = root / "alias"
+    if kind == "file":
+        destination = root / "src" / "中文 file.txt"
+        link.symlink_to(destination)
+        relative = "alias"
+    else:
+        destination = root / "src" / "中文 file.txt"
+        link.symlink_to(root / "src", target_is_directory=True)
+        relative = "alias/中文 file.txt"
+    assert read(target, relative_path=relative) == destination
+    with pytest.raises(service.WorkspacePathError) as caught:
+        read(target, relative_path=relative, require_direct_path=True)
+    assert caught.value.code == "workspace_path_unavailable"
+    assert read(target, relative_path="src/中文 file.txt", require_direct_path=True) == destination
+
+
 @pytest.mark.parametrize("kind", [
     "missing-workspace", "missing-task", "foreign-owner", "wrong-project",
     "foreign-conversation", "missing-conversation",

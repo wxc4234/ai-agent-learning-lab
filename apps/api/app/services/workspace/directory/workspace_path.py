@@ -156,6 +156,7 @@ def resolve_task_workspace_path(
     task_id: str,
     relative_path: str,
     expected_bound_root: str | None = None,
+    require_direct_path: bool = False,
 ) -> Path:
     """先授权任务，再解析该任务绑定目录内的现有路径。"""
 
@@ -189,7 +190,21 @@ def resolve_task_workspace_path(
 
     parsed_path = _parse_relative_path(relative_path)
 
-    return _resolve_bound_path(
+    target = _resolve_bound_path(
         bound_root=bound_root,
         relative_path=parsed_path,
     )
+
+    # 严格模式要求解析结果仍是绑定根下的原始相对位置。
+    # 阻止通过项目内链接绕过调用方的目录和文件格式限制。
+    # 后续实际打开仍须使用 O_NOFOLLOW，防止解析之后出现链接替换。
+    if (
+        require_direct_path
+        and target != Path(bound_root).joinpath(*parsed_path.parts)
+    ):
+        raise WorkspacePathError(
+            "workspace_path_unavailable",
+            "当前入口不支持通过符号链接访问文件或目录",
+        )
+
+    return target

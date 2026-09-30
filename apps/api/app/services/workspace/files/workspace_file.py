@@ -206,19 +206,19 @@ def read_task_text_file(
     task_id: str,
     relative_path: str,
     expected_bound_root: str | None = None,
+    require_direct_path: bool = False,
 ) -> WorkspaceTextFile:
-    """读取已授权任务内的 UTF-8 文本，身份与任务定位由服务端提供。"""
+    """授权后读取有界 UTF-8 文本，可由内部入口要求无链接路径。"""
 
-    # 复用上一课的完整授权链路。
-    # 返回时数据库 Session 已关闭，下面的文件读取不占用数据库事务。
-    # 可选绑定约束来自内部提案快照，不开放给模型参数。
-    binding = {} if expected_bound_root is None else {"expected_bound_root": expected_bound_root}
+    # 任务归属和目录绑定由现有解析服务检查。
+    # 文件读取在数据库 Session 关闭之后进行，不产生数据库写入。
     path = resolve_task_workspace_path(
         user_id=user_id,
         workspace_id=workspace_id,
         task_id=task_id,
         relative_path=relative_path,
-        **binding,
+        expected_bound_root=expected_bound_root,
+        require_direct_path=require_direct_path,
     )
 
     _require_supported_file_access()

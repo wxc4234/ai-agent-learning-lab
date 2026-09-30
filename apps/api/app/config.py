@@ -50,6 +50,53 @@ class Settings(BaseSettings):
         validation_alias="DEEPSEEK_MODEL",
     )
 
+    # Embedding独立配置；默认留空，不复用聊天密钥或在应用启动时发起请求。
+    embedding_api_key: SecretStr = Field(
+        default=SecretStr(""), validation_alias="EMBEDDING_API_KEY"
+    )
+    embedding_base_url: str = Field(default="", validation_alias="EMBEDDING_BASE_URL")
+    embedding_model: str = Field(default="", validation_alias="EMBEDDING_MODEL")
+    # 必须显式声明预期维度，不能以第一条供应商响应猜测后续索引契约。
+    embedding_dimensions: int | None = Field(
+        default=None, strict=True, ge=1, le=4096,
+        validation_alias="EMBEDDING_DIMENSIONS",
+    )
+    # 部分兼容供应商不支持dimensions参数，默认只核对实际返回维度。
+    embedding_request_dimensions: bool = Field(
+        default=False, strict=True, validation_alias="EMBEDDING_REQUEST_DIMENSIONS"
+    )
+    embedding_timeout_seconds: float = Field(
+        default=30.0, strict=True, ge=1, le=60, allow_inf_nan=False,
+        validation_alias="EMBEDDING_TIMEOUT_SECONDS",
+    )
+
+    @field_validator("embedding_dimensions", mode="before")
+    @classmethod
+    def parse_embedding_dimensions(cls, value: object) -> object:
+        if isinstance(value, str):
+            if not value:
+                return None
+            if re.fullmatch(r"[1-9][0-9]{0,3}", value) is None:
+                raise ValueError("Embedding维度必须是有界正整数")
+            return int(value)
+        return value
+
+    @field_validator("embedding_request_dimensions", mode="before")
+    @classmethod
+    def parse_embedding_dimensions_switch(cls, value: object) -> object:
+        if isinstance(value, str) and value in {"true", "false"}:
+            return value == "true"
+        return value
+
+    @field_validator("embedding_timeout_seconds", mode="before")
+    @classmethod
+    def parse_embedding_timeout(cls, value: object) -> object:
+        if isinstance(value, str):
+            if re.fullmatch(r"[1-9][0-9]?(?:\.[0-9]{1,3})?", value) is None:
+                raise ValueError("Embedding超时必须是有界正数秒")
+            return float(value)
+        return value
+
     # 单次 Agent 运行的累计 Token 续跑预算，不是模型上下文窗口大小。
     agent_max_total_tokens: int = Field(
         default=8_000,

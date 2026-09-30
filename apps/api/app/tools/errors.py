@@ -100,6 +100,12 @@ _SAFE_MESSAGES = {
         "不要自动重复创建，需先核对保存结果"
     ),
     "command_recovery_unavailable": "当前执行无法接收新的命令恢复记录，命令未启动",
+    "vault_search_unavailable": (
+        "Vault 检索暂时无法确认，不能解释成没有匹配"
+    ),
+    "vault_search_result_too_large": (
+        "Vault 检索结果超过模型输出预算，未返回部分结果"
+    ),
 }
 
 

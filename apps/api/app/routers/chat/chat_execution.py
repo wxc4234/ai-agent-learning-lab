@@ -54,6 +54,7 @@ from app.services.runtime.verification.contracts import VerificationRequest
 from app.services.runtime.verification.sandbox_verification import SandboxVerificationResult
 from app.tools.recorded_task_verification import make_recorded_task_verification_executor
 from app.tools.task_verification import make_task_verification_definition
+from app.tools.vault_search import make_vault_search_definition
 
 
 logger = logging.getLogger(__name__)
@@ -152,6 +153,70 @@ class ChatExecution:
             return adapter(context=context, **arguments)
 
         return replace(definition, executor=execute)
+
+    def bind_vault_search_tool(
+        self,
+        context: ToolExecutionContext,
+    ) -> ToolDefinition:
+        """把只读检索能力绑定到当前请求和原始工具上下文。"""
+
+        if (
+            self._command_closed
+            or not isinstance(context, ToolExecutionContext)
+            or context.user_id != self.user_id
+            or context.conversation_id != self.body.session_id
+        ):
+            raise SafeToolExecutionError("vault_search_unavailable")
+
+        definition = make_vault_search_definition()
+        adapter = definition.executor
+
+        if adapter is None:
+            raise SafeToolExecutionError("vault_search_unavailable")
+
+        expected_context = context
+
+        def execute(
+            *,
+            context: ToolExecutionContext,
+            query: str,
+        ) -> str:
+            # 同一个请求绑定的工具不能换绑另一个上下文。
+            # 即使字段相同，也不接受其他请求构造的 Context 对象。
+            if self._command_closed or context is not expected_context:
+                raise SafeToolExecutionError("vault_search_unavailable")
+
+            try:
+                # 同步执行器由 Runtime 放在线程中运行。
+                # 本次 SELECT 的 Session 关闭后，才进入文件检索。
+                current = load_tool_execution_context(
+                    user_id=self.user_id,
+                    conversation_id=self.body.session_id,
+                )
+            except Exception:  # noqa: BLE001 -- 仅返回固定授权错误。
+                raise SafeToolExecutionError(
+                    "workspace_not_accessible",
+                ) from None
+
+            # 会话关联、Task 或 Workspace 变化时，旧能力不能继续使用。
+            if current != expected_context or self._command_closed:
+                raise SafeToolExecutionError("workspace_not_accessible")
+
+            result = adapter(
+                context=context,
+                query=query,
+            )
+
+            # 请求关闭后不再交付新的工具结果。
+            if self._command_closed:
+                raise SafeToolExecutionError("vault_search_unavailable")
+
+            return result
+
+        return replace(
+            definition,
+            executor=execute,
+        )
 
     async def bind_sample_diff_tool(self, context: ToolExecutionContext) -> ToolDefinition | None:
         """ready只决定展示能力；调用仍重新授权并借用当前来源。"""

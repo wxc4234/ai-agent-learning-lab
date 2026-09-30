@@ -29,6 +29,10 @@ class BrowserDecisionMaker:
             yield await self(observations)
 
     async def __call__(self, observations):
+        if "[vault-search]" in self.prompt:
+            from vault_search_model import vault_search_decision
+
+            return vault_search_decision(self.prompt, observations)
         if "[week5-general]" in self.prompt:
             from week5_completion_fixture import decision
             return decision(observations)
@@ -193,6 +197,11 @@ if os.environ.get("BROWSER_TEST_SCRIPT") in ("workbench-layout-wait.mjs", "workb
     from workbench_layout_fixture import install_layout_fixture
 
     install_layout_fixture(app)
+
+if os.environ.get("BROWSER_TEST_SCRIPT") == "vault-search.mjs":
+    from vault_search_model import install_vault_search_fixture
+
+    install_vault_search_fixture(app)
 
 if os.environ.get("BROWSER_TEST_SCRIPT") == "git-diff.mjs":
     from git_diff_model import install_git_diff_fixture

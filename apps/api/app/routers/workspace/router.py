@@ -13,8 +13,13 @@ from app.routers.workspace import (
     project_write_grants,
     samples,
     tasks,
+    vault,
+    code_inventory,
 )
 
 router = APIRouter()
 for domain in (projects, change_sets, owned_areas, directories, tasks, proposals, execution, samples, project_write_grants, git_staged):
     router.include_router(domain.router)
+
+router.include_router(vault.router)
+router.include_router(code_inventory.router)

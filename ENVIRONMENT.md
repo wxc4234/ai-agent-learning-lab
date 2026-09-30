@@ -9,7 +9,7 @@
 | 依赖 | 当前约定 | 用途/事实来源 |
 |---|---|---|
 | Python | 3.12，每台电脑独立 `.venv` | `.python-version`；旧 3.10 环境不再适用 |
-| Python 包 | 按锁定清单安装 | `requirements.txt`；FastAPI/Pydantic、SQLAlchemy/psycopg、Alembic、模型 SDK、pytest/httpx、Ruff |
+| Python 包 | 按锁定清单安装 | `requirements.txt`；FastAPI/Pydantic、SQLAlchemy/psycopg/pgvector、Alembic、模型 SDK、pytest/httpx、Ruff |
 | Node.js | 沿用项目 Node.js 24 环境 | Next.js/React 前端与 Node 测试 |
 | pnpm | 10.34.1 | 根 `package.json` 的 packageManager；根 `pnpm-lock.yaml` 锁定所有 Node workspace 依赖 |
 | Docker Desktop/Compose | 本机可用 | `infra/compose.yaml` 提供 PostgreSQL + pgvector、Redis；Docker Sandbox 另按当前平台边界验收 |
@@ -44,6 +44,8 @@ Copy-Item .env.example .env
 不想安装 pnpm 时，也可在根目录运行 `npm install`，但它不使用项目的 `pnpm-lock.yaml`，因此只作为兼容入口。只需单独修复 Python 环境时，可运行 `pnpm install:python`，或使用项目解释器执行 `-m pip install -r requirements.txt`；已安装 uv 时也可用 `uv pip install -r requirements.txt`。缺 pip 可先用项目解释器执行 `-m ensurepip --upgrade`。PowerShell 可直接调用 `.venv\Scripts\python.exe`；需要激活时使用 `.\.venv\Scripts\Activate.ps1`，受限终端仅按需设置当前进程的 ExecutionPolicy。
 
 在根目录 `.env` 填写自己的 `DEEPSEEK_API_KEY`，按 `.env.example` 配置 `DATABASE_URL`、Redis 与模型设置。不要把服务端变量加上 `NEXT_PUBLIC_` 前缀。VS Code 的 Python 解释器选择项目 `.venv/bin/python`（Windows 为 `.venv\Scripts\python.exe`）。
+
+Embedding使用独立 `EMBEDDING_*` 配置，默认留空关闭，不复用聊天配置；字段和预算见[代码Embedding协议](docs/code-embeddings.md#配置与调用)，批次存储/扩展迁移见[向量存储协议](docs/code-vector-storage.md#迁移与环境)。配置不会自动发送、入库或启用召回。
 
 普通项目应用、变更组恢复、持久隔离副本、快照命令与专项验证入口见 [项目执行](docs/project-execution.md)。
 
@@ -117,7 +119,7 @@ Git状态采集样例目前仅支持POSIX，固定可执行文件 `/usr/bin/git`
 
 数据库测试复用 [conftest.py](apps/api/tests/conftest.py)：
 
-- 只用 PostgreSQL + psycopg，不用 SQLite，不连接开发业务表。默认借用 DATABASE_URL 的服务器/账号信息，连接 `postgres` 维护库，每轮创建随机 `agent_lab_test_<uuid>` 数据库，每例独立 schema，允许真实 commit/rollback。
+- 只用 PostgreSQL + psycopg，不用 SQLite，不连接开发业务表。默认借用 DATABASE_URL 的服务器/账号信息，连接 `postgres` 维护库，每轮创建随机 `agent_lab_test_<uuid>` 数据库，每例独立 schema，允许真实 commit/rollback；当前建表夹具显式准备public中的vector扩展，search_path为私有schema/public，应用表仍在私有schema。浏览器隔离启动器也通过PGOPTIONS向API子进程传递这一范围。
 - 测试账号需要维护库连接和 CREATEDB 权限。可用 `TEST_DATABASE_ADMIN_URL` 指定测试服务器的 `postgresql+psycopg` 管理连接；不提交含密码的 URL，也不改变应用 DATABASE_URL。
 - 测试正常结束或失败时清理本轮 schema/数据库；权限不足会失败，不静默跳过。强制杀进程可能残留，先核实确属本轮资源再清理，不批量删库。纯逻辑测试未请求 fixture 时不创建数据库。
 - 迁移专项按需使用同一隔离配置，不执行开发数据清空或有损 downgrade 来“修测试”。
@@ -137,11 +139,7 @@ Git diff PC 展示专项：仓库根目录运行 `BROWSER_APP_MODE=local BROWSER
 
 受控编码 PC 联合冒烟：沿用上述启动器，设置 `BROWSER_APP_MODE=local BROWSER_TEST_SCRIPT=coding-loop.mjs`，需本机 Docker 可用；受控模型经正式提案详情串联显式审批/应用、真实 Git 差异及 Docker 固定验证，检查拒绝/过期、历史无重放与清理。隔离 PostgreSQL 与服务在退出时清理；证据位于 `apps/web/output/playwright/coding-loop/`。TypeScript/路由契约变化时按影响执行 `pnpm typecheck`；构建只在构建链受影响或交付验收需要时运行 `pnpm build`。开发用 Node 需支持项目现用的 strip-types 参数。
 
-PC 浏览器验收按任务选择现有隔离启动器或组件专项。通用工作台示例，从根目录运行：
-
-```bash
-BROWSER_APP_MODE=local BROWSER_TEST_SCRIPT=sample-status-workbench.mjs .venv/bin/python apps/web/test/browser/run-isolated.py
-```
+PC 浏览器验收按任务选择现有隔离启动器或组件专项。通用工作台示例，从根目录运行 `BROWSER_APP_MODE=local BROWSER_TEST_SCRIPT=sample-status-workbench.mjs .venv/bin/python apps/web/test/browser/run-isolated.py`。
 
 Windows 在 PowerShell 分别设置 `$env:BROWSER_APP_MODE`、`$env:BROWSER_TEST_SCRIPT` 后，用 `.\.venv\Scripts\python.exe` 运行同一脚本。浏览器入口按自身夹具要求配置 Playwright/Chrome；`PLAYWRIGHT_MODULE`、`CHROME_EXECUTABLE` 是否支持及其默认值先查对应入口，不把某台电脑的绝对路径写成通用要求。
 
@@ -155,11 +153,11 @@ BROWSER_APP_MODE=local BROWSER_TEST_SCRIPT=patch-preview-tools.mjs .venv/bin/pyt
 
 Git 状态 PC 专项：同一隔离启动器使用 `BROWSER_APP_MODE=local BROWSER_TEST_SCRIPT=git-status.mjs`，支持 `PLAYWRIGHT_MODULE` / `CHROME_EXECUTABLE`。夹具在应用生命周期内创建Task与自有Git样例，不开放HTTP登记接口；受控模型须提供ModelUsage以通过既有预算检查。浏览器、独立数据库核对、文件与关闭清理报告写入 `apps/web/output/playwright/git-status/`，同名覆盖；失败时须同时检查服务日志与本轮报告，不能把旧报告当成功证据。
 
+Vault 检索 PC 专项：同一隔离启动器使用 `BROWSER_APP_MODE=local BROWSER_TEST_SCRIPT=vault-search.mjs`，支持 `PLAYWRIGHT_MODULE` / `CHROME_EXECUTABLE`，无需 Docker。模型决策受控；临时 Vault 经真实授权读取、工具、聊天流与 BFF，覆盖命中/无匹配、覆盖上限、片段裁剪、错误和历史恢复。退出时独立核对消息/事件、执行占用、原文件/绑定与临时目录清理；本轮截图和报告位于 `apps/web/output/playwright/vault-search/`，同名覆盖。失败须核对日志与本轮证据，不能复用旧报告推断成功。前端协议专项在 `apps/web` 运行 `node --experimental-strip-types --test test/features/chat/vault-search.test.ts`。
+
 补丁提案 PC 专项：沿用上方命令，将 `BROWSER_TEST_SCRIPT` 改为 `patch-proposal-tools.mjs`。模型受控，保存/授权详情真实执行；专属夹具对 `unconfirmed.txt` 在真实保存后注入确认丢失，启动器独立核对数据库。报告及截图在 `/private/tmp/agent-ui-patch-proposal/output/playwright/`，同名覆盖；临时服务、样例文件和测试库自动清理。
 
 补丁样例应用 PC 联合专项：同一启动器使用 `BROWSER_TEST_SCRIPT=patch-application.mjs`。可信夹具创建四个受限样例；生产工作台保存/审批，临时 `/sample-apply` 页面挂载既有应用组件，历史详情重新查询状态。报告、截图及清理核对在 `/private/tmp/agent-ui-patch-application/output/playwright/`；路径控制文件仅供本地夹具使用。封锁样例的清理由测试进程在HTTP停止并核对非活动状态后完成，不是产品恢复入口。
-
-
 
 验收需要说明 PC 视口、真实请求链、模型/上游模拟边界、文件/数据库证据与资源清理；测试报告和截图沿用对应脚本的 output 目录。Docker 实机专项按当前平台能力单独选择，普通单测不能代替真实隔离证据。
 
@@ -170,7 +168,6 @@ Task 样例命令 PC→真实 Docker 专项（当前 macOS Docker Desktop），�
 ```
 
 先通过 `PLAYWRIGHT_MODULE` 指定可用 Playwright 模块（已可解析时可省略），通过 `CHROME_EXECUTABLE` 指定本机可运行的 Chromium；要求上述 PostgreSQL 权限及本机 Docker/批准镜像。入口复用隔离启动器，模型/标题和取消通知受控，真实执行 Task 快照与命令，删除回执丢失只在夹具注入。每轮独立就绪标记，退出核对 journal 和原文件，显式清理自有资源；异常退出不能据此假定清理成功。截图、`browser-evidence.json` 与 `server-evidence.json` 写入 `tempfile.gettempdir()/agent-task-sample-browser/output/playwright/`，同名文件被下一次验收覆盖，不把这些临时文件当持久恢复存储。
-
 
 样例只读挂载实机专项（当前仅 macOS Docker Desktop），从仓库根目录运行：
 

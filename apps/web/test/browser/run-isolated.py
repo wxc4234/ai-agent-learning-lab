@@ -196,7 +196,8 @@ try:
             APP_MODE=test_mode,
             LOCAL_RUNTIME_TOKEN=runtime_token,
             DATABASE_URL=url.render_as_string(hide_password=False),
-            PGOPTIONS=f"-csearch_path={schema_name}",
+            # 应用表保留私有schema；public提供迁移安装的vector类型、函数与操作符。
+            PGOPTIONS=f"-csearch_path={schema_name},public",
             LOGIN_ALLOWED_ORIGINS='["http://localhost:13000"]',
             LOGIN_COOKIE_SECURE="false",
             PYTHONPATH=os.pathsep.join((str(API), str(Path(__file__).parent))),
@@ -323,6 +324,10 @@ try:
                 from git_diff_model import verify_git_diff_rows
 
                 verify_git_diff_rows(engine)
+            if os.environ.get("BROWSER_TEST_SCRIPT") == "vault-search.mjs":
+                from vault_search_model import verify_vault_rows
+
+                verify_vault_rows(engine)
             if os.environ.get("BROWSER_TEST_SCRIPT") == "git-status.mjs":
                 from git_status_model import verify_git_status_rows
 
@@ -390,6 +395,16 @@ try:
             output = ROOT / "apps/web/output/playwright/verification"
             assert json.loads((output / "server-evidence.json").read_text()) == {
                 "calls": 6, "runs": 6, "source_unchanged": True, "directory_removed": True,
+            }
+        if os.environ.get("BROWSER_TEST_SCRIPT") == "vault-search.mjs":
+            # 读回 lifespan 证据，确认刷新只查历史、原笔记只读和临时目录清理。
+            import json
+            output = ROOT / "apps/web/output/playwright/vault-search"
+            assert json.loads((output / "server-evidence.json").read_text()) == {
+                "files_unchanged": True, "bindings_unchanged": True, "read_calls": 7,
+            }
+            assert json.loads((output / "cleanup-evidence.json").read_text()) == {
+                "vault_directories_removed": 7,
             }
         if os.environ.get("BROWSER_TEST_SCRIPT") == "git-diff.mjs":
             # Uvicorn的lifespan断言需明确读回证据，不能只信浏览器退出码。

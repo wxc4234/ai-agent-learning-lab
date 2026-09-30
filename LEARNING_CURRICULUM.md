@@ -122,9 +122,9 @@
 | Day | 任务 | 验收 |
 |---|---|---|
 | 1 | Workspace 导入：Git URL 或 ZIP、本地样例仓库；校验大小、类型、路径和所有权 | 非法压缩包、路径穿越、超限仓库被拒绝；导入状态可恢复 |
-| 2 | 仓库扫描：遵守 `.gitignore`，识别语言/文件/符号，跳过二进制、生成物和疑似密钥 | 生成可查询的文件与符号清单，且不索引被忽略或敏感内容 |
-| 3 | 关键词与符号检索：`rg`、文件路径、定义/引用线索 | 精确标识符与配置项能稳定命中，结果带文件、行号和匹配原因 |
-| 4 | 代码 Chunk、Embedding 与 pgvector：保留文件、符号和行号元数据 | 向量写入成功；维度/索引匹配；语义问题能召回相关实现 |
+| 2 | 仓库扫描：遵守 `.gitignore`，识别语言/文件/符号，跳过二进制、生成物和疑似密钥 | 生成可查询的文件与符号清单，且不索引被忽略或敏感内容。当前[有界文件清单、忽略子集及Python函数/类符号](docs/code-inventory.md)已通过工程验收，教练按对应课明确授权实现；多语言符号、引用关系与持久索引尚未实现，不代表学习者独立掌握 |
+| 3 | 关键词与符号检索：`rg`、文件路径、定义/引用线索 | 精确标识符与配置项能稳定命中，结果带文件、行号和匹配原因。当前[授权Python名称/限定名称检索与定义片段](docs/code-inventory.md#python-符号检索与定义引用)已通过工程验收，教练按本课明确授权实现；任意代码关键词、运行时引用关系与多语言检索尚未实现，不代表学习者独立掌握 |
+| 4 | 代码 Chunk、Embedding 与 pgvector：保留文件、符号和行号元数据 | 向量写入成功；维度/索引匹配；语义问题能召回相关实现。当前[Python定义分块](docs/code-inventory.md#python-代码分块)、[独立Embedding配置/有界生成](docs/code-embeddings.md)及[pgvector受控批次存储/模型空间隔离](docs/code-vector-storage.md)已通过工程验收，教练按对应课明确授权实现；生成采用受控传输，存储使用真实PostgreSQL，真实供应商、自动项目索引和向量召回尚未验收，不代表学习者独立掌握 |
 | 5 | 混合检索、Rerank 与 Context Builder：融合排序、去重、Token 预算、工具结果裁剪 | 上下文包可解释来源、分数、Token 占比和被裁剪原因，不超过预算 |
 | 6 | 引用与检索调试 UI：展示查询、候选、分数、采纳片段和代码定位 | 点击引用能定位代码行；用户能看出为什么某段被选中 |
 | 7 | 代码检索评测：固定跨文件任务集，比较关键词、向量与混合策略 | 输出 Recall@K、MRR、引用正确率、延迟与成本对比表 |
@@ -144,9 +144,11 @@
 - 引用只有文件名没有行号，用户无法验证 Agent 依据。
 - 同时修改 Chunk、召回数量和 Rerank 后再评测，无法归因改进来自哪里。
 
-#### Obsidian Vault 接入实践（已纳入，尚未开始）
+#### Obsidian Vault 接入实践
 
-目标：让自研 Agent 读取、检索并逐步整理用户授权的 Obsidian 笔记库，复用本地 Workspace、文件工具和检索能力。安排在当前第 5 周 Sandbox 执行链路完成之后，不改变当前下一课；融合到现有课程中，每次仍只推进一个可验证的小任务。
+目标：让自研 Agent 读取、检索并逐步整理用户授权的 Obsidian 笔记库，复用本地 Workspace、文件工具和检索能力。第五周完成后融合到当前课程，每次只推进一个可验证的小任务。
+
+当前能力：授权 Markdown 清单、受限读取、跨文件字面检索 API、请求级 Agent 工具及 PC 结果/引用展示已通过工程验收。工具仅接受 query，模型与 Runtime 共用能力快照，执行时重查会话/Task/Workspace。实时与历史共用严格解析和纯文本卡片，保留相对路径、行列、同次读取摘要及完整无匹配/覆盖截断/片段裁剪/失败的区别；发送前说明片段会提供给用户配置的模型，历史不重新检索。引用当前不提供点击读取或代码行跳转。前三课由学习者实现核心、完成后教练补配套，PC展示课按明确授权由教练直接完成；工程通过不代表独立掌握。真实模型措辞/引用质量与抗提示注入能力、Windows仍未验收，归属撤销后的既有收尾限制见[当前交接](LEARNING_HANDOFF.md#未解决问题)。后端证据见[检索服务](apps/api/tests/workspace/files/test_vault_search.py)、[检索API](apps/api/tests/workspace/files/test_vault_search_api.py)、[工具适配](apps/api/tests/tools/test_vault_search_tool.py)、[请求绑定](apps/api/tests/chat/test_vault_search_binding.py)与[受控聊天HTTP](apps/api/tests/chat/test_vault_search_chat.py)；展示证据见[协议/组件测试](apps/web/test/features/chat/vault-search.test.ts)及[真实PC专项](apps/web/test/browser/vault-search.mjs)。一般代码上下文/RAG与本周检索评测仍待完成。
 
 | 阶段 | 接入范围与前置条件 | 验收 |
 |---|---|---|

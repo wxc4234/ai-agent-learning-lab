@@ -7,6 +7,7 @@ from sqlalchemy import (
     CheckConstraint,
     DateTime,
     ForeignKey,
+    ForeignKeyConstraint,
     String,
     Text,
     UniqueConstraint,
@@ -16,6 +17,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+from pgvector.sqlalchemy import VECTOR
 
 from app.database import Base
 
@@ -729,6 +731,128 @@ class TaskChangeSet(Base):
     journal: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     audit: Mapped[list] = mapped_column(JSONB, default=list)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class CodeEmbeddingSpace(Base):
+    """模型空间身份不等于项目访问权；保存公开模型元数据，不保存Key/URL。"""
+
+    __tablename__ = "code_embedding_spaces"
+    __table_args__ = (
+        UniqueConstraint(
+            "id", "dimensions", name="uq_code_embedding_spaces_dimensions"
+        ),
+        CheckConstraint("id ~ '^[a-f0-9]{64}$'", name="ck_code_embedding_spaces_id"),
+        CheckConstraint(
+            "dimensions BETWEEN 1 AND 4096", name="ck_code_embedding_spaces_dimensions"
+        ),
+        CheckConstraint(
+            "char_length(requested_model) BETWEEN 1 AND 256 AND char_length(response_model) BETWEEN 1 AND 256",
+            name="ck_code_embedding_spaces_models",
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    dimensions: Mapped[int] = mapped_column(nullable=False)
+    requested_model: Mapped[str] = mapped_column(String(256), nullable=False)
+    response_model: Mapped[str] = mapped_column(String(256), nullable=False)
+
+
+class CodeEmbeddingBatch(Base):
+    """一次受控生成结果的不可变快照；不声称覆盖整个项目或当前文件版本。"""
+
+    __tablename__ = "code_embedding_batches"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["space_id", "dimensions"],
+            ["code_embedding_spaces.id", "code_embedding_spaces.dimensions"],
+            name="fk_code_embedding_batches_space",
+        ),
+        UniqueConstraint(
+            "id", "space_id", "dimensions", name="uq_code_embedding_batches_space"
+        ),
+        CheckConstraint(
+            "binding_revision > 0 AND char_length(bound_root) > 0",
+            name="ck_code_embedding_batches_binding",
+        ),
+        CheckConstraint(
+            "chunk_count BETWEEN 1 AND 20", name="ck_code_embedding_batches_count"
+        ),
+        CheckConstraint(
+            "jsonb_typeof(source_metadata) = 'object'",
+            name="ck_code_embedding_batches_metadata",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    external_id: Mapped[str] = mapped_column(String(32), nullable=False, unique=True)
+    # 向量是派生数据，随Task级联删除；不增加ORM关系干扰既有删除事务。
+    task_id: Mapped[int] = mapped_column(
+        ForeignKey("tasks.id", ondelete="CASCADE"), index=True
+    )
+    space_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    dimensions: Mapped[int] = mapped_column(nullable=False)
+    # 私有绑定证据仅用于拒绝旧结果，不能凭快照恢复文件权限。
+    bound_root: Mapped[str] = mapped_column(Text, nullable=False)
+    binding_revision: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    chunk_count: Mapped[int] = mapped_column(nullable=False)
+    source_metadata: Mapped[dict] = mapped_column(JSONB, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+
+
+class CodeEmbeddingVector(Base):
+    """每个向量与同批分块绑定；复合外键防止维度/空间在子记录上错配。"""
+
+    __tablename__ = "code_embedding_vectors"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["batch_id", "space_id", "dimensions"],
+            [
+                "code_embedding_batches.id",
+                "code_embedding_batches.space_id",
+                "code_embedding_batches.dimensions",
+            ],
+            ondelete="CASCADE",
+            name="fk_code_embedding_vectors_batch",
+        ),
+        UniqueConstraint(
+            "batch_id", "ordinal", name="uq_code_embedding_vectors_ordinal"
+        ),
+        UniqueConstraint(
+            "batch_id", "chunk_id", name="uq_code_embedding_vectors_chunk"
+        ),
+        CheckConstraint(
+            "ordinal BETWEEN 0 AND 19", name="ck_code_embedding_vectors_ordinal"
+        ),
+        CheckConstraint(
+            "dimensions BETWEEN 1 AND 4096 AND vector_dims(embedding) = dimensions",
+            name="ck_code_embedding_vectors_dimensions",
+        ),
+        CheckConstraint(
+            "chunk_id ~ '^[a-f0-9]{64}$'", name="ck_code_embedding_vectors_id"
+        ),
+        CheckConstraint(
+            "char_length(content) BETWEEN 1 AND 2000 AND octet_length(content) <= 4096",
+            name="ck_code_embedding_vectors_content",
+        ),
+        CheckConstraint(
+            "jsonb_typeof(chunk_metadata) = 'object'",
+            name="ck_code_embedding_vectors_metadata",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    batch_id: Mapped[int] = mapped_column(nullable=False)
+    space_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    dimensions: Mapped[int] = mapped_column(nullable=False)
+    ordinal: Mapped[int] = mapped_column(nullable=False)
+    chunk_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    # 不固定vector(n)，不同空间可有不同维度；CHECK和外键负责一致性。
+    embedding: Mapped[list[float]] = mapped_column(VECTOR(), nullable=False)
+    content: Mapped[str] = mapped_column(Text, nullable=False)
+    # 保留symbol、整文件/正文SHA、半开坐标、分片和截断原因，正文单独保存。
+    chunk_metadata: Mapped[dict] = mapped_column(JSONB, nullable=False)
 
 
 class OwnedWorkArea(Base):

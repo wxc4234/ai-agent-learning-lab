@@ -27,13 +27,13 @@ apps/api/
             chat/               # 对话编排与消息持久化协调
             workspace/          # 根目录保留项目创建服务
                 directory/      # 目录选择、绑定与授权路径
-                files/          # 读取、枚举、查找、搜索及替换
+                files/          # 读取、代码清单/检索/分块/受控向量存储、查找及替换
                 edits/          # 文本与授权文件编辑预览
                 proposals/      # 提案审批、核对、执行及登记
                 samples/        # 自有临时样例生命周期与门禁
                 metadata/       # 文件元数据与扩展属性
             tasks/              # 任务创建、详情、列表、标题
-            model/              # 模型客户端、决策适配和计价
+            model/              # 聊天/Embedding客户端、决策适配和计价
             runtime/            # 按运行时职责继续分组
                 agent/          # Agent Loop、Token 预算、工具上下文与事件
                 execution/      # 会话占用、并发、线程、取消及进程恢复
@@ -43,7 +43,7 @@ apps/api/
         repositories/
             auth/               # 用户和登录会话持久化
             chat/               # 会话与消息持久化
-            workspace/          # 项目查询与归属检查
+            workspace/          # 项目查询/归属、提案和受控向量批次持久化
             runtime/            # 运行/事件持久化
         tools/
             registry.py         # 工具注册及同步/异步执行定义，Runtime已按类型分派

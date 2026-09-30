@@ -145,3 +145,24 @@ def search_task_text_file(
         matches=matches,
         truncated=truncated,
     )
+
+
+def validate_search_query(query: str) -> None:
+    """公开查询校验入口，允许调用方在任何文件访问前拒绝非法查询。"""
+
+    _validate_query(query)
+
+
+def search_text_content(
+    content: str,
+    query: str,
+) -> tuple[tuple[WorkspaceSearchMatch, ...], bool]:
+    """搜索已经读取的文本；只处理内存内容，不访问数据库或文件系统。"""
+
+    # 公开入口独立检查查询，避免空查询被当成全文件匹配。
+    validate_search_query(query)
+
+    return _search_content(
+        content=content,
+        query=query,
+    )

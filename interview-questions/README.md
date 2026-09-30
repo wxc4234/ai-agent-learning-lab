@@ -103,6 +103,10 @@ interview-questions/
 ## 延伸 / 坑
 ```
 
+Vault 只读专题：[Markdown范围与同次读取来源](backend/web/workspace-directory.md#为什么-vault-只检查-md-后缀仍可能读到配置)、[检索覆盖、Unicode坐标与PC展示边界](backend/web/workspace-directory.md#跨文件检索的空结果为什么必须附带覆盖状态)、[请求级工具装配与授权复核](backend/web/workspace-directory.md#vault-检索工具为什么要请求级装配而不是直接注册到全局)。复习优先级高，参考答案已整理、尚未模拟。
+
+代码上下文专题：[扫描授权、忽略子集与覆盖预算](backend/web/workspace-directory.md#为什么代码扫描不能直接递归所有文件或执行仓库中的-git)、[AST静态符号与解析预算](backend/web/workspace-directory.md#ast-解析成功为什么不等于代码可运行或安全)、[符号检索、引用与覆盖](backend/web/workspace-directory.md#精确符号检索怎样避免丢失命中或错配引用)、[定义分块、嵌套去重与版本来源](backend/web/workspace-directory.md#代码分块怎样避免嵌套重复与来源错配)、[Embedding校验、模型空间与pgvector事务隔离](backend/web/workspace-directory.md#embedding-返回成功为什么仍不能直接入库)。复习优先级高，参考答案已整理、尚未模拟。
+
 ## 维护规范
 
 - 不按课程数量建题：只收录重要功能、关键取舍和工程难点。简单卡片展示、文案与样式修改无需单独入库；无新增重要考点时不新增题目。
