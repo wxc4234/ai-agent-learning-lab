@@ -4,9 +4,9 @@
 |---|---|---|
 | `RUN_STARTED` | `thinking` | 禁用发送按钮，显示“正在思考” |
 | `RUN_CANCELLATION_REQUESTED` | 保持当前状态 | 记录用户停止或超时原因，等待流实际终止 |
-| `TOOL_CALL_START` | `thinking` | 新增工具卡片，显示工具名、参数和“运行中” |
-| `TOOL_CALL_RESULT` | `thinking` | 显示结果与单次耗时；Vault 检索用“调用完成”，覆盖完整性由结果卡片说明 |
-| `TOOL_CALL_ERROR` | `thinking` | 将对应工具卡片更新为“失败”，显示执行耗时或“未进入执行阶段”；允许模型根据错误继续决策 |
+| `TOOL_CALL_START` | `thinking` | 内部记录工具调用；产品不直接展示工具名、原始参数或调度协议 |
+| `TOOL_CALL_RESULT` | `thinking` | 内部记录结果和耗时；后续在答复/改动中呈现必要的可读来源 |
+| `TOOL_CALL_ERROR` | `thinking` | 内部标记工具失败，允许模型根据错误继续决策；不暴露原始错误协议 |
 | `TEXT_MESSAGE_START` | `streaming` | 创建空的助手消息气泡 |
 | `TEXT_MESSAGE_CONTENT` | `streaming` | 按到达顺序追加文本片段 |
 | `TEXT_MESSAGE_END` | `streaming` | 结束本条消息的流式显示 |
@@ -16,15 +16,67 @@
 
 ## PC信息层级
 
-默认显示项目导航与对话；顶部是项目名、“查看改动”和更多菜单，不展示尚未接入的分支/变更统计/来源。右侧仅按需打开：查看改动保留提案审阅和显式审批；更多菜单的高级详情包含工具结果、原始事件、样例/清理诊断及历史运行。两类内容不同时堆放。
+默认显示项目/任务导航与对话，顶部只有项目名和“查看改动”。产品不提供高级详情、手动向量批次/模型空间选择、Embedding查询预览、哈希/上下文包或技术诊断入口；这些属于[内部检索链路](code-context.md#内部查询校验与产品边界)，不以默认折叠或“高级”菜单继续交给用户操作。用户提供任务意图，后续由Agent内部检索；必要时在答复或文件改动中呈现易读的文件/行号，而不是要求用户理解工程协议。当前未接入自动代码检索，不因撤下入口宣称该能力已完成。
 
-回复下方不显示运行简报、工具调用次数或执行详情按钮；审阅提案从顶部查看改动进入，运行记录从更多菜单的高级详情进入。运行完成不等于每项验证通过。打开详情聚焦关闭按钮，Escape/关闭后焦点返回查看改动；开合不重建对话或丢失草稿。批准后的提案详情提供默认折叠的“应用到受控样例”；用户仍需勾选确认并单独点击应用，待审批/已拒绝时不显示入口。服务端重新授权并核对执行目标；普通项目提供独立的显式应用和审计/恢复入口。提案审批/应用授权与防重复机制沿用既有组件，不因收起面板而自动执行或重试。普通项目许可区查询到记录且没有未确认变更时，可显式点击“检查写入条件”；展示检查时的结果，应用时仍须重新复核。检查可取消，失败显示未知；收起许可区/详情、切换提案或重新查询许可都会清除旧诊断，不自动检查或重试。
+文件改动按需打开，保持已有提案审阅/显式审批和实际执行结果；不开常驻复杂右栏，不展示缺少真实数据的分支/变更统计或来源。内部实验组件保留为对照，ChatPanel没有导入/挂载这些组件，WorkbenchShell与provider也没有advanced详情模式。对话用量摘要保留原有行为，其只读恢复请求不属于诊断面板读取。
 
-浏览器入口为 `workbench-simple.mjs`（同隔离启动器）；使用布局夹具与受控模型，真实BFF/审批/历史持久化。既有业务浏览器脚本使用 `workbench-navigation.mjs` 统一打开高级详情。
+回复下方不显示运行简报、工具调用次数或执行详情按钮；审阅提案从顶部查看改动进入，不提供内部运行记录导航。运行完成不等于每项验证通过。打开详情聚焦关闭按钮，Escape/关闭后焦点返回查看改动；开合不重建对话或丢失草稿。批准后的提案详情提供默认折叠的“应用到受控样例”；用户仍需勾选确认并单独点击应用，待审批/已拒绝时不显示入口。服务端重新授权并核对执行目标；普通项目提供独立的显式应用和审计/恢复入口。提案审批/应用授权与防重复机制沿用既有组件，不因收起面板而自动执行或重试。普通项目许可区查询到记录且没有未确认变更时，可显式点击“检查写入条件”；展示检查时的结果，应用时仍须重新复核。检查可取消，失败显示未知；收起许可区/详情、切换提案或重新查询许可都会清除旧诊断，不自动检查或重试。
+
+当前产品浏览器入口见下节。`workbench-simple.mjs`的联合夹具已同步撤下内部入口的预期，本次未复跑其真实BFF/审批/聊天持久化流程。依赖`workbench-navigation.mjs`高级详情的旧专项属于历史工程证据，不是当前产品回归入口。
+
+## 当前产品界面验收
+
+[产品工作台专项](../apps/web/test/browser/workbench-product/verify.mjs)8组通过；实际ChatPanel、WorkbenchShell、WorkspaceSidebar、TaskChangesPanel与生产样式使用受控BFF响应，核对1366/1920宽度、内部组件在DOM中不存在且没有检索/诊断流量、文件改动键盘开合/调宽、草稿/焦点、Task/Workspace切换、旧改动回执隔离和刷新。零模型或变更请求，无pageerror；截图已人工检查，报告位于忽略目录`apps/web/output/playwright/workbench-product/`。没有真实Next/API/数据库联合或聊天发送/文件写入验收，不代表真实模型语义或Windows可用。
+
+改动涉及工作台入口、ChatPanel挂载和provider中无用的详情模式，回归只覆盖其直接影响的导航/文件改动/草稿生命周期；未修改后端、BFF、Agent reducer或文件写入实现，不扩大全量/账号专项。受影响TypeScript/ESLint及空白检查通过。核心和配套由教练按当课明确授权完成，不代表独立掌握。
+
+在apps/web运行，Playwright/Chrome配置沿用[环境入口](../ENVIRONMENT.md#5-定向测试与静态检查)：
+
+```bash
+node test/browser/workbench-product/run.mjs
+pnpm exec eslint src/features/chat/components/chat-panel.tsx \
+    src/features/workbench/components/workbench-shell.tsx src/features/workbench/workbench-session.tsx \
+    test/browser/workbench-product/run.mjs test/browser/workbench-product/entry.tsx \
+    test/browser/workbench-product/verify.mjs test/browser/workbench-simple.mjs
+```
+
+定向类型检查保留实际别名与导入图，包含产品入口和内部实验的受影响模块：
+
+```bash
+node --input-type=module <<'JS'
+import ts from "typescript";
+const root = process.cwd();
+const source = ts.readConfigFile("tsconfig.json", ts.sys.readFile);
+const config = {
+    ...source.config,
+    compilerOptions: { ...source.config?.compilerOptions, incremental: false, typeRoots: [root + "/node_modules/@types"] },
+    include: [
+        "src/features/workbench/code-query-context-request.ts",
+        "src/features/workbench/components/code-query-context-preview.tsx",
+        "src/features/workbench/components/code-batch-summaries-panel.tsx",
+        "test/features/workspaces/code-query-context-request.test.ts",
+        "test/browser/workbench-product/entry.tsx",
+    ],
+};
+const parsed = ts.parseJsonConfigFileContent(config, ts.sys, root);
+const errors = [
+    ...(source.error ? [source.error] : []), ...parsed.errors,
+    ...ts.getPreEmitDiagnostics(ts.createProgram({ rootNames: parsed.fileNames, options: parsed.options })),
+];
+if (errors.length) console.error(ts.formatDiagnosticsWithColorAndContext(errors, {
+    getCanonicalFileName: name => name, getCurrentDirectory: () => root, getNewLine: () => "\n",
+}));
+process.exitCode = errors.length ? 1 : 0;
+JS
+```
+
+## 内部展示实验与历史证据
+
+下述工具结果模块及专项保留协议/工程证据，当前不挂载到产品高级详情，也不作为用户操作入口。依赖旧诊断入口的浏览器脚本不属于当前产品回归；已有解析/协议测试与后端能力仍独立有效。后续需要来源呈现时，应先设计用户能读懂的任务结果，再复用必要的安全投影，不重新开放整套调试台。
 
 ## Vault 检索展示
 
-本地聊天输入框在发送前说明命中片段会提供给用户配置的模型。`search_vault` 沿用聊天流；高级详情中的实时工具结果与历史 Run 共用卡片，展示查询、读取量、相对路径/命中行列、纯文本片段和默认折叠的完整文件 SHA-256。引用仅是来源文本，当前不提供点击读取或文件跳转。
+本地聊天输入框在发送前说明命中片段会提供给用户配置的模型。`search_vault` 沿用聊天流；内部展示实验的实时工具结果与历史 Run 共用卡片，展示查询、读取量、相对路径/命中行列、纯文本片段和默认折叠的完整文件 SHA-256。引用仅是来源文本，当前不提供点击读取或文件跳转。
 
 解析先限制完整 UTF-8 JSON 为64 KiB，再核对 `source=authorized_vault`、`content_trust=untrusted`、当前 Workspace/Task、字段与预算、规范化 Markdown 路径及引用坐标。Python 列号按 Unicode 码点计数，浏览器使用 `Array.from` 校验片段内命中，避免 emoji 导致 UTF-16 偏移。未知协议或范围不符只显示无法确认，不退回原始结果；资料不解释为 HTML、Markdown、URL 或操作指令。
 

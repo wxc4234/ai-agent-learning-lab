@@ -197,7 +197,12 @@ def _chunk(
 
 
 def build_python_code_chunks(
-    *, user_id: int, workspace_id: str, task_id: str
+    *,
+    user_id: int,
+    workspace_id: str,
+    task_id: str,
+    expected_bound_root: str | None = None,
+    expected_binding_revision: int | None = None,
 ) -> PythonCodeChunks:
     """只从本轮授权正文产生分块；输出满后仍解析、计数和完成最终复核。"""
 
@@ -263,6 +268,8 @@ def build_python_code_chunks(
         workspace_id=workspace_id,
         task_id=task_id,
         consume=consume_file,
+        expected_bound_root=expected_bound_root,
+        expected_binding_revision=expected_binding_revision,
     )
     reasons: list[ChunkIncompleteReason] = list(inventory.incomplete_reasons)
     if generated > MAX_CODE_CHUNKS:

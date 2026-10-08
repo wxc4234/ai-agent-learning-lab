@@ -7,6 +7,7 @@ from fastapi.responses import JSONResponse
 
 from app.routers.workspace.http import _error_response
 from app.routers.workspace.request_kinds import (
+    _is_code_batch_list_request,
     _is_directory_request,
     _is_project_write_assessment_request,
     _is_project_write_grant_request,
@@ -26,7 +27,10 @@ logger = logging.getLogger(__name__)
 def _workspace_failure_response(request: Request) -> JSONResponse:
     """按操作返回安全错误，不暴露SQL、路径或原始异常。"""
 
-    if _is_project_write_assessment_request(request):
+    if _is_code_batch_list_request(request):
+        code = "code_embedding_batch_list_failed"
+        message = "代码向量批次读取失败，结果未知"
+    elif _is_project_write_assessment_request(request):
         code = "project_write_assessment_read_failed"
         message = "前置检查读取失败，结果未知"
     elif _is_project_write_grant_request(request):

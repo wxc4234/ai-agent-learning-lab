@@ -3,6 +3,20 @@
 from fastapi import Request
 
 
+def _is_code_batch_list_request(request: Request) -> bool:
+    """只匹配注册的GET模板，避免其他路由被输入后缀误分类。"""
+    return request.method == "GET" and getattr(request.scope.get("route"), "path", None) == (
+        "/workspaces/{workspace_id}/tasks/{task_id}/code-embedding-batches"
+    )
+
+
+def _is_code_query_context_request(request: Request) -> bool:
+    """仅识别注册的POST模板，不依据用户输入的URL后缀。"""
+    return request.method == "POST" and getattr(request.scope.get("route"), "path", None) == (
+        "/workspaces/{workspace_id}/tasks/{task_id}/code-query-context"
+    )
+
+
 def _is_directory_request(request: Request) -> bool:
     """依据已经匹配的路由模板识别目录接口，不检查用户输入的路径后缀。"""
 

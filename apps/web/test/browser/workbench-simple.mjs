@@ -1,4 +1,3 @@
-import { openAdvancedDetails } from './workbench-navigation.mjs';
 import assert from 'node:assert/strict';
 import { readFile, writeFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
@@ -22,10 +21,10 @@ page.on('request', r => {
     if (r.url().includes('/execute')) executions++;
 });
 const changes = page.getByRole('complementary', { name: '文件改动', exact: true });
-const advanced = page.getByRole('complementary', { name: '高级详情', exact: true });
-async function openAdvanced() {
-    await openAdvancedDetails(page);
-    await advanced.waitFor();
+async function assertNoInternalEntry() {
+    assert.equal(await page.getByRole('button', { name: '高级详情', exact: true }).count(), 0);
+    assert.equal(await page.getByText('运行记录与诊断', { exact: true }).count(), 0);
+    assert.equal(await page.getByRole('region', { name: '代码查询预览', exact: true }).count(), 0);
 }
 
 try {
@@ -68,10 +67,7 @@ try {
     assert.equal(await page.locator('#workbench-details').isVisible(), false);
     assert.ok(await open.evaluate(e => e === document.activeElement));
     assert.equal(await input.inputValue(), '保留草稿');
-    await openAdvanced();
-    await advanced.getByText('运行记录与诊断', { exact: true }).waitFor();
-    assert.equal(await advanced.getByRole('heading', { name: '修改提案', exact: true }).count(), 0);
-    await page.getByRole('button', { name: '关闭详情', exact: true }).click();
+    await assertNoInternalEntry();
     await input.fill('[layout] 简洁工作台');
     const pending = page.waitForResponse(r => r.url().endsWith('/api/chat/stream'));
     await input.press('Enter');
@@ -81,18 +77,14 @@ try {
     assert.equal(await page.getByLabel('运行简报').count(), 0);
     assert.equal(await page.getByRole('button', { name: '查看执行详情', exact: true }).count(), 0);
     assert.equal(await page.locator('#workbench-details').isVisible(), false);
-    await openAdvanced();
-    await advanced.waitFor();
-    await page.getByRole('button', { name: '关闭详情', exact: true }).click();
+    await assertNoInternalEntry();
     await page.reload();
     await input.waitFor();
     assert.equal(await page.locator('#workbench-details').isVisible(), false);
-    await openAdvanced();
-    await page.getByRole('button', { name: `查看运行 ${response.headers()['x-run-id']}`, exact: true }).click();
-    await page.getByLabel('历史运行详情', { exact: true }).waitFor();
+    await assertNoInternalEntry();
     assert.equal(chats, 1); assert.equal(decisions, 1); assert.equal(executions, 0); assert.deepEqual(errors, []);
-    await writeFile(`${output}/simple-evidence.json`, JSON.stringify({ chats, decisions, executions, history_no_replay: true, draft_preserved: true }, null, 4));
-    console.log('PASS simple workbench: default hidden, two PC widths, keyboard/focus/draft, explicit approval, advanced/history without replay');
+    await writeFile(`${output}/simple-evidence.json`, JSON.stringify({ chats, decisions, executions, reload_no_replay: true, internal_entries_absent: true, draft_preserved: true }, null, 4));
+    console.log('PASS simple workbench: default hidden, two PC widths, keyboard/focus/draft, explicit approval, no internal controls / reload without replay');
 } catch (error) {
     console.error(await page.locator('body').innerText());
     await page.screenshot({ path: `${output}/simple-failure.png` });

@@ -15,6 +15,8 @@ from app.routers.workspace import (
     tasks,
     vault,
     code_inventory,
+    code_query_context,
+    code_batches,
 )
 
 router = APIRouter()
@@ -23,3 +25,5 @@ for domain in (projects, change_sets, owned_areas, directories, tasks, proposals
 
 router.include_router(vault.router)
 router.include_router(code_inventory.router)
+router.include_router(code_query_context.router)
+router.include_router(code_batches.router)

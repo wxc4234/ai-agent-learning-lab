@@ -1,0 +1,567 @@
+{
+    "generated_from": "CodeEmbeddingBatchList/CodeEmbeddingBatchSummary public DTO; pure controlled Python values, no DB/model/project scan",
+    "workspaceId": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "taskId": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "results": {
+        "empty": {
+            "workspace_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "task_id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "batches": [],
+            "has_more": false,
+            "limit": 20,
+            "source": "code_embedding_batch_summaries"
+        },
+        "basic": {
+            "workspace_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "task_id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "batches": [
+                {
+                    "batch_id": "00000000000000000000000000000001",
+                    "space_id": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+                    "requested_model": "fixture-model",
+                    "response_model": "fixture-model-v1",
+                    "dimensions": 3,
+                    "chunk_count": 1,
+                    "truncated": false,
+                    "incomplete_reasons": [],
+                    "created_at": "2026-10-08T00:00:00.123456Z"
+                }
+            ],
+            "has_more": false,
+            "limit": 20,
+            "source": "code_embedding_batch_summaries"
+        },
+        "partial": {
+            "workspace_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "task_id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "batches": [
+                {
+                    "batch_id": "00000000000000000000000000000001",
+                    "space_id": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+                    "requested_model": "fixture-model",
+                    "response_model": "fixture-model-v1",
+                    "dimensions": 3,
+                    "chunk_count": 1,
+                    "truncated": true,
+                    "incomplete_reasons": [
+                        "file_budget",
+                        "chunk_budget"
+                    ],
+                    "created_at": "2026-10-08T00:00:00.123456Z"
+                }
+            ],
+            "has_more": false,
+            "limit": 20,
+            "source": "code_embedding_batch_summaries"
+        },
+        "twenty": {
+            "workspace_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "task_id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "batches": [
+                {
+                    "batch_id": "00000000000000000000000000000014",
+                    "space_id": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+                    "requested_model": "fixture-model",
+                    "response_model": "fixture-model-v1",
+                    "dimensions": 3,
+                    "chunk_count": 1,
+                    "truncated": false,
+                    "incomplete_reasons": [],
+                    "created_at": "2026-10-08T00:00:00.123456Z"
+                },
+                {
+                    "batch_id": "00000000000000000000000000000013",
+                    "space_id": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+                    "requested_model": "fixture-model",
+                    "response_model": "fixture-model-v1",
+                    "dimensions": 3,
+                    "chunk_count": 1,
+                    "truncated": false,
+                    "incomplete_reasons": [],
+                    "created_at": "2026-10-08T00:00:00.123456Z"
+                },
+                {
+                    "batch_id": "00000000000000000000000000000012",
+                    "space_id": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+                    "requested_model": "fixture-model",
+                    "response_model": "fixture-model-v1",
+                    "dimensions": 3,
+                    "chunk_count": 1,
+                    "truncated": false,
+                    "incomplete_reasons": [],
+                    "created_at": "2026-10-08T00:00:00.123456Z"
+                },
+                {
+                    "batch_id": "00000000000000000000000000000011",
+                    "space_id": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+                    "requested_model": "fixture-model",
+                    "response_model": "fixture-model-v1",
+                    "dimensions": 3,
+                    "chunk_count": 1,
+                    "truncated": false,
+                    "incomplete_reasons": [],
+                    "created_at": "2026-10-08T00:00:00.123456Z"
+                },
+                {
+                    "batch_id": "00000000000000000000000000000010",
+                    "space_id": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+                    "requested_model": "fixture-model",
+                    "response_model": "fixture-model-v1",
+                    "dimensions": 3,
+                    "chunk_count": 1,
+                    "truncated": false,
+                    "incomplete_reasons": [],
+                    "created_at": "2026-10-08T00:00:00.123456Z"
+                },
+                {
+                    "batch_id": "0000000000000000000000000000000f",
+                    "space_id": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+                    "requested_model": "fixture-model",
+                    "response_model": "fixture-model-v1",
+                    "dimensions": 3,
+                    "chunk_count": 1,
+                    "truncated": false,
+                    "incomplete_reasons": [],
+                    "created_at": "2026-10-08T00:00:00.123456Z"
+                },
+                {
+                    "batch_id": "0000000000000000000000000000000e",
+                    "space_id": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+                    "requested_model": "fixture-model",
+                    "response_model": "fixture-model-v1",
+                    "dimensions": 3,
+                    "chunk_count": 1,
+                    "truncated": false,
+                    "incomplete_reasons": [],
+                    "created_at": "2026-10-08T00:00:00.123456Z"
+                },
+                {
+                    "batch_id": "0000000000000000000000000000000d",
+                    "space_id": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+                    "requested_model": "fixture-model",
+                    "response_model": "fixture-model-v1",
+                    "dimensions": 3,
+                    "chunk_count": 1,
+                    "truncated": false,
+                    "incomplete_reasons": [],
+                    "created_at": "2026-10-08T00:00:00.123456Z"
+                },
+                {
+                    "batch_id": "0000000000000000000000000000000c",
+                    "space_id": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+                    "requested_model": "fixture-model",
+                    "response_model": "fixture-model-v1",
+                    "dimensions": 3,
+                    "chunk_count": 1,
+                    "truncated": false,
+                    "incomplete_reasons": [],
+                    "created_at": "2026-10-08T00:00:00.123456Z"
+                },
+                {
+                    "batch_id": "0000000000000000000000000000000b",
+                    "space_id": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+                    "requested_model": "fixture-model",
+                    "response_model": "fixture-model-v1",
+                    "dimensions": 3,
+                    "chunk_count": 1,
+                    "truncated": false,
+                    "incomplete_reasons": [],
+                    "created_at": "2026-10-08T00:00:00.123456Z"
+                },
+                {
+                    "batch_id": "0000000000000000000000000000000a",
+                    "space_id": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+                    "requested_model": "fixture-model",
+                    "response_model": "fixture-model-v1",
+                    "dimensions": 3,
+                    "chunk_count": 1,
+                    "truncated": false,
+                    "incomplete_reasons": [],
+                    "created_at": "2026-10-08T00:00:00.123456Z"
+                },
+                {
+                    "batch_id": "00000000000000000000000000000009",
+                    "space_id": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+                    "requested_model": "fixture-model",
+                    "response_model": "fixture-model-v1",
+                    "dimensions": 3,
+                    "chunk_count": 1,
+                    "truncated": false,
+                    "incomplete_reasons": [],
+                    "created_at": "2026-10-08T00:00:00.123456Z"
+                },
+                {
+                    "batch_id": "00000000000000000000000000000008",
+                    "space_id": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+                    "requested_model": "fixture-model",
+                    "response_model": "fixture-model-v1",
+                    "dimensions": 3,
+                    "chunk_count": 1,
+                    "truncated": false,
+                    "incomplete_reasons": [],
+                    "created_at": "2026-10-08T00:00:00.123456Z"
+                },
+                {
+                    "batch_id": "00000000000000000000000000000007",
+                    "space_id": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+                    "requested_model": "fixture-model",
+                    "response_model": "fixture-model-v1",
+                    "dimensions": 3,
+                    "chunk_count": 1,
+                    "truncated": false,
+                    "incomplete_reasons": [],
+                    "created_at": "2026-10-08T00:00:00.123456Z"
+                },
+                {
+                    "batch_id": "00000000000000000000000000000006",
+                    "space_id": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+                    "requested_model": "fixture-model",
+                    "response_model": "fixture-model-v1",
+                    "dimensions": 3,
+                    "chunk_count": 1,
+                    "truncated": false,
+                    "incomplete_reasons": [],
+                    "created_at": "2026-10-08T00:00:00.123456Z"
+                },
+                {
+                    "batch_id": "00000000000000000000000000000005",
+                    "space_id": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+                    "requested_model": "fixture-model",
+                    "response_model": "fixture-model-v1",
+                    "dimensions": 3,
+                    "chunk_count": 1,
+                    "truncated": false,
+                    "incomplete_reasons": [],
+                    "created_at": "2026-10-08T00:00:00.123456Z"
+                },
+                {
+                    "batch_id": "00000000000000000000000000000004",
+                    "space_id": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+                    "requested_model": "fixture-model",
+                    "response_model": "fixture-model-v1",
+                    "dimensions": 3,
+                    "chunk_count": 1,
+                    "truncated": false,
+                    "incomplete_reasons": [],
+                    "created_at": "2026-10-08T00:00:00.123456Z"
+                },
+                {
+                    "batch_id": "00000000000000000000000000000003",
+                    "space_id": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+                    "requested_model": "fixture-model",
+                    "response_model": "fixture-model-v1",
+                    "dimensions": 3,
+                    "chunk_count": 1,
+                    "truncated": false,
+                    "incomplete_reasons": [],
+                    "created_at": "2026-10-08T00:00:00.123456Z"
+                },
+                {
+                    "batch_id": "00000000000000000000000000000002",
+                    "space_id": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+                    "requested_model": "fixture-model",
+                    "response_model": "fixture-model-v1",
+                    "dimensions": 3,
+                    "chunk_count": 1,
+                    "truncated": false,
+                    "incomplete_reasons": [],
+                    "created_at": "2026-10-08T00:00:00.123456Z"
+                },
+                {
+                    "batch_id": "00000000000000000000000000000001",
+                    "space_id": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+                    "requested_model": "fixture-model",
+                    "response_model": "fixture-model-v1",
+                    "dimensions": 3,
+                    "chunk_count": 1,
+                    "truncated": false,
+                    "incomplete_reasons": [],
+                    "created_at": "2026-10-08T00:00:00.123456Z"
+                }
+            ],
+            "has_more": false,
+            "limit": 20,
+            "source": "code_embedding_batch_summaries"
+        },
+        "has_more": {
+            "workspace_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "task_id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "batches": [
+                {
+                    "batch_id": "00000000000000000000000000000014",
+                    "space_id": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+                    "requested_model": "fixture-model",
+                    "response_model": "fixture-model-v1",
+                    "dimensions": 3,
+                    "chunk_count": 1,
+                    "truncated": false,
+                    "incomplete_reasons": [],
+                    "created_at": "2026-10-08T00:00:00.123456Z"
+                },
+                {
+                    "batch_id": "00000000000000000000000000000013",
+                    "space_id": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+                    "requested_model": "fixture-model",
+                    "response_model": "fixture-model-v1",
+                    "dimensions": 3,
+                    "chunk_count": 1,
+                    "truncated": false,
+                    "incomplete_reasons": [],
+                    "created_at": "2026-10-08T00:00:00.123456Z"
+                },
+                {
+                    "batch_id": "00000000000000000000000000000012",
+                    "space_id": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+                    "requested_model": "fixture-model",
+                    "response_model": "fixture-model-v1",
+                    "dimensions": 3,
+                    "chunk_count": 1,
+                    "truncated": false,
+                    "incomplete_reasons": [],
+                    "created_at": "2026-10-08T00:00:00.123456Z"
+                },
+                {
+                    "batch_id": "00000000000000000000000000000011",
+                    "space_id": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+                    "requested_model": "fixture-model",
+                    "response_model": "fixture-model-v1",
+                    "dimensions": 3,
+                    "chunk_count": 1,
+                    "truncated": false,
+                    "incomplete_reasons": [],
+                    "created_at": "2026-10-08T00:00:00.123456Z"
+                },
+                {
+                    "batch_id": "00000000000000000000000000000010",
+                    "space_id": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+                    "requested_model": "fixture-model",
+                    "response_model": "fixture-model-v1",
+                    "dimensions": 3,
+                    "chunk_count": 1,
+                    "truncated": false,
+                    "incomplete_reasons": [],
+                    "created_at": "2026-10-08T00:00:00.123456Z"
+                },
+                {
+                    "batch_id": "0000000000000000000000000000000f",
+                    "space_id": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+                    "requested_model": "fixture-model",
+                    "response_model": "fixture-model-v1",
+                    "dimensions": 3,
+                    "chunk_count": 1,
+                    "truncated": false,
+                    "incomplete_reasons": [],
+                    "created_at": "2026-10-08T00:00:00.123456Z"
+                },
+                {
+                    "batch_id": "0000000000000000000000000000000e",
+                    "space_id": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+                    "requested_model": "fixture-model",
+                    "response_model": "fixture-model-v1",
+                    "dimensions": 3,
+                    "chunk_count": 1,
+                    "truncated": false,
+                    "incomplete_reasons": [],
+                    "created_at": "2026-10-08T00:00:00.123456Z"
+                },
+                {
+                    "batch_id": "0000000000000000000000000000000d",
+                    "space_id": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+                    "requested_model": "fixture-model",
+                    "response_model": "fixture-model-v1",
+                    "dimensions": 3,
+                    "chunk_count": 1,
+                    "truncated": false,
+                    "incomplete_reasons": [],
+                    "created_at": "2026-10-08T00:00:00.123456Z"
+                },
+                {
+                    "batch_id": "0000000000000000000000000000000c",
+                    "space_id": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+                    "requested_model": "fixture-model",
+                    "response_model": "fixture-model-v1",
+                    "dimensions": 3,
+                    "chunk_count": 1,
+                    "truncated": false,
+                    "incomplete_reasons": [],
+                    "created_at": "2026-10-08T00:00:00.123456Z"
+                },
+                {
+                    "batch_id": "0000000000000000000000000000000b",
+                    "space_id": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+                    "requested_model": "fixture-model",
+                    "response_model": "fixture-model-v1",
+                    "dimensions": 3,
+                    "chunk_count": 1,
+                    "truncated": false,
+                    "incomplete_reasons": [],
+                    "created_at": "2026-10-08T00:00:00.123456Z"
+                },
+                {
+                    "batch_id": "0000000000000000000000000000000a",
+                    "space_id": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+                    "requested_model": "fixture-model",
+                    "response_model": "fixture-model-v1",
+                    "dimensions": 3,
+                    "chunk_count": 1,
+                    "truncated": false,
+                    "incomplete_reasons": [],
+                    "created_at": "2026-10-08T00:00:00.123456Z"
+                },
+                {
+                    "batch_id": "00000000000000000000000000000009",
+                    "space_id": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+                    "requested_model": "fixture-model",
+                    "response_model": "fixture-model-v1",
+                    "dimensions": 3,
+                    "chunk_count": 1,
+                    "truncated": false,
+                    "incomplete_reasons": [],
+                    "created_at": "2026-10-08T00:00:00.123456Z"
+                },
+                {
+                    "batch_id": "00000000000000000000000000000008",
+                    "space_id": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+                    "requested_model": "fixture-model",
+                    "response_model": "fixture-model-v1",
+                    "dimensions": 3,
+                    "chunk_count": 1,
+                    "truncated": false,
+                    "incomplete_reasons": [],
+                    "created_at": "2026-10-08T00:00:00.123456Z"
+                },
+                {
+                    "batch_id": "00000000000000000000000000000007",
+                    "space_id": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+                    "requested_model": "fixture-model",
+                    "response_model": "fixture-model-v1",
+                    "dimensions": 3,
+                    "chunk_count": 1,
+                    "truncated": false,
+                    "incomplete_reasons": [],
+                    "created_at": "2026-10-08T00:00:00.123456Z"
+                },
+                {
+                    "batch_id": "00000000000000000000000000000006",
+                    "space_id": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+                    "requested_model": "fixture-model",
+                    "response_model": "fixture-model-v1",
+                    "dimensions": 3,
+                    "chunk_count": 1,
+                    "truncated": false,
+                    "incomplete_reasons": [],
+                    "created_at": "2026-10-08T00:00:00.123456Z"
+                },
+                {
+                    "batch_id": "00000000000000000000000000000005",
+                    "space_id": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+                    "requested_model": "fixture-model",
+                    "response_model": "fixture-model-v1",
+                    "dimensions": 3,
+                    "chunk_count": 1,
+                    "truncated": false,
+                    "incomplete_reasons": [],
+                    "created_at": "2026-10-08T00:00:00.123456Z"
+                },
+                {
+                    "batch_id": "00000000000000000000000000000004",
+                    "space_id": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+                    "requested_model": "fixture-model",
+                    "response_model": "fixture-model-v1",
+                    "dimensions": 3,
+                    "chunk_count": 1,
+                    "truncated": false,
+                    "incomplete_reasons": [],
+                    "created_at": "2026-10-08T00:00:00.123456Z"
+                },
+                {
+                    "batch_id": "00000000000000000000000000000003",
+                    "space_id": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+                    "requested_model": "fixture-model",
+                    "response_model": "fixture-model-v1",
+                    "dimensions": 3,
+                    "chunk_count": 1,
+                    "truncated": false,
+                    "incomplete_reasons": [],
+                    "created_at": "2026-10-08T00:00:00.123456Z"
+                },
+                {
+                    "batch_id": "00000000000000000000000000000002",
+                    "space_id": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+                    "requested_model": "fixture-model",
+                    "response_model": "fixture-model-v1",
+                    "dimensions": 3,
+                    "chunk_count": 1,
+                    "truncated": false,
+                    "incomplete_reasons": [],
+                    "created_at": "2026-10-08T00:00:00.123456Z"
+                },
+                {
+                    "batch_id": "00000000000000000000000000000001",
+                    "space_id": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+                    "requested_model": "fixture-model",
+                    "response_model": "fixture-model-v1",
+                    "dimensions": 3,
+                    "chunk_count": 1,
+                    "truncated": false,
+                    "incomplete_reasons": [],
+                    "created_at": "2026-10-08T00:00:00.123456Z"
+                }
+            ],
+            "has_more": true,
+            "limit": 20,
+            "source": "code_embedding_batch_summaries"
+        },
+        "model_boundary": {
+            "workspace_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "task_id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "batches": [
+                {
+                    "batch_id": "00000000000000000000000000000001",
+                    "space_id": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+                    "requested_model": "🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀",
+                    "response_model": "中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中",
+                    "dimensions": 4096,
+                    "chunk_count": 20,
+                    "truncated": false,
+                    "incomplete_reasons": [],
+                    "created_at": "2026-10-08T00:00:00.123456Z"
+                }
+            ],
+            "has_more": false,
+            "limit": 20,
+            "source": "code_embedding_batch_summaries"
+        },
+        "time_boundary": {
+            "workspace_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "task_id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "batches": [
+                {
+                    "batch_id": "00000000000000000000000000000001",
+                    "space_id": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+                    "requested_model": "fixture-model",
+                    "response_model": "fixture-model-v1",
+                    "dimensions": 3,
+                    "chunk_count": 1,
+                    "truncated": false,
+                    "incomplete_reasons": [],
+                    "created_at": "9999-12-31T23:59:59.999999Z"
+                },
+                {
+                    "batch_id": "00000000000000000000000000000002",
+                    "space_id": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+                    "requested_model": "fixture-model",
+                    "response_model": "fixture-model-v1",
+                    "dimensions": 3,
+                    "chunk_count": 1,
+                    "truncated": false,
+                    "incomplete_reasons": [],
+                    "created_at": "0001-01-01T00:00:00+05:30"
+                }
+            ],
+            "has_more": false,
+            "limit": 20,
+            "source": "code_embedding_batch_summaries"
+        }
+    }
+}

@@ -156,6 +156,7 @@ def resolve_task_workspace_path(
     task_id: str,
     relative_path: str,
     expected_bound_root: str | None = None,
+    expected_binding_revision: int | None = None,
     require_direct_path: bool = False,
 ) -> Path:
     """先授权任务，再解析该任务绑定目录内的现有路径。"""
@@ -172,6 +173,7 @@ def resolve_task_workspace_path(
 
         # 在 Session 关闭前复制普通字段，不向外返回 ORM 对象。
         bound_root = task.workspace.root_path
+        binding_revision = task.workspace.binding_revision
 
     # 以上只有查询，不需要 commit。
     # 先结束数据库事务，再访问文件系统，避免文件系统等待占用事务。
@@ -182,7 +184,13 @@ def resolve_task_workspace_path(
         )
 
     # 提案核对必须在文件访问前比较绑定，不能读完另一项目目录再发现变化。
-    if expected_bound_root is not None and bound_root != expected_bound_root:
+    # 路径改走再改回也会增加修订；内部生成流程不能重新接受旧读取目标。
+    if (
+        expected_bound_root is not None and bound_root != expected_bound_root
+    ) or (
+        expected_binding_revision is not None
+        and binding_revision != expected_binding_revision
+    ):
         raise WorkspacePathError(
             "workspace_directory_changed",
             "项目目录绑定已变化，暂时不能访问",

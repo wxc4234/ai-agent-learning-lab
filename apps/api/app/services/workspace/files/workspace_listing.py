@@ -184,6 +184,7 @@ def list_task_directory(
     task_id: str,
     relative_path: str = ".",
     expected_bound_root: str | None = None,
+    expected_binding_revision: int | None = None,
     require_direct_path: bool = False,
 ) -> WorkspaceDirectoryListing:
     """授权后限量枚举目录，可由内部入口要求无链接路径。"""
@@ -196,6 +197,7 @@ def list_task_directory(
         task_id=task_id,
         relative_path=relative_path,
         expected_bound_root=expected_bound_root,
+        expected_binding_revision=expected_binding_revision,
         require_direct_path=require_direct_path,
     )
 

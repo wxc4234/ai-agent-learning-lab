@@ -19,6 +19,8 @@ from app.repositories.workspace.workspace_repository import (
 from app.routers.workspace.errors import _workspace_failure_response
 from app.routers.workspace.http import _error_response
 from app.routers.workspace.request_kinds import (
+    _is_code_batch_list_request,
+    _is_code_query_context_request,
     _is_directory_request,
     _is_project_write_assessment_request,
     _is_project_write_grant_request,
@@ -52,6 +54,12 @@ from app.services.workspace.directory.workspace_directory import WorkspaceDirect
 
 def _validation_error_response(request: Request) -> Response:
     """参数错误分类独立于请求执行流程，避免错误边界的分支组合过多。"""
+    if _is_code_batch_list_request(request):
+        return _error_response(422, code="invalid_code_embedding_batch_list_input",
+                               message="代码向量批次查询参数不符合要求")
+    if _is_code_query_context_request(request):
+        return _error_response(422, code="invalid_code_query_context_input",
+                               message="代码上下文查询参数不符合要求")
     if _is_project_write_assessment_request(request):
         return _error_response(422, code="invalid_project_write_assessment_input",
                                message="前置检查参数无效")
@@ -184,6 +192,9 @@ async def _request_error_response(request: Request) -> Response | None:
             )
 
     # 只读查询仅使用路径资源，不接受另一套查询身份或正文选项。
+    if _is_code_batch_list_request(request) and (request.query_params or await request.body()):
+        return _validation_error_response(request)
+
     if _is_sample_status_request(request) and (request.query_params or await request.body()):
         return _error_response(
             422,

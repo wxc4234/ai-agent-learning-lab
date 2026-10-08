@@ -8,7 +8,6 @@ import {
     useState,
     type SubmitEvent,
 } from "react";
-import { formatToolDuration } from "../tool-duration-view";
 
 import { readAgentStream } from "../agent-stream";
 import {
@@ -22,16 +21,11 @@ import { Label } from "@/components/ui/label";
 import WorkbenchShell, { WorkbenchDetails } from "@/features/workbench/components/workbench-shell";
 import WorkbenchIcon from "@/features/workbench/components/workbench-icon";
 import LoadingPlaceholder from "@/features/workbench/components/loading-placeholder";
-import TaskRunPanel from '@/features/workbench/components/task-run-panel';
-import ConversationExecutionPanel from '@/features/workbench/components/conversation-execution-panel';
-import ToolResult from "./tool-result";
-import { VAULT_MODEL_NOTICE, VAULT_SEARCH_FAILURE } from "../vault-search-view";
+import { VAULT_MODEL_NOTICE } from "../vault-search-view";
 import { useRestoredRunSummary } from "@/features/workbench/use-restored-run-summary";
 import RunMetricsFooter from "./run-metrics-footer";
 import TaskChangesPanel from "@/features/workbench/components/task-changes-panel";
 import MarkdownMessage from "./markdown-message";
-import TaskSampleStatusPanel from "@/features/workbench/components/task-sample-status-panel";
-import TaskSampleCleanupPreflightPanel from "@/features/workbench/components/task-sample-cleanup-preflight-panel";
 
 import {
     WorkbenchProvider,
@@ -46,23 +40,6 @@ import {
 
 const REQUEST_TIMEOUT_MS = 30_000;
 type CancelReason = "user" | "timeout";
-
-function statusLabel(status: string): string {
-    switch (status) {
-        case "thinking":
-            return "正在思考……";
-        case "streaming":
-            return "正在生成……";
-        case "done":
-            return "已完成";
-        case "aborted":
-            return "已停止生成";
-        case "error":
-            return "生成失败";
-        default:
-            return "等待提问";
-    }
-}
 
 export default function ChatPanel({
     localMode = true,
@@ -606,7 +583,7 @@ function TaskChat() {
     return (
         <>
             <WorkbenchDetails>
-                {workbench.rightOpen && workbench.detailsMode === "changes" && (workbench.localMode && workbench.selection?.task ? (
+                {workbench.rightOpen && (workbench.localMode && workbench.selection?.task ? (
                     <TaskChangesPanel
                         key={`${workbench.selection.workspace.external_id}:${workbench.selection.task.external_id}`}
                         workspaceId={workbench.selection.workspace.external_id}
@@ -614,155 +591,6 @@ function TaskChat() {
                         refreshKey={`${activeRunId}:${chatState.status}:${chatState.tools.filter(tool => tool.result).length}`}
                     />
                 ) : <p className="text-sm text-muted-foreground">选择任务后查看文件改动。</p>)}
-                {workbench.rightOpen && workbench.detailsMode === "advanced" && <details open className="space-y-4">
-                    <summary className="cursor-pointer text-sm text-muted-foreground">运行记录与诊断</summary>
-                    <div className="mt-4 space-y-4">
-                    <section className="pb-1">
-                        <h3 className="text-base font-medium">当前运行</h3>
-
-                        <p
-                            role="status"
-                            aria-live="polite"
-                            className="mt-3 text-sm text-muted-foreground"
-                        >
-                            {statusLabel(chatState.status)}
-                        </p>
-
-                        {activeRunId && (
-                            <p className="mt-2 break-all text-xs text-muted-foreground">
-                                运行编号：{activeRunId}
-                            </p>
-                        )}
-                    </section>
-
-                    {chatState.tools.length > 0 && (
-                        <section className="rounded-xl border border-border p-4">
-                            <h3 className="text-sm font-medium">工具执行</h3>
-
-                            <ul className="mt-3 space-y-3">
-                                {chatState.tools.map((tool) => {
-                                    // 保留原有耗时语义：未知不展示，0 ms 正常展示。
-                                    const durationLabel = formatToolDuration(
-                                        tool.durationMs,
-                                    );
-
-                                    return (
-                                        <li
-                                            key={tool.toolCallId}
-                                            className="min-w-0 rounded-lg bg-muted/60 p-3 text-sm"
-                                        >
-                                            <div className="flex items-start justify-between gap-2">
-                                                <code className="min-w-0 break-all font-medium">
-                                                    {tool.toolName}
-                                                </code>
-
-                                                <span className="shrink-0 text-xs text-muted-foreground">
-                                                    {tool.status === "failed"
-                                                        ? "失败"
-                                                        : tool.status === "succeeded"
-                                                          ? (
-                                                              tool.toolName === "run_command"
-                                                              || tool.toolName === "preview_file_edit"
-                                                              || tool.toolName === "preview_file_patch"
-                                                              || tool.toolName === "search_vault"
-                                                                  ? "调用完成"
-                                                                  : "成功"
-                                                          )
-                                                          : (
-                                                              chatState.status === "done"
-                                                              || chatState.status === "error"
-                                                              || chatState.status === "aborted"
-                                                                  ? "结果未确认"
-                                                                  : "运行中"
-                                                          )}
-                                                </span>
-                                            </div>
-
-                                            <p className="mt-2 break-all text-xs text-muted-foreground">
-                                                参数：{tool.arguments}
-                                            </p>
-
-                                            {durationLabel !== null && (
-                                                <p className="mt-2 text-xs text-muted-foreground">
-                                                    耗时：{durationLabel}
-                                                </p>
-                                            )}
-
-                                            {tool.result && (
-                                                <ToolResult
-                                                    toolName={tool.toolName}
-                                                    result={tool.result}
-                                                    taskScope={
-                                                        workbench.localMode
-                                                        && workbench.selection?.task
-                                                            ? {
-                                                                workspaceId:
-                                                                    workbench.selection.workspace.external_id,
-                                                                taskId:
-                                                                    workbench.selection.task.external_id,
-                                                            }
-                                                            : undefined
-                                                    }
-                                                />
-                                            )}
-
-                                            {tool.errorMessage && (
-                                                <p className="mt-2 break-all text-destructive">
-                                                    错误：{tool.errorMessage}
-                                                </p>
-                                            )}
-                                            {tool.status === "failed" && tool.toolName === "search_vault" && (
-                                                <p className="mt-2 text-sm text-muted-foreground">{VAULT_SEARCH_FAILURE}</p>
-                                            )}
-                                        </li>
-                                    );
-                                })}
-                            </ul>
-                        </section>
-                    )}
-
-
-                    {workbench.localMode &&
-                        workbench.rightOpen &&
-                        workbench.selection?.task && (
-                            <>
-                                <TaskSampleStatusPanel
-                                    workspaceId={
-                                        workbench.selection.workspace.external_id
-                                    }
-                                    taskId={
-                                        workbench.selection.task.external_id
-                                    }
-                                />
-                                <TaskSampleCleanupPreflightPanel
-                                    workspaceId={
-                                        workbench.selection.workspace.external_id
-                                    }
-                                    taskId={
-                                        workbench.selection.task.external_id
-                                    }
-                                />
-                                <ConversationExecutionPanel
-                                    sessionId={
-                                        workbench.selection.task.conversation_id
-                                    }
-                                />
-                                <TaskRunPanel
-                                    key={
-                                        `${workbench.selection.workspace.external_id}:`
-                                        + workbench.selection.task.external_id
-                                    }
-                                    workspaceId={
-                                        workbench.selection.workspace.external_id
-                                    }
-                                    taskId={
-                                        workbench.selection.task.external_id
-                                    }
-                                />
-                            </>
-                        )}
-                    </div>
-                </details>}
             </WorkbenchDetails>
             <div
                 className={`flex min-h-0 flex-1 flex-col ${emptyConversation ? "justify-center overflow-y-auto pb-[8vh]" : ""}`}

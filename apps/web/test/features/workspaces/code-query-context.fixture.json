@@ -1,0 +1,758 @@
+{
+    "generated_from": "Pure controlled Python build_code_context and API _public_response; no database/model/filesystem source scan",
+    "workspaceId": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "taskId": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "request": {
+        "query": "  查找任务取消 🚀\n",
+        "batch_id": "cccccccccccccccccccccccccccccccc",
+        "response_model": "fixture-model-v1"
+    },
+    "results": {
+        "basic": {
+            "query_sha256": "2ad0b73d1fceb3eaae0ca683131ff01fe3172efe679b104e80d069324dc90b6f",
+            "requested_model": "fixture-model",
+            "response_model": "fixture-model-v1",
+            "prompt_tokens": null,
+            "total_tokens": null,
+            "request_count": 1,
+            "context": {
+                "batch_id": "cccccccccccccccccccccccccccccccc",
+                "space_id": "75e102a5f484cd39b4f15382744bcca1ed81d8fe3930cfe21c9a14dc62275b8e",
+                "dimensions": 3,
+                "input_hit_count": 2,
+                "selected_hit_count": 2,
+                "context_text": "{\"scope\":\"selected_chunks_from_one_batch\",\"batch_id\":\"cccccccccccccccccccccccccccccccc\",\"embedding_space_id\":\"75e102a5f484cd39b4f15382744bcca1ed81d8fe3930cfe21c9a14dc62275b8e\",\"content_trust\":\"untrusted_project_content\",\"chunk_strategy\":\"python_innermost_definitions_v1\",\"chunk_policy\":\"gitignore_subset_v1\",\"snapshot_truncated\":false,\"snapshot_incomplete_reasons\":[],\"recall_omitted_by_top_k\":0,\"builder_omitted_hits\":0,\"chunks\":[{\"rank\":1,\"distance\":0.0,\"chunk\":{\"chunk_id\":\"4b6a2a3c16959a1af32d69a71cc7466c7409eb8f29eac7fdce7ff1b82ee97550\",\"symbol\":{\"relative_path\":\"fixture.py\",\"name\":\"sample_0\",\"qualified_name\":\"sample_0\",\"kind\":\"function\",\"start_line\":1,\"definition_line\":1,\"end_line\":2,\"sha256\":\"8f323e4be85bd6f845e60c9891bbf105b7287db12969fbab30516a7db2900682\"},\"text\":\"def first(): return '🚀中'\\n\",\"start_line\":1,\"start_column\":1,\"end_line\":2,\"end_column\":1,\"line_count\":1,\"text_sha256\":\"dc733356125e592f45c01b5665dcbe081dcd172b4c52fe45f1894babc147b779\",\"part_index\":1,\"part_count\":1,\"split_reasons\":[]}},{\"rank\":2,\"distance\":0.05,\"chunk\":{\"chunk_id\":\"bfbca671a1492a8ff1b8b4262efb6ca93bc80c3b4090cef5560ab96ba9a3e4fb\",\"symbol\":{\"relative_path\":\"fixture.py\",\"name\":\"sample_1\",\"qualified_name\":\"sample_1\",\"kind\":\"function\",\"start_line\":3,\"definition_line\":3,\"end_line\":4,\"sha256\":\"8f323e4be85bd6f845e60c9891bbf105b7287db12969fbab30516a7db2900682\"},\"text\":\"def second(): return 2\\n\",\"start_line\":3,\"start_column\":1,\"end_line\":4,\"end_column\":1,\"line_count\":1,\"text_sha256\":\"c57c0f7e1e964dfa2c53bea85bad906a014f26d73eed04048a11b8e0d807edc0\",\"part_index\":1,\"part_count\":1,\"split_reasons\":[]}}]}",
+                "context_chars": 1597,
+                "context_bytes": 1602,
+                "budget": {
+                    "max_chunks": 5,
+                    "max_chars": 12000,
+                    "max_bytes": 24000
+                },
+                "selected_chunks": [
+                    {
+                        "rank": 1,
+                        "distance": 0.0,
+                        "chunk": {
+                            "chunk_id": "4b6a2a3c16959a1af32d69a71cc7466c7409eb8f29eac7fdce7ff1b82ee97550",
+                            "symbol": {
+                                "relative_path": "fixture.py",
+                                "name": "sample_0",
+                                "qualified_name": "sample_0",
+                                "kind": "function",
+                                "start_line": 1,
+                                "definition_line": 1,
+                                "end_line": 2,
+                                "sha256": "8f323e4be85bd6f845e60c9891bbf105b7287db12969fbab30516a7db2900682"
+                            },
+                            "text": "def first(): return '🚀中'\n",
+                            "start_line": 1,
+                            "start_column": 1,
+                            "end_line": 2,
+                            "end_column": 1,
+                            "line_count": 1,
+                            "text_sha256": "dc733356125e592f45c01b5665dcbe081dcd172b4c52fe45f1894babc147b779",
+                            "part_index": 1,
+                            "part_count": 1,
+                            "split_reasons": []
+                        }
+                    },
+                    {
+                        "rank": 2,
+                        "distance": 0.05,
+                        "chunk": {
+                            "chunk_id": "bfbca671a1492a8ff1b8b4262efb6ca93bc80c3b4090cef5560ab96ba9a3e4fb",
+                            "symbol": {
+                                "relative_path": "fixture.py",
+                                "name": "sample_1",
+                                "qualified_name": "sample_1",
+                                "kind": "function",
+                                "start_line": 3,
+                                "definition_line": 3,
+                                "end_line": 4,
+                                "sha256": "8f323e4be85bd6f845e60c9891bbf105b7287db12969fbab30516a7db2900682"
+                            },
+                            "text": "def second(): return 2\n",
+                            "start_line": 3,
+                            "start_column": 1,
+                            "end_line": 4,
+                            "end_column": 1,
+                            "line_count": 1,
+                            "text_sha256": "c57c0f7e1e964dfa2c53bea85bad906a014f26d73eed04048a11b8e0d807edc0",
+                            "part_index": 1,
+                            "part_count": 1,
+                            "split_reasons": []
+                        }
+                    }
+                ],
+                "omissions": [],
+                "source_metadata": {
+                    "workspace_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                    "task_id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+                    "files": [
+                        {
+                            "relative_path": "fixture.py",
+                            "file_type": "source",
+                            "language": "python",
+                            "byte_count": 53,
+                            "sha256": "8f323e4be85bd6f845e60c9891bbf105b7287db12969fbab30516a7db2900682"
+                        }
+                    ],
+                    "requested_model": "fixture-model",
+                    "response_model": "fixture-model-v1",
+                    "dimensions": 3,
+                    "embedding_space_id": "75e102a5f484cd39b4f15382744bcca1ed81d8fe3930cfe21c9a14dc62275b8e",
+                    "request_count": 2,
+                    "prompt_tokens": 40,
+                    "total_tokens": 50,
+                    "truncated": false,
+                    "incomplete_reasons": [],
+                    "chunk_strategy": "python_innermost_definitions_v1",
+                    "chunk_policy": "gitignore_subset_v1",
+                    "chunk_parser": "fixture_parser",
+                    "source": "python_code_embeddings",
+                    "content_trust": "untrusted_project_content"
+                },
+                "recall_summary": {
+                    "batch_chunk_count": 2,
+                    "searchable_chunk_count": 2,
+                    "excluded_zero_chunk_count": 0,
+                    "omitted_by_top_k": 0
+                },
+                "source": "bounded_code_context",
+                "content_trust": "untrusted_project_content"
+            },
+            "query_source": "query_embedding",
+            "source": "code_query_context"
+        },
+        "empty": {
+            "query_sha256": "2ad0b73d1fceb3eaae0ca683131ff01fe3172efe679b104e80d069324dc90b6f",
+            "requested_model": "fixture-model",
+            "response_model": "fixture-model-v1",
+            "prompt_tokens": null,
+            "total_tokens": null,
+            "request_count": 1,
+            "context": {
+                "batch_id": "cccccccccccccccccccccccccccccccc",
+                "space_id": "75e102a5f484cd39b4f15382744bcca1ed81d8fe3930cfe21c9a14dc62275b8e",
+                "dimensions": 3,
+                "input_hit_count": 0,
+                "selected_hit_count": 0,
+                "context_text": "{\"scope\":\"selected_chunks_from_one_batch\",\"batch_id\":\"cccccccccccccccccccccccccccccccc\",\"embedding_space_id\":\"75e102a5f484cd39b4f15382744bcca1ed81d8fe3930cfe21c9a14dc62275b8e\",\"content_trust\":\"untrusted_project_content\",\"chunk_strategy\":\"python_innermost_definitions_v1\",\"chunk_policy\":\"gitignore_subset_v1\",\"snapshot_truncated\":false,\"snapshot_incomplete_reasons\":[],\"recall_omitted_by_top_k\":0,\"builder_omitted_hits\":0,\"chunks\":[]}",
+                "context_chars": 433,
+                "context_bytes": 433,
+                "budget": {
+                    "max_chunks": 5,
+                    "max_chars": 12000,
+                    "max_bytes": 24000
+                },
+                "selected_chunks": [],
+                "omissions": [],
+                "source_metadata": {
+                    "workspace_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                    "task_id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+                    "files": [
+                        {
+                            "relative_path": "fixture.py",
+                            "file_type": "source",
+                            "language": "python",
+                            "byte_count": 45,
+                            "sha256": "90b297ae632de1256a38f7b1a2ede4e40c3f1bd76a496101b71be62e6ff0b9cb"
+                        }
+                    ],
+                    "requested_model": "fixture-model",
+                    "response_model": "fixture-model-v1",
+                    "dimensions": 3,
+                    "embedding_space_id": "75e102a5f484cd39b4f15382744bcca1ed81d8fe3930cfe21c9a14dc62275b8e",
+                    "request_count": 1,
+                    "prompt_tokens": null,
+                    "total_tokens": null,
+                    "truncated": false,
+                    "incomplete_reasons": [],
+                    "chunk_strategy": "python_innermost_definitions_v1",
+                    "chunk_policy": "gitignore_subset_v1",
+                    "chunk_parser": "fixture_parser",
+                    "source": "python_code_embeddings",
+                    "content_trust": "untrusted_project_content"
+                },
+                "recall_summary": {
+                    "batch_chunk_count": 2,
+                    "searchable_chunk_count": 0,
+                    "excluded_zero_chunk_count": 2,
+                    "omitted_by_top_k": 0
+                },
+                "source": "bounded_code_context",
+                "content_trust": "untrusted_project_content"
+            },
+            "query_source": "query_embedding",
+            "source": "code_query_context"
+        },
+        "partial": {
+            "query_sha256": "2ad0b73d1fceb3eaae0ca683131ff01fe3172efe679b104e80d069324dc90b6f",
+            "requested_model": "fixture-model",
+            "response_model": "fixture-model-v1",
+            "prompt_tokens": null,
+            "total_tokens": null,
+            "request_count": 1,
+            "context": {
+                "batch_id": "cccccccccccccccccccccccccccccccc",
+                "space_id": "75e102a5f484cd39b4f15382744bcca1ed81d8fe3930cfe21c9a14dc62275b8e",
+                "dimensions": 3,
+                "input_hit_count": 1,
+                "selected_hit_count": 1,
+                "context_text": "{\"scope\":\"selected_chunks_from_one_batch\",\"batch_id\":\"cccccccccccccccccccccccccccccccc\",\"embedding_space_id\":\"75e102a5f484cd39b4f15382744bcca1ed81d8fe3930cfe21c9a14dc62275b8e\",\"content_trust\":\"untrusted_project_content\",\"chunk_strategy\":\"python_innermost_definitions_v1\",\"chunk_policy\":\"gitignore_subset_v1\",\"snapshot_truncated\":true,\"snapshot_incomplete_reasons\":[\"chunk_budget\"],\"recall_omitted_by_top_k\":0,\"builder_omitted_hits\":0,\"chunks\":[{\"rank\":1,\"distance\":0.0,\"chunk\":{\"chunk_id\":\"0c3c7e6c202d627989e574309f0279419b46498783720653e3364d3aaf753c37\",\"symbol\":{\"relative_path\":\"fixture.py\",\"name\":\"parent\",\"qualified_name\":\"parent\",\"kind\":\"function\",\"start_line\":1,\"definition_line\":1,\"end_line\":2,\"sha256\":\"90f68d2a118b33382108522205a75d63a5f97ecea67adfbc37f9fc73084a5917\"},\"text\":\"def parent():\\n\",\"start_line\":1,\"start_column\":1,\"end_line\":2,\"end_column\":1,\"line_count\":1,\"text_sha256\":\"696b6f207dc5c2d6e5f60d3564620ccff22a5782089766f1c0936630379c1ca6\",\"part_index\":1,\"part_count\":2,\"split_reasons\":[]}}]}",
+                "context_chars": 1013,
+                "context_bytes": 1013,
+                "budget": {
+                    "max_chunks": 5,
+                    "max_chars": 12000,
+                    "max_bytes": 24000
+                },
+                "selected_chunks": [
+                    {
+                        "rank": 1,
+                        "distance": 0.0,
+                        "chunk": {
+                            "chunk_id": "0c3c7e6c202d627989e574309f0279419b46498783720653e3364d3aaf753c37",
+                            "symbol": {
+                                "relative_path": "fixture.py",
+                                "name": "parent",
+                                "qualified_name": "parent",
+                                "kind": "function",
+                                "start_line": 1,
+                                "definition_line": 1,
+                                "end_line": 2,
+                                "sha256": "90f68d2a118b33382108522205a75d63a5f97ecea67adfbc37f9fc73084a5917"
+                            },
+                            "text": "def parent():\n",
+                            "start_line": 1,
+                            "start_column": 1,
+                            "end_line": 2,
+                            "end_column": 1,
+                            "line_count": 1,
+                            "text_sha256": "696b6f207dc5c2d6e5f60d3564620ccff22a5782089766f1c0936630379c1ca6",
+                            "part_index": 1,
+                            "part_count": 2,
+                            "split_reasons": []
+                        }
+                    }
+                ],
+                "omissions": [],
+                "source_metadata": {
+                    "workspace_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                    "task_id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+                    "files": [
+                        {
+                            "relative_path": "fixture.py",
+                            "file_type": "source",
+                            "language": "python",
+                            "byte_count": 23,
+                            "sha256": "90f68d2a118b33382108522205a75d63a5f97ecea67adfbc37f9fc73084a5917"
+                        }
+                    ],
+                    "requested_model": "fixture-model",
+                    "response_model": "fixture-model-v1",
+                    "dimensions": 3,
+                    "embedding_space_id": "75e102a5f484cd39b4f15382744bcca1ed81d8fe3930cfe21c9a14dc62275b8e",
+                    "request_count": 1,
+                    "prompt_tokens": null,
+                    "total_tokens": null,
+                    "truncated": true,
+                    "incomplete_reasons": [
+                        "chunk_budget"
+                    ],
+                    "chunk_strategy": "python_innermost_definitions_v1",
+                    "chunk_policy": "gitignore_subset_v1",
+                    "chunk_parser": "fixture_parser",
+                    "source": "python_code_embeddings",
+                    "content_trust": "untrusted_project_content"
+                },
+                "recall_summary": {
+                    "batch_chunk_count": 1,
+                    "searchable_chunk_count": 1,
+                    "excluded_zero_chunk_count": 0,
+                    "omitted_by_top_k": 0
+                },
+                "source": "bounded_code_context",
+                "content_trust": "untrusted_project_content"
+            },
+            "query_source": "query_embedding",
+            "source": "code_query_context"
+        },
+        "omitted": {
+            "query_sha256": "2ad0b73d1fceb3eaae0ca683131ff01fe3172efe679b104e80d069324dc90b6f",
+            "requested_model": "fixture-model",
+            "response_model": "fixture-model-v1",
+            "prompt_tokens": null,
+            "total_tokens": null,
+            "request_count": 1,
+            "context": {
+                "batch_id": "cccccccccccccccccccccccccccccccc",
+                "space_id": "75e102a5f484cd39b4f15382744bcca1ed81d8fe3930cfe21c9a14dc62275b8e",
+                "dimensions": 3,
+                "input_hit_count": 5,
+                "selected_hit_count": 4,
+                "context_text": "{\"scope\":\"selected_chunks_from_one_batch\",\"batch_id\":\"cccccccccccccccccccccccccccccccc\",\"embedding_space_id\":\"75e102a5f484cd39b4f15382744bcca1ed81d8fe3930cfe21c9a14dc62275b8e\",\"content_trust\":\"untrusted_project_content\",\"chunk_strategy\":\"python_innermost_definitions_v1\",\"chunk_policy\":\"gitignore_subset_v1\",\"snapshot_truncated\":false,\"snapshot_incomplete_reasons\":[],\"recall_omitted_by_top_k\":0,\"builder_omitted_hits\":1,\"chunks\":[{\"rank\":1,\"distance\":0.0,\"chunk\":{\"chunk_id\":\"1a0ba3593539da55280b4c29c1d6d20ff2acdad84a824575404a98e2ba231dfa\",\"symbol\":{\"relative_path\":\"fixture.py\",\"name\":\"sample_0\",\"qualified_name\":\"sample_0\",\"kind\":\"function\",\"start_line\":1,\"definition_line\":1,\"end_line\":2,\"sha256\":\"d8bcfe2155150a752432d0c1f966ca8f7b05844a52f70864dd5415c77442bf96\"},\"text\":\"def item_0(): return 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'\\n\",\"start_line\":1,\"start_column\":1,\"end_line\":2,\"end_column\":1,\"line_count\":1,\"text_sha256\":\"2a5be5a3519a377d9e5bdcf24e093a7873328628ed4dc88c637e824768ef64b5\",\"part_index\":1,\"part_count\":1,\"split_reasons\":[]}},{\"rank\":2,\"distance\":0.05,\"chunk\":{\"chunk_id\":\"196acb936aa3a6f55111eaa502a1ccafa702339a6a0a35fde9fae5f179cce0a3\",\"symbol\":{\"relative_path\":\"fixture.py\",\"name\":\"sample_1\",\"qualified_name\":\"sample_1\",\"kind\":\"function\",\"start_line\":3,\"definition_line\":3,\"end_line\":4,\"sha256\":\"d8bcfe2155150a752432d0c1f966ca8f7b05844a52f70864dd5415c77442bf96\"},\"text\":\"def item_1(): return 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'\\n\",\"start_line\":3,\"start_column\":1,\"end_line\":4,\"end_column\":1,\"line_count\":1,\"text_sha256\":\"b019aa3c25d495ef74a6499bfc37272d832417320729b1bfb7f4694c6b6d1a5f\",\"part_index\":1,\"part_count\":1,\"split_reasons\":[]}},{\"rank\":3,\"distance\":0.1,\"chunk\":{\"chunk_id\":\"857a418f5fd9340a3f79bc7da93c8c2651800f7a3d1019a9fffffc650be98e7b\",\"symbol\":{\"relative_path\":\"fixture.py\",\"name\":\"sample_2\",\"qualified_name\":\"sample_2\",\"kind\":\"function\",\"start_line\":5,\"definition_line\":5,\"end_line\":6,\"sha256\":\"d8bcfe2155150a752432d0c1f966ca8f7b05844a52f70864dd5415c77442bf96\"},\"text\":\"def item_2(): return 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'\\n\",\"start_line\":5,\"start_column\":1,\"end_line\":6,\"end_column\":1,\"line_count\":1,\"text_sha256\":\"7ad0f9dd7c358e7f1fa016de905a40aa18a60f5f369ed83d4e81e7689c660dda\",\"part_index\":1,\"part_count\":1,\"split_reasons\":[]}},{\"rank\":4,\"distance\":0.15,\"chunk\":{\"chunk_id\":\"e62e5238730e1e785f235f21684388f572963b52be5b2d1e93b2eee0ead620ac\",\"symbol\":{\"relative_path\":\"fixture.py\",\"name\":\"sample_3\",\"qualified_name\":\"sample_3\",\"kind\":\"function\",\"start_line\":7,\"definition_line\":7,\"end_line\":8,\"sha256\":\"d8bcfe2155150a752432d0c1f966ca8f7b05844a52f70864dd5415c77442bf96\"},\"text\":\"def item_3(): return 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'\\n\",\"start_line\":7,\"start_column\":1,\"end_line\":8,\"end_column\":1,\"line_count\":1,\"text_sha256\":\"8fddaf883a9c105c85dcaa5bd0d766997d7b21eabfbf35b4bde1ed9e6fa35ff6\",\"part_index\":1,\"part_count\":1,\"split_reasons\":[]}}]}",
+                "context_chars": 10562,
+                "context_bytes": 10562,
+                "budget": {
+                    "max_chunks": 5,
+                    "max_chars": 12000,
+                    "max_bytes": 24000
+                },
+                "selected_chunks": [
+                    {
+                        "rank": 1,
+                        "distance": 0.0,
+                        "chunk": {
+                            "chunk_id": "1a0ba3593539da55280b4c29c1d6d20ff2acdad84a824575404a98e2ba231dfa",
+                            "symbol": {
+                                "relative_path": "fixture.py",
+                                "name": "sample_0",
+                                "qualified_name": "sample_0",
+                                "kind": "function",
+                                "start_line": 1,
+                                "definition_line": 1,
+                                "end_line": 2,
+                                "sha256": "d8bcfe2155150a752432d0c1f966ca8f7b05844a52f70864dd5415c77442bf96"
+                            },
+                            "text": "def item_0(): return 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'\n",
+                            "start_line": 1,
+                            "start_column": 1,
+                            "end_line": 2,
+                            "end_column": 1,
+                            "line_count": 1,
+                            "text_sha256": "2a5be5a3519a377d9e5bdcf24e093a7873328628ed4dc88c637e824768ef64b5",
+                            "part_index": 1,
+                            "part_count": 1,
+                            "split_reasons": []
+                        }
+                    },
+                    {
+                        "rank": 2,
+                        "distance": 0.05,
+                        "chunk": {
+                            "chunk_id": "196acb936aa3a6f55111eaa502a1ccafa702339a6a0a35fde9fae5f179cce0a3",
+                            "symbol": {
+                                "relative_path": "fixture.py",
+                                "name": "sample_1",
+                                "qualified_name": "sample_1",
+                                "kind": "function",
+                                "start_line": 3,
+                                "definition_line": 3,
+                                "end_line": 4,
+                                "sha256": "d8bcfe2155150a752432d0c1f966ca8f7b05844a52f70864dd5415c77442bf96"
+                            },
+                            "text": "def item_1(): return 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'\n",
+                            "start_line": 3,
+                            "start_column": 1,
+                            "end_line": 4,
+                            "end_column": 1,
+                            "line_count": 1,
+                            "text_sha256": "b019aa3c25d495ef74a6499bfc37272d832417320729b1bfb7f4694c6b6d1a5f",
+                            "part_index": 1,
+                            "part_count": 1,
+                            "split_reasons": []
+                        }
+                    },
+                    {
+                        "rank": 3,
+                        "distance": 0.1,
+                        "chunk": {
+                            "chunk_id": "857a418f5fd9340a3f79bc7da93c8c2651800f7a3d1019a9fffffc650be98e7b",
+                            "symbol": {
+                                "relative_path": "fixture.py",
+                                "name": "sample_2",
+                                "qualified_name": "sample_2",
+                                "kind": "function",
+                                "start_line": 5,
+                                "definition_line": 5,
+                                "end_line": 6,
+                                "sha256": "d8bcfe2155150a752432d0c1f966ca8f7b05844a52f70864dd5415c77442bf96"
+                            },
+                            "text": "def item_2(): return 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'\n",
+                            "start_line": 5,
+                            "start_column": 1,
+                            "end_line": 6,
+                            "end_column": 1,
+                            "line_count": 1,
+                            "text_sha256": "7ad0f9dd7c358e7f1fa016de905a40aa18a60f5f369ed83d4e81e7689c660dda",
+                            "part_index": 1,
+                            "part_count": 1,
+                            "split_reasons": []
+                        }
+                    },
+                    {
+                        "rank": 4,
+                        "distance": 0.15,
+                        "chunk": {
+                            "chunk_id": "e62e5238730e1e785f235f21684388f572963b52be5b2d1e93b2eee0ead620ac",
+                            "symbol": {
+                                "relative_path": "fixture.py",
+                                "name": "sample_3",
+                                "qualified_name": "sample_3",
+                                "kind": "function",
+                                "start_line": 7,
+                                "definition_line": 7,
+                                "end_line": 8,
+                                "sha256": "d8bcfe2155150a752432d0c1f966ca8f7b05844a52f70864dd5415c77442bf96"
+                            },
+                            "text": "def item_3(): return 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'\n",
+                            "start_line": 7,
+                            "start_column": 1,
+                            "end_line": 8,
+                            "end_column": 1,
+                            "line_count": 1,
+                            "text_sha256": "8fddaf883a9c105c85dcaa5bd0d766997d7b21eabfbf35b4bde1ed9e6fa35ff6",
+                            "part_index": 1,
+                            "part_count": 1,
+                            "split_reasons": []
+                        }
+                    }
+                ],
+                "omissions": [
+                    {
+                        "source_rank": 5,
+                        "chunk_id": "2c636bd0714f05adb25cd1d5139339cee8852ee4ddbc27af08efd578eb1c90d5",
+                        "reasons": [
+                            "character_budget"
+                        ]
+                    }
+                ],
+                "source_metadata": {
+                    "workspace_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                    "task_id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+                    "files": [
+                        {
+                            "relative_path": "fixture.py",
+                            "file_type": "source",
+                            "language": "python",
+                            "byte_count": 9870,
+                            "sha256": "d8bcfe2155150a752432d0c1f966ca8f7b05844a52f70864dd5415c77442bf96"
+                        }
+                    ],
+                    "requested_model": "fixture-model",
+                    "response_model": "fixture-model-v1",
+                    "dimensions": 3,
+                    "embedding_space_id": "75e102a5f484cd39b4f15382744bcca1ed81d8fe3930cfe21c9a14dc62275b8e",
+                    "request_count": 1,
+                    "prompt_tokens": null,
+                    "total_tokens": null,
+                    "truncated": false,
+                    "incomplete_reasons": [],
+                    "chunk_strategy": "python_innermost_definitions_v1",
+                    "chunk_policy": "gitignore_subset_v1",
+                    "chunk_parser": "fixture_parser",
+                    "source": "python_code_embeddings",
+                    "content_trust": "untrusted_project_content"
+                },
+                "recall_summary": {
+                    "batch_chunk_count": 5,
+                    "searchable_chunk_count": 5,
+                    "excluded_zero_chunk_count": 0,
+                    "omitted_by_top_k": 0
+                },
+                "source": "bounded_code_context",
+                "content_trust": "untrusted_project_content"
+            },
+            "query_source": "query_embedding",
+            "source": "code_query_context"
+        },
+        "top_k": {
+            "query_sha256": "2ad0b73d1fceb3eaae0ca683131ff01fe3172efe679b104e80d069324dc90b6f",
+            "requested_model": "fixture-model",
+            "response_model": "fixture-model-v1",
+            "prompt_tokens": null,
+            "total_tokens": null,
+            "request_count": 1,
+            "context": {
+                "batch_id": "cccccccccccccccccccccccccccccccc",
+                "space_id": "75e102a5f484cd39b4f15382744bcca1ed81d8fe3930cfe21c9a14dc62275b8e",
+                "dimensions": 3,
+                "input_hit_count": 5,
+                "selected_hit_count": 5,
+                "context_text": "{\"scope\":\"selected_chunks_from_one_batch\",\"batch_id\":\"cccccccccccccccccccccccccccccccc\",\"embedding_space_id\":\"75e102a5f484cd39b4f15382744bcca1ed81d8fe3930cfe21c9a14dc62275b8e\",\"content_trust\":\"untrusted_project_content\",\"chunk_strategy\":\"python_innermost_definitions_v1\",\"chunk_policy\":\"gitignore_subset_v1\",\"snapshot_truncated\":false,\"snapshot_incomplete_reasons\":[],\"recall_omitted_by_top_k\":2,\"builder_omitted_hits\":0,\"chunks\":[{\"rank\":1,\"distance\":0.0,\"chunk\":{\"chunk_id\":\"e177d42919aad907ebef71f809b9581d7aaf822de632e81983fbd3ca558c4039\",\"symbol\":{\"relative_path\":\"fixture.py\",\"name\":\"sample_0\",\"qualified_name\":\"sample_0\",\"kind\":\"function\",\"start_line\":1,\"definition_line\":1,\"end_line\":2,\"sha256\":\"b491b126d31929f7f3db272643e044bb1300d9c26ec11b43c2a67369539086b7\"},\"text\":\"def item_0(): return 0\\n\",\"start_line\":1,\"start_column\":1,\"end_line\":2,\"end_column\":1,\"line_count\":1,\"text_sha256\":\"f1be48b2c27bba136a4a6f92a6ff47ab2c8eb4d1dbbdc537053f85e38b6e5d32\",\"part_index\":1,\"part_count\":1,\"split_reasons\":[]}},{\"rank\":2,\"distance\":0.05,\"chunk\":{\"chunk_id\":\"e1c00af622da7efd7eca97474b9f07bd0e9b72593a661f7bdcb027f090f8e409\",\"symbol\":{\"relative_path\":\"fixture.py\",\"name\":\"sample_1\",\"qualified_name\":\"sample_1\",\"kind\":\"function\",\"start_line\":3,\"definition_line\":3,\"end_line\":4,\"sha256\":\"b491b126d31929f7f3db272643e044bb1300d9c26ec11b43c2a67369539086b7\"},\"text\":\"def item_1(): return 1\\n\",\"start_line\":3,\"start_column\":1,\"end_line\":4,\"end_column\":1,\"line_count\":1,\"text_sha256\":\"f5850548bfc5041205bc3a42ab5e5ba508ed2c0068ee80f5a21606e9c548509e\",\"part_index\":1,\"part_count\":1,\"split_reasons\":[]}},{\"rank\":3,\"distance\":0.1,\"chunk\":{\"chunk_id\":\"0a68ae084421a62721e9f0e82621db37e1d88706f0584bcbccbcfd3e97363374\",\"symbol\":{\"relative_path\":\"fixture.py\",\"name\":\"sample_2\",\"qualified_name\":\"sample_2\",\"kind\":\"function\",\"start_line\":5,\"definition_line\":5,\"end_line\":6,\"sha256\":\"b491b126d31929f7f3db272643e044bb1300d9c26ec11b43c2a67369539086b7\"},\"text\":\"def item_2(): return 2\\n\",\"start_line\":5,\"start_column\":1,\"end_line\":6,\"end_column\":1,\"line_count\":1,\"text_sha256\":\"59fe2a2172065ae55bc96d6ff5d88619521f5a2d2e1bbc462fd8770f009b5a59\",\"part_index\":1,\"part_count\":1,\"split_reasons\":[]}},{\"rank\":4,\"distance\":0.15,\"chunk\":{\"chunk_id\":\"077895cee8bf6bc0c539f4f925e3b1e243372a21e3a5333fbaf7e672988fb5eb\",\"symbol\":{\"relative_path\":\"fixture.py\",\"name\":\"sample_3\",\"qualified_name\":\"sample_3\",\"kind\":\"function\",\"start_line\":7,\"definition_line\":7,\"end_line\":8,\"sha256\":\"b491b126d31929f7f3db272643e044bb1300d9c26ec11b43c2a67369539086b7\"},\"text\":\"def item_3(): return 3\\n\",\"start_line\":7,\"start_column\":1,\"end_line\":8,\"end_column\":1,\"line_count\":1,\"text_sha256\":\"e72cb272c76319a62bf26d4304971f3812d817fe2b6ba84a42f2c03dcd0013e4\",\"part_index\":1,\"part_count\":1,\"split_reasons\":[]}},{\"rank\":5,\"distance\":0.2,\"chunk\":{\"chunk_id\":\"ecdd32bc3958f1bee0f9e8c6164edf29cd7e85e597c50d63a3f6542bd1670984\",\"symbol\":{\"relative_path\":\"fixture.py\",\"name\":\"sample_4\",\"qualified_name\":\"sample_4\",\"kind\":\"function\",\"start_line\":9,\"definition_line\":9,\"end_line\":10,\"sha256\":\"b491b126d31929f7f3db272643e044bb1300d9c26ec11b43c2a67369539086b7\"},\"text\":\"def item_4(): return 4\\n\",\"start_line\":9,\"start_column\":1,\"end_line\":10,\"end_column\":1,\"line_count\":1,\"text_sha256\":\"446c1ceae996afe5996cf9396c9ff8d95f6b3280d04f8995bc38bfe91282cbe5\",\"part_index\":1,\"part_count\":1,\"split_reasons\":[]}}]}",
+                "context_chars": 3341,
+                "context_bytes": 3341,
+                "budget": {
+                    "max_chunks": 5,
+                    "max_chars": 12000,
+                    "max_bytes": 24000
+                },
+                "selected_chunks": [
+                    {
+                        "rank": 1,
+                        "distance": 0.0,
+                        "chunk": {
+                            "chunk_id": "e177d42919aad907ebef71f809b9581d7aaf822de632e81983fbd3ca558c4039",
+                            "symbol": {
+                                "relative_path": "fixture.py",
+                                "name": "sample_0",
+                                "qualified_name": "sample_0",
+                                "kind": "function",
+                                "start_line": 1,
+                                "definition_line": 1,
+                                "end_line": 2,
+                                "sha256": "b491b126d31929f7f3db272643e044bb1300d9c26ec11b43c2a67369539086b7"
+                            },
+                            "text": "def item_0(): return 0\n",
+                            "start_line": 1,
+                            "start_column": 1,
+                            "end_line": 2,
+                            "end_column": 1,
+                            "line_count": 1,
+                            "text_sha256": "f1be48b2c27bba136a4a6f92a6ff47ab2c8eb4d1dbbdc537053f85e38b6e5d32",
+                            "part_index": 1,
+                            "part_count": 1,
+                            "split_reasons": []
+                        }
+                    },
+                    {
+                        "rank": 2,
+                        "distance": 0.05,
+                        "chunk": {
+                            "chunk_id": "e1c00af622da7efd7eca97474b9f07bd0e9b72593a661f7bdcb027f090f8e409",
+                            "symbol": {
+                                "relative_path": "fixture.py",
+                                "name": "sample_1",
+                                "qualified_name": "sample_1",
+                                "kind": "function",
+                                "start_line": 3,
+                                "definition_line": 3,
+                                "end_line": 4,
+                                "sha256": "b491b126d31929f7f3db272643e044bb1300d9c26ec11b43c2a67369539086b7"
+                            },
+                            "text": "def item_1(): return 1\n",
+                            "start_line": 3,
+                            "start_column": 1,
+                            "end_line": 4,
+                            "end_column": 1,
+                            "line_count": 1,
+                            "text_sha256": "f5850548bfc5041205bc3a42ab5e5ba508ed2c0068ee80f5a21606e9c548509e",
+                            "part_index": 1,
+                            "part_count": 1,
+                            "split_reasons": []
+                        }
+                    },
+                    {
+                        "rank": 3,
+                        "distance": 0.1,
+                        "chunk": {
+                            "chunk_id": "0a68ae084421a62721e9f0e82621db37e1d88706f0584bcbccbcfd3e97363374",
+                            "symbol": {
+                                "relative_path": "fixture.py",
+                                "name": "sample_2",
+                                "qualified_name": "sample_2",
+                                "kind": "function",
+                                "start_line": 5,
+                                "definition_line": 5,
+                                "end_line": 6,
+                                "sha256": "b491b126d31929f7f3db272643e044bb1300d9c26ec11b43c2a67369539086b7"
+                            },
+                            "text": "def item_2(): return 2\n",
+                            "start_line": 5,
+                            "start_column": 1,
+                            "end_line": 6,
+                            "end_column": 1,
+                            "line_count": 1,
+                            "text_sha256": "59fe2a2172065ae55bc96d6ff5d88619521f5a2d2e1bbc462fd8770f009b5a59",
+                            "part_index": 1,
+                            "part_count": 1,
+                            "split_reasons": []
+                        }
+                    },
+                    {
+                        "rank": 4,
+                        "distance": 0.15,
+                        "chunk": {
+                            "chunk_id": "077895cee8bf6bc0c539f4f925e3b1e243372a21e3a5333fbaf7e672988fb5eb",
+                            "symbol": {
+                                "relative_path": "fixture.py",
+                                "name": "sample_3",
+                                "qualified_name": "sample_3",
+                                "kind": "function",
+                                "start_line": 7,
+                                "definition_line": 7,
+                                "end_line": 8,
+                                "sha256": "b491b126d31929f7f3db272643e044bb1300d9c26ec11b43c2a67369539086b7"
+                            },
+                            "text": "def item_3(): return 3\n",
+                            "start_line": 7,
+                            "start_column": 1,
+                            "end_line": 8,
+                            "end_column": 1,
+                            "line_count": 1,
+                            "text_sha256": "e72cb272c76319a62bf26d4304971f3812d817fe2b6ba84a42f2c03dcd0013e4",
+                            "part_index": 1,
+                            "part_count": 1,
+                            "split_reasons": []
+                        }
+                    },
+                    {
+                        "rank": 5,
+                        "distance": 0.2,
+                        "chunk": {
+                            "chunk_id": "ecdd32bc3958f1bee0f9e8c6164edf29cd7e85e597c50d63a3f6542bd1670984",
+                            "symbol": {
+                                "relative_path": "fixture.py",
+                                "name": "sample_4",
+                                "qualified_name": "sample_4",
+                                "kind": "function",
+                                "start_line": 9,
+                                "definition_line": 9,
+                                "end_line": 10,
+                                "sha256": "b491b126d31929f7f3db272643e044bb1300d9c26ec11b43c2a67369539086b7"
+                            },
+                            "text": "def item_4(): return 4\n",
+                            "start_line": 9,
+                            "start_column": 1,
+                            "end_line": 10,
+                            "end_column": 1,
+                            "line_count": 1,
+                            "text_sha256": "446c1ceae996afe5996cf9396c9ff8d95f6b3280d04f8995bc38bfe91282cbe5",
+                            "part_index": 1,
+                            "part_count": 1,
+                            "split_reasons": []
+                        }
+                    }
+                ],
+                "omissions": [],
+                "source_metadata": {
+                    "workspace_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                    "task_id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+                    "files": [
+                        {
+                            "relative_path": "fixture.py",
+                            "file_type": "source",
+                            "language": "python",
+                            "byte_count": 161,
+                            "sha256": "b491b126d31929f7f3db272643e044bb1300d9c26ec11b43c2a67369539086b7"
+                        }
+                    ],
+                    "requested_model": "fixture-model",
+                    "response_model": "fixture-model-v1",
+                    "dimensions": 3,
+                    "embedding_space_id": "75e102a5f484cd39b4f15382744bcca1ed81d8fe3930cfe21c9a14dc62275b8e",
+                    "request_count": 1,
+                    "prompt_tokens": null,
+                    "total_tokens": null,
+                    "truncated": false,
+                    "incomplete_reasons": [],
+                    "chunk_strategy": "python_innermost_definitions_v1",
+                    "chunk_policy": "gitignore_subset_v1",
+                    "chunk_parser": "fixture_parser",
+                    "source": "python_code_embeddings",
+                    "content_trust": "untrusted_project_content"
+                },
+                "recall_summary": {
+                    "batch_chunk_count": 7,
+                    "searchable_chunk_count": 7,
+                    "excluded_zero_chunk_count": 0,
+                    "omitted_by_top_k": 2
+                },
+                "source": "bounded_code_context",
+                "content_trust": "untrusted_project_content"
+            },
+            "query_source": "query_embedding",
+            "source": "code_query_context"
+        },
+        "duplicate": {
+            "query_sha256": "2ad0b73d1fceb3eaae0ca683131ff01fe3172efe679b104e80d069324dc90b6f",
+            "requested_model": "fixture-model",
+            "response_model": "fixture-model-v1",
+            "prompt_tokens": null,
+            "total_tokens": null,
+            "request_count": 1,
+            "context": {
+                "batch_id": "cccccccccccccccccccccccccccccccc",
+                "space_id": "75e102a5f484cd39b4f15382744bcca1ed81d8fe3930cfe21c9a14dc62275b8e",
+                "dimensions": 3,
+                "input_hit_count": 2,
+                "selected_hit_count": 1,
+                "context_text": "{\"scope\":\"selected_chunks_from_one_batch\",\"batch_id\":\"cccccccccccccccccccccccccccccccc\",\"embedding_space_id\":\"75e102a5f484cd39b4f15382744bcca1ed81d8fe3930cfe21c9a14dc62275b8e\",\"content_trust\":\"untrusted_project_content\",\"chunk_strategy\":\"python_innermost_definitions_v1\",\"chunk_policy\":\"gitignore_subset_v1\",\"snapshot_truncated\":false,\"snapshot_incomplete_reasons\":[],\"recall_omitted_by_top_k\":0,\"builder_omitted_hits\":1,\"chunks\":[{\"rank\":1,\"distance\":0.0,\"chunk\":{\"chunk_id\":\"4b6a2a3c16959a1af32d69a71cc7466c7409eb8f29eac7fdce7ff1b82ee97550\",\"symbol\":{\"relative_path\":\"fixture.py\",\"name\":\"sample_0\",\"qualified_name\":\"sample_0\",\"kind\":\"function\",\"start_line\":1,\"definition_line\":1,\"end_line\":2,\"sha256\":\"8f323e4be85bd6f845e60c9891bbf105b7287db12969fbab30516a7db2900682\"},\"text\":\"def first(): return '🚀中'\\n\",\"start_line\":1,\"start_column\":1,\"end_line\":2,\"end_column\":1,\"line_count\":1,\"text_sha256\":\"dc733356125e592f45c01b5665dcbe081dcd172b4c52fe45f1894babc147b779\",\"part_index\":1,\"part_count\":1,\"split_reasons\":[]}}]}",
+                "context_chars": 1015,
+                "context_bytes": 1020,
+                "budget": {
+                    "max_chunks": 5,
+                    "max_chars": 12000,
+                    "max_bytes": 24000
+                },
+                "selected_chunks": [
+                    {
+                        "rank": 1,
+                        "distance": 0.0,
+                        "chunk": {
+                            "chunk_id": "4b6a2a3c16959a1af32d69a71cc7466c7409eb8f29eac7fdce7ff1b82ee97550",
+                            "symbol": {
+                                "relative_path": "fixture.py",
+                                "name": "sample_0",
+                                "qualified_name": "sample_0",
+                                "kind": "function",
+                                "start_line": 1,
+                                "definition_line": 1,
+                                "end_line": 2,
+                                "sha256": "8f323e4be85bd6f845e60c9891bbf105b7287db12969fbab30516a7db2900682"
+                            },
+                            "text": "def first(): return '🚀中'\n",
+                            "start_line": 1,
+                            "start_column": 1,
+                            "end_line": 2,
+                            "end_column": 1,
+                            "line_count": 1,
+                            "text_sha256": "dc733356125e592f45c01b5665dcbe081dcd172b4c52fe45f1894babc147b779",
+                            "part_index": 1,
+                            "part_count": 1,
+                            "split_reasons": []
+                        }
+                    }
+                ],
+                "omissions": [
+                    {
+                        "source_rank": 2,
+                        "chunk_id": "4b6a2a3c16959a1af32d69a71cc7466c7409eb8f29eac7fdce7ff1b82ee97550",
+                        "reasons": [
+                            "duplicate_chunk"
+                        ]
+                    }
+                ],
+                "source_metadata": {
+                    "workspace_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                    "task_id": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+                    "files": [
+                        {
+                            "relative_path": "fixture.py",
+                            "file_type": "source",
+                            "language": "python",
+                            "byte_count": 53,
+                            "sha256": "8f323e4be85bd6f845e60c9891bbf105b7287db12969fbab30516a7db2900682"
+                        }
+                    ],
+                    "requested_model": "fixture-model",
+                    "response_model": "fixture-model-v1",
+                    "dimensions": 3,
+                    "embedding_space_id": "75e102a5f484cd39b4f15382744bcca1ed81d8fe3930cfe21c9a14dc62275b8e",
+                    "request_count": 2,
+                    "prompt_tokens": 40,
+                    "total_tokens": 50,
+                    "truncated": false,
+                    "incomplete_reasons": [],
+                    "chunk_strategy": "python_innermost_definitions_v1",
+                    "chunk_policy": "gitignore_subset_v1",
+                    "chunk_parser": "fixture_parser",
+                    "source": "python_code_embeddings",
+                    "content_trust": "untrusted_project_content"
+                },
+                "recall_summary": {
+                    "batch_chunk_count": 2,
+                    "searchable_chunk_count": 2,
+                    "excluded_zero_chunk_count": 0,
+                    "omitted_by_top_k": 0
+                },
+                "source": "bounded_code_context",
+                "content_trust": "untrusted_project_content"
+            },
+            "query_source": "query_embedding",
+            "source": "code_query_context"
+        }
+    }
+}

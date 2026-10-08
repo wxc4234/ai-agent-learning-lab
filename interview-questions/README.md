@@ -105,7 +105,7 @@ interview-questions/
 
 Vault 只读专题：[Markdown范围与同次读取来源](backend/web/workspace-directory.md#为什么-vault-只检查-md-后缀仍可能读到配置)、[检索覆盖、Unicode坐标与PC展示边界](backend/web/workspace-directory.md#跨文件检索的空结果为什么必须附带覆盖状态)、[请求级工具装配与授权复核](backend/web/workspace-directory.md#vault-检索工具为什么要请求级装配而不是直接注册到全局)。复习优先级高，参考答案已整理、尚未模拟。
 
-代码上下文专题：[扫描授权、忽略子集与覆盖预算](backend/web/workspace-directory.md#为什么代码扫描不能直接递归所有文件或执行仓库中的-git)、[AST静态符号与解析预算](backend/web/workspace-directory.md#ast-解析成功为什么不等于代码可运行或安全)、[符号检索、引用与覆盖](backend/web/workspace-directory.md#精确符号检索怎样避免丢失命中或错配引用)、[定义分块、嵌套去重与版本来源](backend/web/workspace-directory.md#代码分块怎样避免嵌套重复与来源错配)、[Embedding校验、模型空间与pgvector事务隔离](backend/web/workspace-directory.md#embedding-返回成功为什么仍不能直接入库)。复习优先级高，参考答案已整理、尚未模拟。
+代码上下文专题：[扫描授权、忽略子集与覆盖预算](backend/web/workspace-directory.md#为什么代码扫描不能直接递归所有文件或执行仓库中的-git)、[AST静态符号与解析预算](backend/web/workspace-directory.md#ast-解析成功为什么不等于代码可运行或安全)、[符号检索、引用与覆盖](backend/web/workspace-directory.md#精确符号检索怎样避免丢失命中或错配引用)、[定义分块、嵌套去重与版本来源](backend/web/workspace-directory.md#代码分块怎样避免嵌套重复与来源错配)、[Embedding/模型空间、授权生成保存/召回与批次摘要BFF传输边界](backend/web/workspace-directory.md#embedding-返回成功为什么仍不能直接入库)、[Context Builder实际预算、API/BFF与内部查询/产品边界、取消与分开用量](backend/web/workspace-directory.md#context-builder-为什么不能直接拼接-top-k)。复习优先级高，参考答案已整理、尚未模拟。
 
 ## 维护规范
 
@@ -126,7 +126,7 @@ Vault 只读专题：[Markdown范围与同次读取来源](backend/web/workspace
 
 本地目录专题（含系统目录选择、取消/提交边界及跨目录查找预算/截断语义、工具适配、PC闭环及文本替换预览边界及授权内容基线及预览工具公开契约及PC只读证据、提案双事务/重新授权/删除级联及授权查询公开投影、工具提交未确认边界及PC提案持久化及HTTP响应状态校验及BFF资源匹配/取消证据、审批事务锁竞争/终态冲突/无损降级边界、审批HTTP提交与响应失败区分、审批BFF转发前后取消与未知结果语义、审批UI sessionStorage防重及卸载不等于回滚、历史入口创建事实与当前授权状态分离、应用前字节基线与快照TOCTOU边界、单次应用占用与提交后未知结果、资源变更与领取的共同锁协议、受限替换的提交边界与非CAS限制、ACL复制及不支持元数据的拒绝策略、文件与数据库双提交边界及执行装配、应用状态快照与恢复边界及HTTP未知状态安全失败及BFF资源核对/取消边界及状态展示旧响应隔离及有界xattr读取及复制探测证据分类及受限复制部分失败边界）：[Workspace 目录规范化与访问授权边界](backend/web/workspace-directory.md)，复习优先级高，参考答案已整理、尚未模拟。
 
-Task 专题（含创建事务、HTTP 提交后失败、前端防重边界、异步标题、详情 BFF 资源匹配、URL 恢复竞态、空任务删除锁竞争、禁止隐式重建、DELETE 结果未确认、UI 迟到结果隔离与运行列表授权分页/HTTP 错误边界/BFF 契约校验/历史列表请求隔离/历史事件契约/启动迁移职责/创建幂等请求键与删除保留/事务重放与真实锁等待/提交确认丢失恢复/幂等 HTTP/BFF 兼容与错误契约/UI 创建意图生命周期与消息边界）：[任务、会话与运行的模型及兼容迁移](backend/web/task-model.md)，复习优先级高，参考答案已整理、尚未模拟。
+Task 专题（含创建事务、HTTP 提交后失败、前端防重边界、异步标题、详情 BFF 资源匹配、URL 恢复竞态、空任务删除锁竞争、禁止隐式重建、DELETE 结果未确认、UI 迟到结果隔离与运行列表授权分页/HTTP 错误边界/BFF 契约校验/历史列表请求隔离/历史事件契约/启动迁移职责/创建幂等请求键与删除保留/事务重放与真实锁等待/提交确认丢失恢复/幂等 HTTP/BFF 兼容与错误契约/UI 创建意图生命周期与消息边界/批次选择快照与controller身份、内部查询实验的编辑/取消、产品入口边界及资源生命周期）：[任务、会话与运行的模型及兼容迁移](backend/web/task-model.md)，复习优先级高，参考答案已整理、尚未模拟。
 
 2026-09-22：工作空间目录题目补充元数据设置顺序、完整回读与部分失败边界（backend/web/workspace-directory.md，高优先级，参考答案已整理、尚未模拟）。
 

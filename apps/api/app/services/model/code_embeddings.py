@@ -1,6 +1,7 @@
 """有界生成当前内存分块的向量；不授予文件访问权、不读磁盘或写索引。"""
 
 import asyncio
+from collections.abc import Callable
 from dataclasses import asdict, dataclass
 from hashlib import sha256
 import json
@@ -218,6 +219,7 @@ async def generate_code_embeddings(
     *,
     config: EmbeddingConfig | None = None,
     transport: httpx.AsyncBaseTransport | None = None,
+    before_request: Callable[[], None] | None = None,
 ) -> CodeEmbeddings:
     """可信调用方显式选择内存正文；旧分块不是当前授权或发送许可。"""
 
@@ -238,6 +240,10 @@ async def generate_code_embeddings(
                     trust_env=False,
                 ) as client:
                     for batch in batches:
+                        # 可信宿主可在每次发送前复核当前授权；回调结束后不持有事务。
+                        # 回调失败整次拒绝，普通异常沿用固定失败码，取消继续传播。
+                        if before_request is not None:
+                            before_request()
                         payload: dict[str, Any] = {
                             "model": active.model,
                             "input": [chunk.text for chunk in batch],

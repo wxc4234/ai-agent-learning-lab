@@ -68,7 +68,7 @@
 | Day | 任务 | 验收 |
 |---|---|---|
 | 1 | 本地单用户身份、启动配置与 BFF/API 内部凭证 | 无登录 Cookie 可聊天、取消和创建 Workspace；稳定身份、并发首次访问不重复创建；伪造内部凭证被拒绝 |
-| 2 | PC 工作台与 Workspace 创建、列表；紧凑项目入口、按需改动/高级详情与诊断折叠 | 1366×768 和 1920×1080 可用；成功、明确拒绝、结果未确认分别展示，不自动重试创建 |
+| 2 | PC 工作台与 Workspace 创建、列表；紧凑项目入口和按需文件改动；工程诊断不进入用户操作入口 | 1366×768 和 1920×1080 可用；成功、明确拒绝、结果未确认分别展示，不自动重试创建 |
 | 3 | 系统目录选择与 Workspace 自动绑定 | 点击选择文件夹后直接校验并保存，取消不写入；规范化路径并验证目录存在；目录范围和符号链接边界清晰；不能接管原账号或其他 Workspace 资源 |
 | 4 | 对话式 Task：笔形入口、首发创建、首轮自动标题；列表、分页、切换、删除及运行历史 | 刷新后回到原 Task，消息、状态和时间线一致 |
 | 5 | 幂等、并发预算、短期状态与取消通知 | 重复提交不产生重复 Task；缓存丢失不损坏事实数据 |
@@ -124,9 +124,9 @@
 | 1 | Workspace 导入：Git URL 或 ZIP、本地样例仓库；校验大小、类型、路径和所有权 | 非法压缩包、路径穿越、超限仓库被拒绝；导入状态可恢复 |
 | 2 | 仓库扫描：遵守 `.gitignore`，识别语言/文件/符号，跳过二进制、生成物和疑似密钥 | 生成可查询的文件与符号清单，且不索引被忽略或敏感内容。当前[有界文件清单、忽略子集及Python函数/类符号](docs/code-inventory.md)已通过工程验收，教练按对应课明确授权实现；多语言符号、引用关系与持久索引尚未实现，不代表学习者独立掌握 |
 | 3 | 关键词与符号检索：`rg`、文件路径、定义/引用线索 | 精确标识符与配置项能稳定命中，结果带文件、行号和匹配原因。当前[授权Python名称/限定名称检索与定义片段](docs/code-inventory.md#python-符号检索与定义引用)已通过工程验收，教练按本课明确授权实现；任意代码关键词、运行时引用关系与多语言检索尚未实现，不代表学习者独立掌握 |
-| 4 | 代码 Chunk、Embedding 与 pgvector：保留文件、符号和行号元数据 | 向量写入成功；维度/索引匹配；语义问题能召回相关实现。当前[Python定义分块](docs/code-inventory.md#python-代码分块)、[独立Embedding配置/有界生成](docs/code-embeddings.md)及[pgvector受控批次存储/模型空间隔离](docs/code-vector-storage.md)已通过工程验收，教练按对应课明确授权实现；生成采用受控传输，存储使用真实PostgreSQL，真实供应商、自动项目索引和向量召回尚未验收，不代表学习者独立掌握 |
-| 5 | 混合检索、Rerank 与 Context Builder：融合排序、去重、Token 预算、工具结果裁剪 | 上下文包可解释来源、分数、Token 占比和被裁剪原因，不超过预算 |
-| 6 | 引用与检索调试 UI：展示查询、候选、分数、采纳片段和代码定位 | 点击引用能定位代码行；用户能看出为什么某段被选中 |
+| 4 | 代码 Chunk、Embedding 与 pgvector：保留文件、符号和行号元数据 | 向量写入成功；维度/索引匹配；语义问题能召回相关实现。当前[Python定义分块](docs/code-inventory.md#python-代码分块)、[独立Embedding配置/代码生成](docs/code-embeddings.md)、[受控批次存储/模型空间隔离](docs/code-vector-storage.md)、[授权单批精确召回](docs/code-vector-storage.md#指定批次精确召回)、[独立查询生成](docs/code-embeddings.md#独立查询-embedding)、[授权查询召回串联](docs/code-vector-storage.md#授权查询与召回串联)、[授权代码生成与保存组合](docs/code-vector-storage.md#授权代码生成与保存串联)及[授权批次摘要API](docs/code-vector-storage.md#授权批次摘要-api)已通过工程验收；召回/单查询由学习者实现核心、完成后教练补测试，其他项由教练按对应课明确授权实现。生成采用受控传输，存储/距离/串联授权与有界摘要/当前绑定隔离使用真实PostgreSQL。[摘要同源BFF](docs/code-vector-storage.md#批次摘要同源-bff)按当课明确授权由教练完成，原生Request/Response/Web Streams和受控fetch验证公开字段/微秒排序、凭证、有界读取及异步取消。产品不提供手动批次/空间选择，内部候选能力与产品边界见[摘要协议](docs/code-vector-storage.md#批次摘要与产品边界)。真实跨层断开、真实供应商/语义效果和自动项目索引尚未验收，不代表独立掌握 |
+| 5 | 混合检索、Rerank 与 Context Builder：融合排序、去重、Token 预算、工具结果裁剪 | 上下文包可解释来源、分数、Token 占比和被裁剪原因，不超过预算。当前[单批有界Context Builder](docs/code-context.md)已通过纯内存工程验收，学习者实现核心、完成后教练补测试；保留完整片段/来源/距离/覆盖，按实际JSON字符与UTF-8字节及片段数选择、去重并解释省略。[授权查询上下文组合](docs/code-context.md#授权查询上下文串联)由教练按本课明确授权实现，真实PostgreSQL/受控HTTPX验证前置预算、当前授权、资源退出及分开的查询/历史用量。[本地授权查询API](docs/code-context.md#本地授权查询-api)由教练按当课明确授权完成，严格服务端配置/预算、固定错误及公开投影通过真实本地身份/PostgreSQL和受控HTTPX验收。[同源BFF](docs/code-context.md#同源-bff-代理)按当课明确授权由教练完成，原生Request/Response/Web Streams与受控fetch验证凭证隔离、有界正文、深层协议和异步取消。[内部查询读取实验](docs/code-context.md#内部查询校验与产品边界)52项通过，产品不提供手动Embedding查询/上下文预览或技术诊断入口。查询应由后续Agent内部调用，当前未接入自动检索；真实浏览器/Next/ASGI断开、混合排序/Rerank及精确Token计量尚未验收，不代表独立掌握 |
+| 6 | 可读代码来源与引用 UI：结果关联相关文件、行号和片段 | 用户从任务结果或文件改动查看必要来源，并能定位真实代码行；向量批次、模型空间、Embedding查询与技术诊断留在内部链路，不要求用户手动操作。当前手动实验入口已撤下，Agent来源呈现/文件跳转及语义效果仍待实现；[产品边界](docs/agent-ui-events.md#pc信息层级)为后续设计依据 |
 | 7 | 代码检索评测：固定跨文件任务集，比较关键词、向量与混合策略 | 输出 Recall@K、MRR、引用正确率、延迟与成本对比表 |
 
 关键概念：
@@ -148,7 +148,7 @@
 
 目标：让自研 Agent 读取、检索并逐步整理用户授权的 Obsidian 笔记库，复用本地 Workspace、文件工具和检索能力。第五周完成后融合到当前课程，每次只推进一个可验证的小任务。
 
-当前能力：授权 Markdown 清单、受限读取、跨文件字面检索 API、请求级 Agent 工具及 PC 结果/引用展示已通过工程验收。工具仅接受 query，模型与 Runtime 共用能力快照，执行时重查会话/Task/Workspace。实时与历史共用严格解析和纯文本卡片，保留相对路径、行列、同次读取摘要及完整无匹配/覆盖截断/片段裁剪/失败的区别；发送前说明片段会提供给用户配置的模型，历史不重新检索。引用当前不提供点击读取或代码行跳转。前三课由学习者实现核心、完成后教练补配套，PC展示课按明确授权由教练直接完成；工程通过不代表独立掌握。真实模型措辞/引用质量与抗提示注入能力、Windows仍未验收，归属撤销后的既有收尾限制见[当前交接](LEARNING_HANDOFF.md#未解决问题)。后端证据见[检索服务](apps/api/tests/workspace/files/test_vault_search.py)、[检索API](apps/api/tests/workspace/files/test_vault_search_api.py)、[工具适配](apps/api/tests/tools/test_vault_search_tool.py)、[请求绑定](apps/api/tests/chat/test_vault_search_binding.py)与[受控聊天HTTP](apps/api/tests/chat/test_vault_search_chat.py)；展示证据见[协议/组件测试](apps/web/test/features/chat/vault-search.test.ts)及[真实PC专项](apps/web/test/browser/vault-search.mjs)。一般代码上下文/RAG与本周检索评测仍待完成。
+当前能力：授权 Markdown 清单、受限读取、跨文件字面检索 API、请求级 Agent 工具及 PC 结果/引用展示已通过工程验收。工具仅接受 query，模型与 Runtime 共用能力快照，执行时重查会话/Task/Workspace。内部展示实验的实时与历史共用严格解析和纯文本卡片，保留相对路径、行列、同次读取摘要及完整无匹配/覆盖截断/片段裁剪/失败的区别；发送前说明片段会提供给用户配置的模型，历史不重新检索。引用当前不提供点击读取或代码行跳转。前三课由学习者实现核心、完成后教练补配套，PC展示课按明确授权由教练直接完成；工程通过不代表独立掌握。真实模型措辞/引用质量与抗提示注入能力、Windows仍未验收，归属撤销后的既有收尾限制见[当前交接](LEARNING_HANDOFF.md#未解决问题)。后端证据见[检索服务](apps/api/tests/workspace/files/test_vault_search.py)、[检索API](apps/api/tests/workspace/files/test_vault_search_api.py)、[工具适配](apps/api/tests/tools/test_vault_search_tool.py)、[请求绑定](apps/api/tests/chat/test_vault_search_binding.py)与[受控聊天HTTP](apps/api/tests/chat/test_vault_search_chat.py)；展示证据见[协议/组件测试](apps/web/test/features/chat/vault-search.test.ts)及[真实PC专项](apps/web/test/browser/vault-search.mjs)。当前产品不再开放高级诊断中的工具卡片入口；后续需将必要来源融入任务结果，工程实验通过不等于用户入口交付。一般代码上下文/RAG与本周检索评测仍待完成。
 
 | 阶段 | 接入范围与前置条件 | 验收 |
 |---|---|---|

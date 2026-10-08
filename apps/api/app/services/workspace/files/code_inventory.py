@@ -156,6 +156,7 @@ class _Scope(TypedDict):
 class _Access(_Scope):
     # 只由本次服务端扫描构造，不能来自HTTP输入或旧清单。
     expected_bound_root: str
+    expected_binding_revision: int | None
     require_direct_path: bool
 
 
@@ -217,6 +218,8 @@ def _scan_code_inventory(
     workspace_id: str,
     task_id: str,
     consume: Callable[[CodeFile, str], None] | None,
+    expected_bound_root: str | None = None,
+    expected_binding_revision: int | None = None,
 ) -> CodeInventory:
     """内部只读消费者共用本轮策略和正文；不提供可重放的文件访问许可。"""
 
@@ -226,12 +229,18 @@ def _scan_code_inventory(
         "task_id": task_id,
     }
     root = resolve_task_workspace_path(
-        **scope, relative_path=".", require_direct_path=True
+        **scope,
+        relative_path=".",
+        expected_bound_root=expected_bound_root,
+        expected_binding_revision=expected_binding_revision,
+        require_direct_path=True,
     )
     # 起始根只用于防止本轮混入另一绑定；后续每次操作仍重新授权。
     access: _Access = {
         **scope,
         "expected_bound_root": str(root),
+        # 内部组合可锁定捕获修订；枚举、规则/正文读取与末尾复核都重新检查。
+        "expected_binding_revision": expected_binding_revision,
         "require_direct_path": True,
     }
     pending: deque[tuple[PurePosixPath, int, tuple[IgnoreRule, ...]]] = deque(

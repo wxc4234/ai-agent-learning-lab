@@ -133,7 +133,7 @@
 
 ## Python 代码分块
 
-当前仅提供内部服务 `build_python_code_chunks(*, user_id: int, workspace_id: str, task_id: str)`，位于[分块实现](../apps/api/app/services/workspace/files/python_chunks.py)；没有新增HTTP、工具、浏览器、模型、Embedding或索引写入入口。身份与任务来自可信调用上下文；分块不是文件访问许可，调用时仍执行当前授权扫描。策略 `python_innermost_definitions_v1` 只支持函数、异步函数及类的定义行区间；模块导入、顶层调用、定义外注释等不生成分块，由 `excluded_module_lines` 统计，不能把“分块完整”解释为“整个文件正文完整”。
+内部服务 `build_python_code_chunks(*, user_id: int, workspace_id: str, task_id: str, expected_bound_root: str | None = None, expected_binding_revision: int | None = None)` 位于[分块实现](../apps/api/app/services/workspace/files/python_chunks.py)。分块自身不调用模型或保存，也没有HTTP、工具或浏览器入口；[显式授权生成组合](code-vector-storage.md#授权代码生成与保存串联)复用它的输出。身份与任务来自可信调用上下文；分块不是文件访问许可，调用时仍执行当前授权扫描。组合可传捕获根和修订，起始解析、目录枚举、规则/正文读取及最终复核都在I/O前比较当前绑定；未传修订的既有清单/符号调用仍只有本轮根路径保护，不能识别绑定往返。该检查不跟踪外部文件编辑或证明原子快照。策略 `python_innermost_definitions_v1` 只支持函数、异步函数及类的定义行区间；模块导入、顶层调用、定义外注释等不生成分块，由 `excluded_module_lines` 统计，不能把“分块完整”解释为“整个文件正文完整”。
 
 独立的内存分块Embedding生成服务、配置和发送边界见[代码Embedding协议](code-embeddings.md)，尚未装配到扫描/HTTP/工具链路，不改变本分块服务的只读行为。
 

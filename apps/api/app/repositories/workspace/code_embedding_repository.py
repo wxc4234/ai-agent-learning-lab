@@ -2,7 +2,8 @@
 
 from uuid import uuid4
 
-from sqlalchemy import select
+from sqlalchemy import Text, case, cast, func, select
+from sqlalchemy.engine import RowMapping
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
@@ -15,6 +16,52 @@ from app.models import (
     Workspace,
 )
 from app.repositories.workspace.workspace_repository import WorkspaceNotAccessibleError
+
+
+CODE_BATCH_SUMMARY_LIMIT = 20
+CODE_BATCH_METADATA_BYTES = 128 * 1024
+
+
+def read_owned_code_embedding_batch_summaries(
+    session: Session, *, user_id: int, workspace_id: str, task_id: str
+) -> list[RowMapping]:
+    """调用方持有当前归属锁；只读有界元数据，不加载向量或代码正文。"""
+    metadata_bytes = func.octet_length(cast(CodeEmbeddingBatch.source_metadata, Text))
+    statement = (
+        select(
+            CodeEmbeddingBatch.external_id.label("batch_id"),
+            CodeEmbeddingBatch.space_id,
+            CodeEmbeddingBatch.dimensions,
+            CodeEmbeddingBatch.chunk_count,
+            CodeEmbeddingBatch.created_at,
+            CodeEmbeddingSpace.dimensions.label("space_dimensions"),
+            CodeEmbeddingSpace.requested_model,
+            CodeEmbeddingSpace.response_model,
+            metadata_bytes.label("metadata_bytes"),
+            # 在数据库投影时限制传输；超限仍保留行并由服务拒绝，不能当不存在。
+            case(
+                (metadata_bytes <= CODE_BATCH_METADATA_BYTES, CodeEmbeddingBatch.source_metadata),
+                else_=None,
+            ).label("source_metadata"),
+        )
+        .join(CodeEmbeddingSpace, CodeEmbeddingBatch.space_id == CodeEmbeddingSpace.id)
+        .join(Task, CodeEmbeddingBatch.task_id == Task.id)
+        .join(Workspace, Task.workspace_id == Workspace.id)
+        .join(Conversation, Conversation.task_id == Task.id)
+        .where(
+            Workspace.user_id == user_id,
+            Workspace.external_id == workspace_id,
+            Task.external_id == task_id,
+            Conversation.user_id == user_id,
+            CodeEmbeddingBatch.bound_root == Workspace.root_path,
+            CodeEmbeddingBatch.binding_revision == Workspace.binding_revision,
+        )
+        .order_by(CodeEmbeddingBatch.created_at.desc(), CodeEmbeddingBatch.external_id.desc())
+        .limit(CODE_BATCH_SUMMARY_LIMIT + 1)
+    )
+    # 不刷新调用方其他待写对象，不提交事务，不查询总数或其他任务候选。
+    with session.no_autoflush:
+        return list(session.execute(statement).mappings())
 
 
 def insert_code_embedding_batch(
@@ -129,3 +176,43 @@ def read_batch_vectors(
             .limit(21)
         )
     )
+
+
+def rank_batch_vectors(
+    session: Session,
+    *,
+    batch: CodeEmbeddingBatch,
+    query_vector: tuple[float, ...],
+) -> list[tuple[CodeEmbeddingVector, float | None]]:
+    """仅供当前事务中已授权的批次使用；距离由pgvector计算。"""
+    # 零向量没有有效余弦方向，保留该行用于覆盖计数，不计算距离。
+    distance = case(
+        (
+            func.vector_norm(CodeEmbeddingVector.embedding) > 0,
+            CodeEmbeddingVector.embedding.cosine_distance(list(query_vector)),
+        ),
+        else_=None,
+    ).label("cosine_distance")
+
+    statement = (
+        select(CodeEmbeddingVector, distance)
+        .where(
+            CodeEmbeddingVector.batch_id == batch.id,
+            CodeEmbeddingVector.space_id == batch.space_id,
+            CodeEmbeddingVector.dimensions == batch.dimensions,
+        )
+        .order_by(
+            distance.asc().nulls_last(),
+            CodeEmbeddingVector.ordinal.asc(),
+            CodeEmbeddingVector.chunk_id.asc(),
+        )
+        .limit(21)
+        .execution_options(populate_existing=True)
+    )
+
+    # 每批最多20条；额外读取一条用于发现异常超预算。
+    # 不提前LIMIT top_k，避免尾部无效距离被截断后隐藏。
+    with session.no_autoflush:
+        rows = session.execute(statement).all()
+
+    return [(vector, value) for vector, value in rows]
