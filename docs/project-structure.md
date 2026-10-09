@@ -77,3 +77,13 @@ apps/api/
 批次摘要BFF：`apps/web/src/app/api/workspaces/[workspaceId]/tasks/[taskId]/code-embedding-batches/route.ts` → `_shared/code-batch-summaries-proxy.ts` → `features/workbench/code-batch-summaries-data.ts`，复用上述`code-query-context-json.ts`读取器。专项位于`apps/web/test/features/workspaces/code-batch-summaries-{data,route}.test.ts`，协议见[摘要BFF](code-vector-storage.md#批次摘要同源-bff)。
 
 当前产品工作台：`features/chat/components/chat-panel.tsx`只挂载对话和按需`task-changes-panel.tsx`；`workbench-shell.tsx`仅提供“查看改动”，`workbench-session.tsx`不再有advanced详情状态。内部批次/上下文实验组件没有产品引用，公开数据校验/API/BFF保留；产品验收为`test/browser/workbench-product/run.mjs`，范围见[UI协议](agent-ui-events.md#当前产品界面验收)。
+
+离线代码检索评测：`services/workspace/files/code_retrieval_evaluation.py`负责任务集/来源验证、透明词面基线和来源级指标；`apps/api/evaluations/code_retrieval/v1/`维护跨周演进的版本化样例与基准报告，根目录`scripts/evaluate_code_retrieval.py`提供CLI，专项位于`tests/workspace/files/test_code_retrieval_evaluation.py`。范围/命令见[评测协议](code-retrieval-evaluation.md)，不接数据库、模型或产品入口。
+
+受控向量评测：`services/workspace/files/code_vector_evaluation.py`映射现有授权召回到评测Run，`scripts/evaluate_code_vectors.py`复用独立PG夹具发布比较报告，专项位于`tests/workspace/files/test_code_vector_evaluation.py`。使用固定特征HTTPX夹具，无真实模型请求；见[对照协议](code-retrieval-evaluation.md#受控向量与词面基线对照)。
+
+离线RRF：`services/workspace/files/code_rrf_evaluation.py`融合同任务集的两路完整来源排名；`scripts/evaluate_code_vectors.py --fusion`复用隔离PG生成三策略报告，专项为`test_code_rrf_evaluation.py`和`test_code_rrf_comparison.py`。规则见[RRF协议](code-retrieval-evaluation.md#rrf离线融合对照)，不改变产品检索。
+
+离线拒答评测：`services/workspace/files/code_abstention_evaluation.py`负责开发校准、冻结策略与候选过滤，`scripts/evaluate_code_abstention.py`提供calibrate/evaluate两阶段入口；数据与预期位于`apps/api/evaluations/code_retrieval/abstention-v1/`。见[开发/留出协议](code-retrieval-evaluation.md#无答案判定与开发留出评测)。
+
+离线观测：`services/workspace/files/code_evaluation_observation.py`统计耗时/用量，`scripts/evaluate_code_observation.py`复用隔离PG包装入口发布本轮报告；[统计口径](code-retrieval-evaluation.md#延迟与模型用量观测)区分建库/查询、失败/取消和未知用量。

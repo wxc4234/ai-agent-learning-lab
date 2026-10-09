@@ -1,0 +1,125 @@
+{
+    "role": "development",
+    "dataset": {
+        "schema_version": 1,
+        "dataset_id": "abstention-development-v1",
+        "label_origin": "coach_authored",
+        "sources": [
+            {
+                "id": "budget.measure_request_bytes",
+                "relative_path": "budget.py",
+                "symbol": "measure_request_bytes",
+                "start_line": 4,
+                "end_line": 6,
+                "file_sha256": "099fd6bc878cd43a39f7abd3815c5f0b8606f510f2643494d9f8b629f41bbef5"
+            },
+            {
+                "id": "budget.check_request_budget",
+                "relative_path": "budget.py",
+                "symbol": "check_request_budget",
+                "start_line": 9,
+                "end_line": 13,
+                "file_sha256": "099fd6bc878cd43a39f7abd3815c5f0b8606f510f2643494d9f8b629f41bbef5"
+            },
+            {
+                "id": "control.cancel_task",
+                "relative_path": "control.py",
+                "symbol": "cancel_task",
+                "start_line": 1,
+                "end_line": 4,
+                "file_sha256": "363fbad07c53db956800fb888df960bb553144862de4d759e631133a3ca9a4a7"
+            },
+            {
+                "id": "control.cancellation_checkpoint",
+                "relative_path": "control.py",
+                "symbol": "cancellation_checkpoint",
+                "start_line": 7,
+                "end_line": 11,
+                "file_sha256": "363fbad07c53db956800fb888df960bb553144862de4d759e631133a3ca9a4a7"
+            },
+            {
+                "id": "history.save_turn",
+                "relative_path": "history.py",
+                "symbol": "save_turn",
+                "start_line": 1,
+                "end_line": 5,
+                "file_sha256": "d1b5b7b212206ffa2d408e2a8134d908f39c4125b89b5d5b5dbc2e94e78a44cb"
+            },
+            {
+                "id": "history.restore_history",
+                "relative_path": "history.py",
+                "symbol": "restore_history",
+                "start_line": 8,
+                "end_line": 10,
+                "file_sha256": "d1b5b7b212206ffa2d408e2a8134d908f39c4125b89b5d5b5dbc2e94e78a44cb"
+            },
+            {
+                "id": "scope.authorize_workspace",
+                "relative_path": "scope.py",
+                "symbol": "authorize_workspace",
+                "start_line": 1,
+                "end_line": 5,
+                "file_sha256": "7bfe73cbdb554cd11dc9d8ec3ddf879adb244e5c09c428891fb7560c4e92683c"
+            },
+            {
+                "id": "scope.verify_revision",
+                "relative_path": "scope.py",
+                "symbol": "verify_revision",
+                "start_line": 8,
+                "end_line": 12,
+                "file_sha256": "7bfe73cbdb554cd11dc9d8ec3ddf879adb244e5c09c428891fb7560c4e92683c"
+            }
+        ],
+        "queries": [
+            {
+                "id": "dev-cancel",
+                "query": "cancel_task cancellation_checkpoint save_turn aborted",
+                "relevant_source_ids": [
+                    "control.cancel_task",
+                    "control.cancellation_checkpoint",
+                    "history.save_turn"
+                ],
+                "rationale": "跨control.py与history.py追踪请求取消、停止检查点和不保存半轮对话；三个定义共同回答。"
+            },
+            {
+                "id": "dev-history",
+                "query": "save restore conversation history",
+                "relevant_source_ids": [
+                    "history.save_turn",
+                    "history.restore_history"
+                ],
+                "rationale": "保存与恢复在不同定义；恢复不应重新执行工具。"
+            },
+            {
+                "id": "dev-authorization",
+                "query": "workspace owner binding revision",
+                "relevant_source_ids": [
+                    "scope.authorize_workspace",
+                    "scope.verify_revision"
+                ],
+                "rationale": "身份归属与目录修订都需要检查。"
+            },
+            {
+                "id": "dev-budget",
+                "query": "measure complete request bytes limit",
+                "relevant_source_ids": [
+                    "budget.measure_request_bytes",
+                    "budget.check_request_budget"
+                ],
+                "rationale": "需要计量完整请求再应用预算，单计量不提供拒绝逻辑。"
+            },
+            {
+                "id": "dev-absent",
+                "query": "quasar nebula telescope",
+                "relevant_source_ids": [],
+                "rationale": "样例不包含天文计算；明确无答案。"
+            },
+            {
+                "id": "dev-absent-related",
+                "query": "request gzip decompression",
+                "relevant_source_ids": [],
+                "rationale": "虽共享request一词，但样例没有gzip解压；用于发现词面假阳性。"
+            }
+        ]
+    }
+}

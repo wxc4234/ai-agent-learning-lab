@@ -68,6 +68,7 @@ async def chat_stream(
         verification_binding_provider=execution.bind_verification_tool,
         sample_diff_binding_provider=execution.bind_sample_diff_tool,
         vault_search_binding_provider=execution.bind_vault_search_tool,
+        code_search_binding_provider=execution.bind_code_search_tool,
     )
     return StreamingResponse(
         execution.stream,

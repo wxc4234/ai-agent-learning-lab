@@ -3,6 +3,8 @@
 from dataclasses import dataclass
 
 import httpx
+
+from app.services.runtime.execution.execution_threads import ExecutionThreads
 from pydantic import ValidationError
 
 from app.services.model.code_embeddings import code_embedding_space_id
@@ -71,6 +73,7 @@ async def build_code_query_context(
     top_k: int = 5,
     budget: CodeContextBudget | None = None,
     transport: httpx.AsyncBaseTransport | None = None,
+    execution_threads: ExecutionThreads | None = None,
 ) -> CodeQueryContextResult:
     """宿主显式选择查询发送范围、批次/空间和预算，不凭旧结果授予许可。"""
     # 预算范围和查询文本在任何数据库/HTTP操作前检查。
@@ -90,6 +93,7 @@ async def build_code_query_context(
         response_model=response_model,
         top_k=top_k,
         transport=transport,
+        **({"execution_threads": execution_threads} if execution_threads is not None else {}),
     )
 
     # 装配边界核对当前调用的查询及目标，未知/错配结果不能变成上下文成功。

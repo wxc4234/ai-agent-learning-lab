@@ -1,8 +1,11 @@
 """授权单查询生成与单批精确召回；模型等待与数据库事务分离。"""
 
+from functools import partial
 from dataclasses import dataclass
 
 import httpx
+
+from app.services.runtime.execution.execution_threads import ExecutionThreads
 
 from app.database import SessionLocal
 from app.repositories.workspace.code_embedding_repository import (
@@ -133,6 +136,7 @@ async def search_code_query(
     response_model: str,
     top_k: int = 5,
     transport: httpx.AsyncBaseTransport | None = None,
+    execution_threads: ExecutionThreads | None = None,
 ) -> CodeQuerySearchResult:
     """可信宿主显式选定查询发送范围、批次及预期报告版本。"""
     query_sha256 = _prepare_query(query)
@@ -146,7 +150,7 @@ async def search_code_query(
     except (ValueError, TypeError, UnicodeError, OverflowError):
         raise CodeVectorSearchError("code_embedding_query_invalid") from None
 
-    _preflight_batch(
+    preflight = partial(_preflight_batch,
         user_id=user_id,
         workspace_id=workspace_id,
         task_id=task_id,
@@ -155,6 +159,11 @@ async def search_code_query(
         response_model=response_model,
         space_id=space_id,
     )
+
+    if execution_threads is None:
+        preflight()
+    else:
+        await execution_threads.run(preflight)
 
     # 事务边界：此await前第一段Session已关闭，此处仅有一次独立HTTP请求。
     # 不重试；失败、超时和取消原样走既有生成契约，绝不回退到旧向量。
@@ -171,7 +180,7 @@ async def search_code_query(
 
     # 第二段事务由召回服务创建，重新锁定并核对当前归属、绑定和同一批次。
     # 模型等待时撤销归属、重绑定或删除任务，均不能凭第一段检查返回旧内容。
-    recall = search_code_embedding_batch(
+    search = partial(search_code_embedding_batch,
         user_id=user_id,
         workspace_id=workspace_id,
         task_id=task_id,
@@ -181,6 +190,7 @@ async def search_code_query(
         query_vector=generated.vector,
         top_k=top_k,
     )
+    recall = search() if execution_threads is None else await execution_threads.run(search)
     # 召回成功退出事务后才发布结果；后置拒绝也无法撤销已经发生的模型用量。
     return CodeQuerySearchResult(
         query_sha256=generated.query_sha256,

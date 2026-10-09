@@ -55,6 +55,7 @@ from app.services.runtime.verification.sandbox_verification import SandboxVerifi
 from app.tools.recorded_task_verification import make_recorded_task_verification_executor
 from app.tools.task_verification import make_task_verification_definition
 from app.tools.vault_search import make_vault_search_definition
+from app.services.runtime.agent.code_search_binding import CodeSearchBinding, bind_code_search
 
 
 logger = logging.getLogger(__name__)
@@ -153,6 +154,14 @@ class ChatExecution:
             return adapter(context=context, **arguments)
 
         return replace(definition, executor=execute)
+
+    def bind_code_search_tool(self, context: ToolExecutionContext) -> CodeSearchBinding | None:
+        if (
+            self._command_closed or type(context) is not ToolExecutionContext
+            or context.user_id != self.user_id or context.conversation_id != self.body.session_id
+        ):
+            raise SafeToolExecutionError("workspace_not_accessible")
+        return bind_code_search(context=context, threads=self.threads, is_closed=lambda: self._command_closed)
 
     def bind_vault_search_tool(
         self,

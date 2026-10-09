@@ -76,8 +76,8 @@ try {
         const input = page.getByLabel('你的问题', { exact: true });
         await input.waitFor();
         // 数据流向说明必须在用户按下发送前出现，并关联输入框。
-        await page.getByText('使用笔记检索时，命中片段会发送给你配置的模型。', { exact: true }).waitFor();
-        assert.equal(await input.getAttribute('aria-describedby'), 'vault-model-notice');
+        await page.getByText('检索代码或笔记时，查询和命中片段会发送给你配置的相应模型。', { exact: true }).waitFor();
+        assert.equal(await input.getAttribute('aria-describedby'), 'retrieval-model-notice');
         await input.fill(`[vault-search] [${mode}] 检索当前项目笔记`);
         const pending = page.waitForResponse(response => response.url().endsWith('/api/chat/stream'));
         await input.press('Enter');

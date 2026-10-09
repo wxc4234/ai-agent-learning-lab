@@ -153,7 +153,7 @@ BROWSER_APP_MODE=local BROWSER_TEST_SCRIPT=patch-preview-tools.mjs .venv/bin/pyt
 
 Git 状态 PC 专项：同一隔离启动器使用 `BROWSER_APP_MODE=local BROWSER_TEST_SCRIPT=git-status.mjs`，支持 `PLAYWRIGHT_MODULE` / `CHROME_EXECUTABLE`。夹具在应用生命周期内创建Task与自有Git样例，不开放HTTP登记接口；受控模型须提供ModelUsage以通过既有预算检查。浏览器、独立数据库核对、文件与关闭清理报告写入 `apps/web/output/playwright/git-status/`，同名覆盖；失败时须同时检查服务日志与本轮报告，不能把旧报告当成功证据。
 
-Vault 检索 PC 专项：同一隔离启动器使用 `BROWSER_APP_MODE=local BROWSER_TEST_SCRIPT=vault-search.mjs`，支持 `PLAYWRIGHT_MODULE` / `CHROME_EXECUTABLE`，无需 Docker。模型决策受控；临时 Vault 经真实授权读取、工具、聊天流与 BFF，覆盖命中/无匹配、覆盖上限、片段裁剪、错误和历史恢复。退出时独立核对消息/事件、执行占用、原文件/绑定与临时目录清理；本轮截图和报告位于 `apps/web/output/playwright/vault-search/`，同名覆盖。失败须核对日志与本轮证据，不能复用旧报告推断成功。前端协议专项在 `apps/web` 运行 `node --experimental-strip-types --test test/features/chat/vault-search.test.ts`。
+代码检索 PC 联调：运行 `BROWSER_APP_MODE=local BROWSER_TEST_SCRIPT=code-search.mjs .venv/bin/python apps/web/test/browser/run-isolated.py`，支持 `PLAYWRIGHT_MODULE`/`CHROME_EXECUTABLE`，无需 Docker/真实模型密钥。真实迁移和隔离 PostgreSQL、临时授权 Python 项目经内部生成保存准备快照；仅聊天/Embedding出口和取消通知受控，生产流式解析、发送守卫及 BFF/API 保留。报告/截图在 `apps/web/output/playwright/code-search/`，每次先清除本专项旧产物；以浏览器、独立数据库核对、服务关闭和目录清理四份证据共同判断。停止按钮取消不同于网络断线。旧 `vault-search.mjs` 依赖已撤下的高级详情，不是当前产品回归；Vault协议专项仍可在 `apps/web` 运行 `node --experimental-strip-types --test test/features/chat/vault-search.test.ts`。
 
 补丁提案 PC 专项：沿用上方命令，将 `BROWSER_TEST_SCRIPT` 改为 `patch-proposal-tools.mjs`。模型受控，保存/授权详情真实执行；专属夹具对 `unconfirmed.txt` 在真实保存后注入确认丢失，启动器独立核对数据库。报告及截图在 `/private/tmp/agent-ui-patch-proposal/output/playwright/`，同名覆盖；临时服务、样例文件和测试库自动清理。
 

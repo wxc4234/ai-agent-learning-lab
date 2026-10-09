@@ -12,6 +12,8 @@ from app.services.runtime.agent.agent_runtime import AgentDecision, AgentObserva
 class StreamingDeepSeekDecisionMaker(DeepSeekDecisionMaker):
     async def stream_decisions(self, observations: tuple[AgentObservation, ...]) -> AsyncGenerator[ModelTextDelta | AgentDecision, None]:
         self._append_new_observations(observations)
+        if self._before_send is not None:
+            await self._before_send(self._messages, self._tools)
         started = perf_counter_ns()
         stream = await self._client.chat.completions.create(
             model=self._model, messages=self._messages, tools=self._tools,

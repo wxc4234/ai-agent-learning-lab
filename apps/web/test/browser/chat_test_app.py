@@ -247,3 +247,9 @@ if os.environ.get("BROWSER_TEST_SCRIPT") == "week5-completion.mjs":
     from week5_completion_fixture import OUTPUT
     from app.services.workspace.areas import owned_areas
     owned_areas.AREA_BASE = Path(json.loads((OUTPUT / 'fixture.json').read_text())['managed_base'])
+
+
+if os.environ.get("BROWSER_TEST_SCRIPT") == "code-search.mjs":
+    from code_search_model import install_code_search_fixture
+
+    install_code_search_fixture(app)

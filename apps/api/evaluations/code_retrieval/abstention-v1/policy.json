@@ -1,0 +1,10 @@
+{
+    "schema_version": 1,
+    "rule": "distinct-english-overlap-v1",
+    "input_strategy": "rrf-c60-v1",
+    "objective": "balanced-recall-loss-and-no-answer-fp-v1",
+    "corpus_sha256": "901f3cf917419df0d1b07e6a29fca9c94b25691bee6f83d4a825d4c5d8341e08",
+    "development_sha256": "1c72bc4c812ac5f79196cf0903f880c6ebf45e6bbe0da1799d7df264b2fae5f1",
+    "min_shared_terms": 2,
+    "evaluation_k": 3
+}

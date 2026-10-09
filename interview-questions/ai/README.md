@@ -41,3 +41,4 @@
 | rag | 召回质量差的排查顺序 | 高 | 待做 |
 | inference | 大模型推理慢，从哪些维度优化 | 高 | 待做 |
 | evaluation | LLM-as-Judge 的偏差与校准 | 高 | 待做 |
+| evaluation | [代码检索指标高为什么仍可能找不全来源或答错](evaluation/code-retrieval-metrics.md) | 高 | 参考答案已整理、尚未模拟 |

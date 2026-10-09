@@ -1,6 +1,6 @@
 # 受控代码向量存储与召回协议
 
-当前有[内部授权生成与保存串联](#授权代码生成与保存串联)、单批保存、授权批次读取、指定批次精确召回与显式查询生成→召回串联；显式查询已由[本地上下文API](code-context.md#本地授权查询-api)、[同源BFF](code-context.md#同源-bff-代理)复用；[查询校验实验](code-context.md#内部查询校验与产品边界)不作为用户入口，下述批次摘要已提供只读HTTP入口、[同源BFF](#批次摘要同源-bff)；[产品不暴露手动批次选择](#批次摘要与产品边界)。生成/保存/删除管理仍无HTTP入口，查询尚未接Agent，也没有自动扫描/发送链路。实现见[存储服务](../apps/api/app/services/workspace/files/code_vector_storage.py)、[召回服务](../apps/api/app/services/workspace/files/code_vector_search.py)、[查询串联服务](../apps/api/app/services/workspace/files/code_query_search.py)与[仓储](../apps/api/app/repositories/workspace/code_embedding_repository.py)。存储输入使用[Embedding生成协议](code-embeddings.md)的受控内存结果。
+当前有[内部授权生成与保存串联](#授权代码生成与保存串联)、单批保存、授权批次读取、指定批次精确召回与显式查询生成→召回串联；显式查询已由[本地上下文API](code-context.md#本地授权查询-api)、[同源BFF](code-context.md#同源-bff-代理)复用；[查询校验实验](code-context.md#内部查询校验与产品边界)不作为用户入口，下述批次摘要已提供只读HTTP入口、[同源BFF](#批次摘要同源-bff)；[产品不暴露手动批次选择](#批次摘要与产品边界)。生成/保存/删除管理仍无HTTP入口，查询已由[请求级代码检索工具](code-context.md#代码检索请求级注册与发送复核)接入本地流式Agent，也没有自动扫描/发送链路；已有[内部兼容批次选择](#授权兼容代码批次选择)，已由[内部检索组合](code-context.md#授权候选选择与查询上下文内部组合)串联查询。实现见[存储服务](../apps/api/app/services/workspace/files/code_vector_storage.py)、[召回服务](../apps/api/app/services/workspace/files/code_vector_search.py)、[查询串联服务](../apps/api/app/services/workspace/files/code_query_search.py)与[仓储](../apps/api/app/repositories/workspace/code_embedding_repository.py)。存储输入使用[Embedding生成协议](code-embeddings.md)的受控内存结果。
 
 ## 调用与授权边界
 
@@ -62,6 +62,22 @@ Task删除通过数据库CASCADE清理其批次和向量，沿用既有删除事
 顶层只返回workspace_id、task_id、batches、has_more、limit=20及source=code_embedding_batch_summaries。每项只返回batch_id、space_id、requested_model、response_model、dimensions、chunk_count、truncated、incomplete_reasons、带时区created_at；不带文件路径、来源全文、历史用量、内部主键、私有绑定证据、Key或供应商URL。不同空间可同时出现在列表中，不自动选取最新批次；后续上下文查询仍须显式选择批次/报告版本，并按当前配置与权限重新核对完整空间。
 
 成功退出事务后才返回独立公开数据；HTTP再次严格验证资源、列表顺序/重复项/覆盖与公开字段，匹配路由的成功失败均no-store。没有当前授权或资源时统一404 workspace_not_accessible；本地门禁复用401/403；路径、查询或正文拒绝为422 invalid_code_embedding_batch_list_input；未绑定为409 code_embedding_project_unbound。数据库、坏来源、事务退出、依赖或响应生成的未知失败统一500 code_embedding_batch_list_failed，不反射原始异常或未知业务码，不伪空或重试。既有本机身份依赖仍会幂等初始化users，不能把整个HTTP链路称为只有SELECT。
+
+## 授权兼容代码批次选择
+
+内部服务[select_code_embedding_batch](../apps/api/app/services/workspace/files/code_batch_selection.py)由可信宿主显式提供当前身份、Workspace/Task及独立EmbeddingConfig，不从聊天配置回退、不增加HTTP/PC入口，也不调用生成、刷新或Agent Loop。
+
+先从配置字段重建严格配置，非法对象/字段在摘要读取前拒绝；禁止序列化警告反射原配置，固定错误为`invalid_code_embedding_batch_selection_config`。随后复用授权摘要服务，归属、绑定、元数据和事务退出失败原样传播，不能转成“未找到”。摘要事务成功退出后只比较内存窗口，无文件、向量、模型I/O或额外事务。
+
+按摘要原有created_at/batch_id降序，先比较请求模型与维度，再以当前配置及每批自己的response_model复算完整空间指纹，选择第一个匹配项。Key轮换不改变空间；地址、请求模型、报告版本、维度及dimensions开关仍参与指纹。不按覆盖完整度重排，不自动回退其他空间。选中摘要深复制并保留原覆盖事实；配置、密钥及私有绑定不进入结果。
+
+结果包含workspace_id、task_id、status、selected、candidate_count、has_more、limit=20和source=code_embedding_batch_selection。status为selected或not_found_in_window，后者selected为None；candidate_count是整个返回窗口数量，不是历史总数或匹配数。最多筛选20项，第21项只由摘要服务校验并确定has_more；has_more时未找到不能推断全部历史无兼容批次。
+
+选择只是当前授权读取后的候选事实，不证明当前磁盘、向量可用性、供应商现在的报告版本或语义质量，也不授予查询/发送许可。后续查询仍重新授权指定批次、完整空间与当前绑定，并检查供应商实际报告版本；后续[内部检索组合](code-context.md#授权候选选择与查询上下文内部组合)已复用这些复核；选择服务自身仍只返回候选。
+
+[34项选择专项](../apps/api/tests/workspace/files/test_code_batch_selection.py)通过：22项内存/预检覆盖配置、错类型、绕过构造、每批版本、空间错配、最近优先、Key轮换、深复制/覆盖、空/20项窗口与异常传播；12项真实PostgreSQL覆盖只读SQL/不读向量、比较时连接已释放、窗口外兼容批次不可选、当前归属/会话、错目标、绑定修订/往返/解绑、第21项坏元数据和事务退出失败。复用根随机测试库/私有schema，允许真实提交并清理；未访问开发业务表、真实供应商或浏览器。学习者实现核心，完成后教练补测试并修正异常类型及配置警告处理；工程通过不代表独立掌握。已有依赖未改，不扩跑旧领域或前端测试。
+
+复跑：在apps/api执行`../../.venv/bin/python -m pytest tests/workspace/files/test_code_batch_selection.py -q --tb=short -W error`；受影响两个Python文件的Ruff/Pyright通过。
 
 ## 批次摘要同源 BFF
 

@@ -19,7 +19,6 @@ export type VaultSearchView = {
     matches: VaultMatchView[];
 };
 
-export const VAULT_MODEL_NOTICE = "使用笔记检索时，命中片段会发送给你配置的模型。";
 export const VAULT_SEARCH_FAILURE = "检索失败，不能据此判断没有相关笔记。";
 export const VAULT_INCOMPLETE_LABELS: Record<VaultIncompleteReason, string> = {
     inventory_truncated: "目录清单不完整，部分目录或文件未进入本次检索。",

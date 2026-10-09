@@ -1,7 +1,7 @@
 """把 DeepSeek 消息协议适配为通用 Agent Runtime 决策。"""
 
 import json
-from collections.abc import Sequence
+from collections.abc import Awaitable, Callable, Sequence
 from time import perf_counter_ns
 from typing import ClassVar
 from openai import AsyncOpenAI
@@ -10,6 +10,7 @@ from openai.types.chat import (
     ChatCompletionAssistantMessageParam,
     ChatCompletionMessageParam,
     ChatCompletionToolMessageParam,
+    ChatCompletionToolParam,
 )
 
 from app.services.runtime.agent.agent_runtime import (
@@ -23,6 +24,8 @@ from app.services.runtime.agent.agent_runtime import (
 )
 from app.tools.context import ToolExecutionContext
 from app.tools.registry import ToolDefinition, model_tools_for_context
+
+ModelRequestGuard = Callable[[Sequence[ChatCompletionMessageParam], Sequence[ChatCompletionToolParam]], Awaitable[None]]
 
 DEFAULT_SYSTEM_PROMPT = """你是一个可以使用工具解决问题的 AI 助手。
 需要外部计算或实时信息时，请调用提供的工具；收到工具结果后再给出最终回答。
@@ -44,6 +47,8 @@ class ModelDecisionError(RuntimeError):
         "incomplete_response": "模型响应未完整结束，已显示内容可能不完整，未保存为完整回答或执行未完成的工具调用。请重试。",
         "unsupported_tool_type": "模型返回了不支持的工具类型，本次未执行该工具。",
         "history_mismatch": "本次工具结果上下文不一致，运行已停止。请重新发送原问题。",
+        "code_context_send_rejected": "当前代码上下文已不可发送，运行已停止，请核对项目和任务。",
+        "model_request_budget_exceeded": "完整模型请求超过本地字节预算，本次未继续发送。",
         "invalid_response": "模型响应格式异常，运行已停止。请重新发送原问题。",
     }
 
@@ -68,9 +73,11 @@ class DeepSeekDecisionMaker:
         messages: Sequence[ChatCompletionMessageParam] | None = None,
         tool_context: ToolExecutionContext | None = None,
         tool_definitions: tuple[ToolDefinition, ...] | None = None,
+        before_send: ModelRequestGuard | None = None,
     ) -> None:
         self._client = client
         self._model = model
+        self._before_send = before_send
 
         # 显式传入时，模型只看到本次执行能力快照中的描述。
         # 不序列化执行器、上下文、Run ID或恢复记录容器。
@@ -121,6 +128,9 @@ class DeepSeekDecisionMaker:
     ) -> AgentDecision:
         """追加新的工具观察，调用模型，并返回一次工具动作或最终答案。"""
         self._append_new_observations(observations)
+
+        if self._before_send is not None:
+            await self._before_send(self._messages, self._tools)
 
         # 只测量真实模型请求，不包含消息整理和后续解析。
         model_started_at_ns = perf_counter_ns()

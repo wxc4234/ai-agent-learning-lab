@@ -1,0 +1,175 @@
+{
+    "schema_version": 1,
+    "dataset_id": "code-retrieval-v1",
+    "dataset_sha256": "f38316f72364b1e0ad0e4cd948ae04de684aeb56a233b57b903b00aebb239df9",
+    "strategy": "literal-term-overlap-v1",
+    "citation_origin": "retrieval_reference",
+    "k": 3,
+    "query_count": 8,
+    "answerable_count": 6,
+    "no_answer_count": 2,
+    "error_count": 0,
+    "recall_at_k": 0.8333333333333334,
+    "mrr_at_k": 0.8333333333333334,
+    "no_answer_false_positive_count": 1,
+    "no_answer_error_count": 0,
+    "citation_count": 6,
+    "citation_relevance": 0.8333333333333334,
+    "citation_grounding_at_k": 1.0,
+    "rows": [
+        {
+            "query_id": "cancel",
+            "status": "ok",
+            "top_source_ids": [
+                "control.cancel_task",
+                "control.cancellation_checkpoint",
+                "history.save_turn"
+            ],
+            "duplicate_count": 0,
+            "relevant_count": 3,
+            "matched_source_ids": [
+                "control.cancel_task",
+                "control.cancellation_checkpoint",
+                "history.save_turn"
+            ],
+            "recall_at_k": 1.0,
+            "reciprocal_rank_at_k": 1.0,
+            "no_answer_false_positive": null,
+            "citation_count": 1,
+            "relevant_citation_count": 1,
+            "grounded_citation_count": 1
+        },
+        {
+            "query_id": "history",
+            "status": "ok",
+            "top_source_ids": [
+                "history.save_turn",
+                "history.restore_history"
+            ],
+            "duplicate_count": 0,
+            "relevant_count": 2,
+            "matched_source_ids": [
+                "history.restore_history",
+                "history.save_turn"
+            ],
+            "recall_at_k": 1.0,
+            "reciprocal_rank_at_k": 1.0,
+            "no_answer_false_positive": null,
+            "citation_count": 1,
+            "relevant_citation_count": 1,
+            "grounded_citation_count": 1
+        },
+        {
+            "query_id": "authorization",
+            "status": "ok",
+            "top_source_ids": [
+                "scope.authorize_workspace",
+                "scope.verify_revision"
+            ],
+            "duplicate_count": 0,
+            "relevant_count": 2,
+            "matched_source_ids": [
+                "scope.authorize_workspace",
+                "scope.verify_revision"
+            ],
+            "recall_at_k": 1.0,
+            "reciprocal_rank_at_k": 1.0,
+            "no_answer_false_positive": null,
+            "citation_count": 1,
+            "relevant_citation_count": 1,
+            "grounded_citation_count": 1
+        },
+        {
+            "query_id": "budget",
+            "status": "ok",
+            "top_source_ids": [
+                "budget.measure_request_bytes",
+                "budget.check_request_budget",
+                "control.cancel_task"
+            ],
+            "duplicate_count": 0,
+            "relevant_count": 2,
+            "matched_source_ids": [
+                "budget.check_request_budget",
+                "budget.measure_request_bytes"
+            ],
+            "recall_at_k": 1.0,
+            "reciprocal_rank_at_k": 1.0,
+            "no_answer_false_positive": null,
+            "citation_count": 1,
+            "relevant_citation_count": 1,
+            "grounded_citation_count": 1
+        },
+        {
+            "query_id": "exact-symbol",
+            "status": "ok",
+            "top_source_ids": [
+                "history.restore_history",
+                "history.save_turn"
+            ],
+            "duplicate_count": 0,
+            "relevant_count": 1,
+            "matched_source_ids": [
+                "history.restore_history"
+            ],
+            "recall_at_k": 1.0,
+            "reciprocal_rank_at_k": 1.0,
+            "no_answer_false_positive": null,
+            "citation_count": 1,
+            "relevant_citation_count": 1,
+            "grounded_citation_count": 1
+        },
+        {
+            "query_id": "chinese",
+            "status": "ok",
+            "top_source_ids": [],
+            "duplicate_count": 0,
+            "relevant_count": 2,
+            "matched_source_ids": [],
+            "recall_at_k": 0.0,
+            "reciprocal_rank_at_k": 0.0,
+            "no_answer_false_positive": null,
+            "citation_count": 0,
+            "relevant_citation_count": 0,
+            "grounded_citation_count": 0
+        },
+        {
+            "query_id": "absent",
+            "status": "ok",
+            "top_source_ids": [],
+            "duplicate_count": 0,
+            "relevant_count": 0,
+            "matched_source_ids": [],
+            "recall_at_k": null,
+            "reciprocal_rank_at_k": null,
+            "no_answer_false_positive": false,
+            "citation_count": 0,
+            "relevant_citation_count": 0,
+            "grounded_citation_count": 0
+        },
+        {
+            "query_id": "absent-related",
+            "status": "ok",
+            "top_source_ids": [
+                "budget.check_request_budget",
+                "budget.measure_request_bytes",
+                "control.cancel_task"
+            ],
+            "duplicate_count": 0,
+            "relevant_count": 0,
+            "matched_source_ids": [],
+            "recall_at_k": null,
+            "reciprocal_rank_at_k": null,
+            "no_answer_false_positive": true,
+            "citation_count": 1,
+            "relevant_citation_count": 0,
+            "grounded_citation_count": 1
+        }
+    ],
+    "limits": [
+        "offline_authored_fixture",
+        "source_level_dedup_before_k",
+        "not_semantic_or_answer_quality",
+        "no_latency_or_cost_measurement"
+    ]
+}

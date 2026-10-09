@@ -2,6 +2,12 @@
 
 
 _SAFE_MESSAGES = {
+    "code_search_request_rejected": "代码查询须为非空文本，最多2000字符及4096 UTF-8字节，且不含NUL",
+    "code_search_unavailable": "代码检索暂时无法确认，不能解释成没有匹配；不要自动重试",
+    "code_search_timeout": "代码检索等待超时，可能已经产生模型用量；不要自动重试",
+    "code_search_space_changed": "查询报告的模型空间已变化，本次不回退其他批次",
+    "code_search_budget_exceeded": "代码上下文超过宿主预算，未返回部分结果",
+    "code_search_result_too_large": "代码检索完整输出超过预算，未返回部分结果",
     "task_sample_diff_request_rejected": "应用样例差异查询不接受额外参数",
     "task_sample_diff_unavailable": "应用样例差异无法确认，请核对来源与状态",
     "task_sample_diff_output_limit": "应用样例差异超过输出预算，不返回部分结果",

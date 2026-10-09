@@ -324,6 +324,10 @@ try:
                 from git_diff_model import verify_git_diff_rows
 
                 verify_git_diff_rows(engine)
+            if os.environ.get("BROWSER_TEST_SCRIPT") == "code-search.mjs":
+                from code_search_model import verify_code_rows
+
+                verify_code_rows(engine)
             if os.environ.get("BROWSER_TEST_SCRIPT") == "vault-search.mjs":
                 from vault_search_model import verify_vault_rows
 
@@ -396,6 +400,13 @@ try:
             assert json.loads((output / "server-evidence.json").read_text()) == {
                 "calls": 6, "runs": 6, "source_unchanged": True, "directory_removed": True,
             }
+        if os.environ.get("BROWSER_TEST_SCRIPT") == "code-search.mjs":
+            # 读回关闭证据；浏览器退出不能证明取消资源已经释放。
+            import json
+            output = ROOT / "apps/web/output/playwright/code-search"
+            evidence = json.loads((output / "server-evidence.json").read_text())
+            assert all(evidence[key] for key in ("files_unchanged", "bindings_unchanged", "vectors_unchanged", "embedding_cancelled", "embedding_closed", "chat_streams_closed", "execution_budget_released"))
+            assert json.loads((output / "cleanup-evidence.json").read_text()) == {"project_directories_removed": 4}
         if os.environ.get("BROWSER_TEST_SCRIPT") == "vault-search.mjs":
             # 读回 lifespan 证据，确认刷新只查历史、原笔记只读和临时目录清理。
             import json

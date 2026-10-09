@@ -1,0 +1,904 @@
+{
+    "schema_version": 1,
+    "clock": "monotonic",
+    "percentile": "nearest-rank",
+    "spans": [
+        {
+            "phase": "build",
+            "sample": "build",
+            "stage": "embedding",
+            "status": "ok",
+            "duration_ms": 3.782874991884455
+        },
+        {
+            "phase": "build",
+            "sample": "build",
+            "stage": "end_to_end",
+            "status": "ok",
+            "duration_ms": 48.27716699219309
+        },
+        {
+            "phase": "query",
+            "sample": "cancel",
+            "stage": "literal",
+            "status": "ok",
+            "duration_ms": 0.29562501003965735
+        },
+        {
+            "phase": "query",
+            "sample": "cancel",
+            "stage": "embedding",
+            "status": "ok",
+            "duration_ms": 0.44958299258723855
+        },
+        {
+            "phase": "query",
+            "sample": "cancel",
+            "stage": "recall",
+            "status": "ok",
+            "duration_ms": 6.724708000547253
+        },
+        {
+            "phase": "query",
+            "sample": "cancel",
+            "stage": "fusion",
+            "status": "ok",
+            "duration_ms": 0.3958750021411106
+        },
+        {
+            "phase": "query",
+            "sample": "cancel",
+            "stage": "filter",
+            "status": "ok",
+            "duration_ms": 0.23691699607297778
+        },
+        {
+            "phase": "query",
+            "sample": "cancel",
+            "stage": "end_to_end",
+            "status": "ok",
+            "duration_ms": 12.93358400289435
+        },
+        {
+            "phase": "query",
+            "sample": "history",
+            "stage": "literal",
+            "status": "ok",
+            "duration_ms": 0.10000000474974513
+        },
+        {
+            "phase": "query",
+            "sample": "history",
+            "stage": "embedding",
+            "status": "ok",
+            "duration_ms": 0.3446249902481213
+        },
+        {
+            "phase": "query",
+            "sample": "history",
+            "stage": "recall",
+            "status": "ok",
+            "duration_ms": 4.38645800750237
+        },
+        {
+            "phase": "query",
+            "sample": "history",
+            "stage": "fusion",
+            "status": "ok",
+            "duration_ms": 0.29579199326690286
+        },
+        {
+            "phase": "query",
+            "sample": "history",
+            "stage": "filter",
+            "status": "ok",
+            "duration_ms": 0.22666598670184612
+        },
+        {
+            "phase": "query",
+            "sample": "history",
+            "stage": "end_to_end",
+            "status": "ok",
+            "duration_ms": 9.023916005389765
+        },
+        {
+            "phase": "query",
+            "sample": "authorization",
+            "stage": "literal",
+            "status": "ok",
+            "duration_ms": 0.09341700933873653
+        },
+        {
+            "phase": "query",
+            "sample": "authorization",
+            "stage": "embedding",
+            "status": "ok",
+            "duration_ms": 0.374249997548759
+        },
+        {
+            "phase": "query",
+            "sample": "authorization",
+            "stage": "recall",
+            "status": "ok",
+            "duration_ms": 5.700791007257067
+        },
+        {
+            "phase": "query",
+            "sample": "authorization",
+            "stage": "fusion",
+            "status": "ok",
+            "duration_ms": 0.28808400384150445
+        },
+        {
+            "phase": "query",
+            "sample": "authorization",
+            "stage": "filter",
+            "status": "ok",
+            "duration_ms": 0.2290419943165034
+        },
+        {
+            "phase": "query",
+            "sample": "authorization",
+            "stage": "end_to_end",
+            "status": "ok",
+            "duration_ms": 10.236375004751608
+        },
+        {
+            "phase": "query",
+            "sample": "budget",
+            "stage": "literal",
+            "status": "ok",
+            "duration_ms": 0.0967499945545569
+        },
+        {
+            "phase": "query",
+            "sample": "budget",
+            "stage": "embedding",
+            "status": "ok",
+            "duration_ms": 0.4204170109005645
+        },
+        {
+            "phase": "query",
+            "sample": "budget",
+            "stage": "recall",
+            "status": "ok",
+            "duration_ms": 4.325375004555099
+        },
+        {
+            "phase": "query",
+            "sample": "budget",
+            "stage": "fusion",
+            "status": "ok",
+            "duration_ms": 0.2704579965211451
+        },
+        {
+            "phase": "query",
+            "sample": "budget",
+            "stage": "filter",
+            "status": "ok",
+            "duration_ms": 0.19574999168980867
+        },
+        {
+            "phase": "query",
+            "sample": "budget",
+            "stage": "end_to_end",
+            "status": "ok",
+            "duration_ms": 8.967916000983678
+        },
+        {
+            "phase": "query",
+            "sample": "exact-symbol",
+            "stage": "literal",
+            "status": "ok",
+            "duration_ms": 0.08241599425673485
+        },
+        {
+            "phase": "query",
+            "sample": "exact-symbol",
+            "stage": "embedding",
+            "status": "ok",
+            "duration_ms": 0.2908750029746443
+        },
+        {
+            "phase": "query",
+            "sample": "exact-symbol",
+            "stage": "recall",
+            "status": "ok",
+            "duration_ms": 4.044999994221143
+        },
+        {
+            "phase": "query",
+            "sample": "exact-symbol",
+            "stage": "fusion",
+            "status": "ok",
+            "duration_ms": 0.29637500119861215
+        },
+        {
+            "phase": "query",
+            "sample": "exact-symbol",
+            "stage": "filter",
+            "status": "ok",
+            "duration_ms": 0.21829199977219105
+        },
+        {
+            "phase": "query",
+            "sample": "exact-symbol",
+            "stage": "end_to_end",
+            "status": "ok",
+            "duration_ms": 8.174625007086433
+        },
+        {
+            "phase": "query",
+            "sample": "chinese",
+            "stage": "literal",
+            "status": "ok",
+            "duration_ms": 0.10245799785479903
+        },
+        {
+            "phase": "query",
+            "sample": "chinese",
+            "stage": "embedding",
+            "status": "ok",
+            "duration_ms": 0.2852500037988648
+        },
+        {
+            "phase": "query",
+            "sample": "chinese",
+            "stage": "recall",
+            "status": "ok",
+            "duration_ms": 3.719041997101158
+        },
+        {
+            "phase": "query",
+            "sample": "chinese",
+            "stage": "fusion",
+            "status": "ok",
+            "duration_ms": 0.2357079938519746
+        },
+        {
+            "phase": "query",
+            "sample": "chinese",
+            "stage": "filter",
+            "status": "ok",
+            "duration_ms": 0.1824999926611781
+        },
+        {
+            "phase": "query",
+            "sample": "chinese",
+            "stage": "end_to_end",
+            "status": "ok",
+            "duration_ms": 7.673083993722685
+        },
+        {
+            "phase": "query",
+            "sample": "absent",
+            "stage": "literal",
+            "status": "ok",
+            "duration_ms": 0.0805830059107393
+        },
+        {
+            "phase": "query",
+            "sample": "absent",
+            "stage": "embedding",
+            "status": "ok",
+            "duration_ms": 0.3034999972442165
+        },
+        {
+            "phase": "query",
+            "sample": "absent",
+            "stage": "recall",
+            "status": "ok",
+            "duration_ms": 3.7937919987598434
+        },
+        {
+            "phase": "query",
+            "sample": "absent",
+            "stage": "fusion",
+            "status": "ok",
+            "duration_ms": 0.2067500026896596
+        },
+        {
+            "phase": "query",
+            "sample": "absent",
+            "stage": "filter",
+            "status": "ok",
+            "duration_ms": 0.1654170046094805
+        },
+        {
+            "phase": "query",
+            "sample": "absent",
+            "stage": "end_to_end",
+            "status": "ok",
+            "duration_ms": 7.357790993410163
+        },
+        {
+            "phase": "query",
+            "sample": "absent-related",
+            "stage": "literal",
+            "status": "ok",
+            "duration_ms": 0.06904199835844338
+        },
+        {
+            "phase": "query",
+            "sample": "absent-related",
+            "stage": "embedding",
+            "status": "ok",
+            "duration_ms": 0.29424999956972897
+        },
+        {
+            "phase": "query",
+            "sample": "absent-related",
+            "stage": "recall",
+            "status": "ok",
+            "duration_ms": 3.6805830022785813
+        },
+        {
+            "phase": "query",
+            "sample": "absent-related",
+            "stage": "fusion",
+            "status": "ok",
+            "duration_ms": 0.2664579951670021
+        },
+        {
+            "phase": "query",
+            "sample": "absent-related",
+            "stage": "filter",
+            "status": "ok",
+            "duration_ms": 0.17608300549909472
+        },
+        {
+            "phase": "query",
+            "sample": "absent-related",
+            "stage": "end_to_end",
+            "status": "ok",
+            "duration_ms": 7.509292001486756
+        }
+    ],
+    "latency": [
+        {
+            "phase": "build",
+            "stage": "embedding",
+            "status": "ok",
+            "count": 1,
+            "mean_ms": 3.782874991884455,
+            "p50_ms": 3.782874991884455,
+            "p95_ms": 3.782874991884455
+        },
+        {
+            "phase": "build",
+            "stage": "end_to_end",
+            "status": "ok",
+            "count": 1,
+            "mean_ms": 48.27716699219309,
+            "p50_ms": 48.27716699219309,
+            "p95_ms": 48.27716699219309
+        },
+        {
+            "phase": "query",
+            "stage": "embedding",
+            "status": "ok",
+            "count": 8,
+            "mean_ms": 0.34534374935901724,
+            "p50_ms": 0.3034999972442165,
+            "p95_ms": 0.44958299258723855
+        },
+        {
+            "phase": "query",
+            "stage": "end_to_end",
+            "status": "ok",
+            "count": 8,
+            "mean_ms": 8.98457287621568,
+            "p50_ms": 8.174625007086433,
+            "p95_ms": 12.93358400289435
+        },
+        {
+            "phase": "query",
+            "stage": "filter",
+            "status": "ok",
+            "count": 8,
+            "mean_ms": 0.20383337141538505,
+            "p50_ms": 0.19574999168980867,
+            "p95_ms": 0.23691699607297778
+        },
+        {
+            "phase": "query",
+            "stage": "fusion",
+            "status": "ok",
+            "count": 8,
+            "mean_ms": 0.28193749858473893,
+            "p50_ms": 0.2704579965211451,
+            "p95_ms": 0.3958750021411106
+        },
+        {
+            "phase": "query",
+            "stage": "literal",
+            "status": "ok",
+            "count": 8,
+            "mean_ms": 0.11503637688292656,
+            "p50_ms": 0.09341700933873653,
+            "p95_ms": 0.29562501003965735
+        },
+        {
+            "phase": "query",
+            "stage": "recall",
+            "status": "ok",
+            "count": 8,
+            "mean_ms": 4.546968626527814,
+            "p50_ms": 4.044999994221143,
+            "p95_ms": 6.724708000547253
+        }
+    ],
+    "usage": [
+        {
+            "phase": "build",
+            "sample": "build",
+            "attempts": 1,
+            "validated_requests": 1,
+            "prompt_tokens": null,
+            "total_tokens": null,
+            "state": "unknown"
+        },
+        {
+            "phase": "query",
+            "sample": "absent",
+            "attempts": 1,
+            "validated_requests": 1,
+            "prompt_tokens": null,
+            "total_tokens": null,
+            "state": "unknown"
+        },
+        {
+            "phase": "query",
+            "sample": "absent-related",
+            "attempts": 1,
+            "validated_requests": 1,
+            "prompt_tokens": null,
+            "total_tokens": null,
+            "state": "unknown"
+        },
+        {
+            "phase": "query",
+            "sample": "authorization",
+            "attempts": 1,
+            "validated_requests": 1,
+            "prompt_tokens": null,
+            "total_tokens": null,
+            "state": "unknown"
+        },
+        {
+            "phase": "query",
+            "sample": "budget",
+            "attempts": 1,
+            "validated_requests": 1,
+            "prompt_tokens": null,
+            "total_tokens": null,
+            "state": "unknown"
+        },
+        {
+            "phase": "query",
+            "sample": "cancel",
+            "attempts": 1,
+            "validated_requests": 1,
+            "prompt_tokens": null,
+            "total_tokens": null,
+            "state": "unknown"
+        },
+        {
+            "phase": "query",
+            "sample": "chinese",
+            "attempts": 1,
+            "validated_requests": 1,
+            "prompt_tokens": null,
+            "total_tokens": null,
+            "state": "unknown"
+        },
+        {
+            "phase": "query",
+            "sample": "exact-symbol",
+            "attempts": 1,
+            "validated_requests": 1,
+            "prompt_tokens": null,
+            "total_tokens": null,
+            "state": "unknown"
+        },
+        {
+            "phase": "query",
+            "sample": "history",
+            "attempts": 1,
+            "validated_requests": 1,
+            "prompt_tokens": null,
+            "total_tokens": null,
+            "state": "unknown"
+        }
+    ],
+    "usage_totals": [
+        {
+            "phase": "build",
+            "samples": 1,
+            "attempts": 1,
+            "unknown_samples": 1,
+            "prompt_tokens": null,
+            "total_tokens": null,
+            "cost": null,
+            "cost_state": "unknown"
+        },
+        {
+            "phase": "query",
+            "samples": 8,
+            "attempts": 8,
+            "unknown_samples": 8,
+            "prompt_tokens": null,
+            "total_tokens": null,
+            "cost": null,
+            "cost_state": "unknown"
+        }
+    ],
+    "timing_scope": "nested spans overlap; do not sum stage percentiles",
+    "environment": "local PostgreSQL and controlled HTTPX; not provider performance",
+    "dataset_sha256": "f38316f72364b1e0ad0e4cd948ae04de684aeb56a233b57b903b00aebb239df9",
+    "planned_queries": 8,
+    "started_queries": 8,
+    "completed_queries": 8,
+    "unstarted_queries": 0,
+    "quality_rows": [
+        {
+            "schema_version": 1,
+            "dataset_id": "code-retrieval-v1",
+            "dataset_sha256": "a460991ab793ab04a4bf5f25638410c061d4f05e91d260cca9cb94d852ccd1f0",
+            "strategy": "distinct-english-overlap-v1-t2",
+            "citation_origin": "retrieval_reference",
+            "k": 3,
+            "query_count": 1,
+            "answerable_count": 1,
+            "no_answer_count": 0,
+            "error_count": 0,
+            "recall_at_k": 1.0,
+            "mrr_at_k": 1.0,
+            "no_answer_false_positive_count": 0,
+            "no_answer_error_count": 0,
+            "citation_count": 1,
+            "citation_relevance": 1.0,
+            "citation_grounding_at_k": 1.0,
+            "rows": [
+                {
+                    "query_id": "cancel",
+                    "status": "ok",
+                    "top_source_ids": [
+                        "control.cancel_task",
+                        "history.save_turn",
+                        "control.cancellation_checkpoint"
+                    ],
+                    "duplicate_count": 0,
+                    "relevant_count": 3,
+                    "matched_source_ids": [
+                        "control.cancel_task",
+                        "control.cancellation_checkpoint",
+                        "history.save_turn"
+                    ],
+                    "recall_at_k": 1.0,
+                    "reciprocal_rank_at_k": 1.0,
+                    "no_answer_false_positive": null,
+                    "citation_count": 1,
+                    "relevant_citation_count": 1,
+                    "grounded_citation_count": 1
+                }
+            ],
+            "limits": [
+                "offline_authored_fixture",
+                "source_level_dedup_before_k",
+                "not_semantic_or_answer_quality",
+                "no_latency_or_cost_measurement"
+            ]
+        },
+        {
+            "schema_version": 1,
+            "dataset_id": "code-retrieval-v1",
+            "dataset_sha256": "a8c2dead772238790867b7dcc9e41507aa3a74677cf2852dd4c0819f56f875f1",
+            "strategy": "distinct-english-overlap-v1-t2",
+            "citation_origin": "retrieval_reference",
+            "k": 3,
+            "query_count": 1,
+            "answerable_count": 1,
+            "no_answer_count": 0,
+            "error_count": 0,
+            "recall_at_k": 1.0,
+            "mrr_at_k": 1.0,
+            "no_answer_false_positive_count": 0,
+            "no_answer_error_count": 0,
+            "citation_count": 1,
+            "citation_relevance": 1.0,
+            "citation_grounding_at_k": 1.0,
+            "rows": [
+                {
+                    "query_id": "history",
+                    "status": "ok",
+                    "top_source_ids": [
+                        "history.save_turn",
+                        "history.restore_history"
+                    ],
+                    "duplicate_count": 0,
+                    "relevant_count": 2,
+                    "matched_source_ids": [
+                        "history.restore_history",
+                        "history.save_turn"
+                    ],
+                    "recall_at_k": 1.0,
+                    "reciprocal_rank_at_k": 1.0,
+                    "no_answer_false_positive": null,
+                    "citation_count": 1,
+                    "relevant_citation_count": 1,
+                    "grounded_citation_count": 1
+                }
+            ],
+            "limits": [
+                "offline_authored_fixture",
+                "source_level_dedup_before_k",
+                "not_semantic_or_answer_quality",
+                "no_latency_or_cost_measurement"
+            ]
+        },
+        {
+            "schema_version": 1,
+            "dataset_id": "code-retrieval-v1",
+            "dataset_sha256": "e782ea30a66415c41121caf2ad0124c89b253d029ad2ae3b773dcd0593d1aa54",
+            "strategy": "distinct-english-overlap-v1-t2",
+            "citation_origin": "retrieval_reference",
+            "k": 3,
+            "query_count": 1,
+            "answerable_count": 1,
+            "no_answer_count": 0,
+            "error_count": 0,
+            "recall_at_k": 1.0,
+            "mrr_at_k": 1.0,
+            "no_answer_false_positive_count": 0,
+            "no_answer_error_count": 0,
+            "citation_count": 1,
+            "citation_relevance": 1.0,
+            "citation_grounding_at_k": 1.0,
+            "rows": [
+                {
+                    "query_id": "authorization",
+                    "status": "ok",
+                    "top_source_ids": [
+                        "scope.authorize_workspace",
+                        "scope.verify_revision"
+                    ],
+                    "duplicate_count": 0,
+                    "relevant_count": 2,
+                    "matched_source_ids": [
+                        "scope.authorize_workspace",
+                        "scope.verify_revision"
+                    ],
+                    "recall_at_k": 1.0,
+                    "reciprocal_rank_at_k": 1.0,
+                    "no_answer_false_positive": null,
+                    "citation_count": 1,
+                    "relevant_citation_count": 1,
+                    "grounded_citation_count": 1
+                }
+            ],
+            "limits": [
+                "offline_authored_fixture",
+                "source_level_dedup_before_k",
+                "not_semantic_or_answer_quality",
+                "no_latency_or_cost_measurement"
+            ]
+        },
+        {
+            "schema_version": 1,
+            "dataset_id": "code-retrieval-v1",
+            "dataset_sha256": "e7add042e2d3aa477433a312cbe9474b70de9240292b19c96fd23f4bfe479a7a",
+            "strategy": "distinct-english-overlap-v1-t2",
+            "citation_origin": "retrieval_reference",
+            "k": 3,
+            "query_count": 1,
+            "answerable_count": 1,
+            "no_answer_count": 0,
+            "error_count": 0,
+            "recall_at_k": 1.0,
+            "mrr_at_k": 1.0,
+            "no_answer_false_positive_count": 0,
+            "no_answer_error_count": 0,
+            "citation_count": 1,
+            "citation_relevance": 1.0,
+            "citation_grounding_at_k": 1.0,
+            "rows": [
+                {
+                    "query_id": "budget",
+                    "status": "ok",
+                    "top_source_ids": [
+                        "budget.measure_request_bytes",
+                        "budget.check_request_budget"
+                    ],
+                    "duplicate_count": 0,
+                    "relevant_count": 2,
+                    "matched_source_ids": [
+                        "budget.check_request_budget",
+                        "budget.measure_request_bytes"
+                    ],
+                    "recall_at_k": 1.0,
+                    "reciprocal_rank_at_k": 1.0,
+                    "no_answer_false_positive": null,
+                    "citation_count": 1,
+                    "relevant_citation_count": 1,
+                    "grounded_citation_count": 1
+                }
+            ],
+            "limits": [
+                "offline_authored_fixture",
+                "source_level_dedup_before_k",
+                "not_semantic_or_answer_quality",
+                "no_latency_or_cost_measurement"
+            ]
+        },
+        {
+            "schema_version": 1,
+            "dataset_id": "code-retrieval-v1",
+            "dataset_sha256": "fc3849151179107e4f8a43451ec8e2c092930663d3ff62dc5514147d53f79c3b",
+            "strategy": "distinct-english-overlap-v1-t2",
+            "citation_origin": "retrieval_reference",
+            "k": 3,
+            "query_count": 1,
+            "answerable_count": 1,
+            "no_answer_count": 0,
+            "error_count": 0,
+            "recall_at_k": 1.0,
+            "mrr_at_k": 1.0,
+            "no_answer_false_positive_count": 0,
+            "no_answer_error_count": 0,
+            "citation_count": 1,
+            "citation_relevance": 1.0,
+            "citation_grounding_at_k": 1.0,
+            "rows": [
+                {
+                    "query_id": "exact-symbol",
+                    "status": "ok",
+                    "top_source_ids": [
+                        "history.restore_history"
+                    ],
+                    "duplicate_count": 0,
+                    "relevant_count": 1,
+                    "matched_source_ids": [
+                        "history.restore_history"
+                    ],
+                    "recall_at_k": 1.0,
+                    "reciprocal_rank_at_k": 1.0,
+                    "no_answer_false_positive": null,
+                    "citation_count": 1,
+                    "relevant_citation_count": 1,
+                    "grounded_citation_count": 1
+                }
+            ],
+            "limits": [
+                "offline_authored_fixture",
+                "source_level_dedup_before_k",
+                "not_semantic_or_answer_quality",
+                "no_latency_or_cost_measurement"
+            ]
+        },
+        {
+            "schema_version": 1,
+            "dataset_id": "code-retrieval-v1",
+            "dataset_sha256": "f4fdd20a0fb5d217656d97be3760b92981c4bd97f45c3e091517bd7d83199460",
+            "strategy": "distinct-english-overlap-v1-t2",
+            "citation_origin": "retrieval_reference",
+            "k": 3,
+            "query_count": 1,
+            "answerable_count": 1,
+            "no_answer_count": 0,
+            "error_count": 0,
+            "recall_at_k": 0.0,
+            "mrr_at_k": 0.0,
+            "no_answer_false_positive_count": 0,
+            "no_answer_error_count": 0,
+            "citation_count": 0,
+            "citation_relevance": null,
+            "citation_grounding_at_k": null,
+            "rows": [
+                {
+                    "query_id": "chinese",
+                    "status": "ok",
+                    "top_source_ids": [],
+                    "duplicate_count": 0,
+                    "relevant_count": 2,
+                    "matched_source_ids": [],
+                    "recall_at_k": 0.0,
+                    "reciprocal_rank_at_k": 0.0,
+                    "no_answer_false_positive": null,
+                    "citation_count": 0,
+                    "relevant_citation_count": 0,
+                    "grounded_citation_count": 0
+                }
+            ],
+            "limits": [
+                "offline_authored_fixture",
+                "source_level_dedup_before_k",
+                "not_semantic_or_answer_quality",
+                "no_latency_or_cost_measurement"
+            ]
+        },
+        {
+            "schema_version": 1,
+            "dataset_id": "code-retrieval-v1",
+            "dataset_sha256": "a8df56b8addbe22542fc8126491ba45f28a856ed4a3f82bf1dde3973995bddcc",
+            "strategy": "distinct-english-overlap-v1-t2",
+            "citation_origin": "retrieval_reference",
+            "k": 3,
+            "query_count": 1,
+            "answerable_count": 0,
+            "no_answer_count": 1,
+            "error_count": 0,
+            "recall_at_k": null,
+            "mrr_at_k": null,
+            "no_answer_false_positive_count": 0,
+            "no_answer_error_count": 0,
+            "citation_count": 0,
+            "citation_relevance": null,
+            "citation_grounding_at_k": null,
+            "rows": [
+                {
+                    "query_id": "absent",
+                    "status": "ok",
+                    "top_source_ids": [],
+                    "duplicate_count": 0,
+                    "relevant_count": 0,
+                    "matched_source_ids": [],
+                    "recall_at_k": null,
+                    "reciprocal_rank_at_k": null,
+                    "no_answer_false_positive": false,
+                    "citation_count": 0,
+                    "relevant_citation_count": 0,
+                    "grounded_citation_count": 0
+                }
+            ],
+            "limits": [
+                "offline_authored_fixture",
+                "source_level_dedup_before_k",
+                "not_semantic_or_answer_quality",
+                "no_latency_or_cost_measurement"
+            ]
+        },
+        {
+            "schema_version": 1,
+            "dataset_id": "code-retrieval-v1",
+            "dataset_sha256": "6c18a38f313a1966b6e45f7d650ee6c1fe54dffcef60d35235c9bc21afbcf9d8",
+            "strategy": "distinct-english-overlap-v1-t2",
+            "citation_origin": "retrieval_reference",
+            "k": 3,
+            "query_count": 1,
+            "answerable_count": 0,
+            "no_answer_count": 1,
+            "error_count": 0,
+            "recall_at_k": null,
+            "mrr_at_k": null,
+            "no_answer_false_positive_count": 0,
+            "no_answer_error_count": 0,
+            "citation_count": 0,
+            "citation_relevance": null,
+            "citation_grounding_at_k": null,
+            "rows": [
+                {
+                    "query_id": "absent-related",
+                    "status": "ok",
+                    "top_source_ids": [],
+                    "duplicate_count": 0,
+                    "relevant_count": 0,
+                    "matched_source_ids": [],
+                    "recall_at_k": null,
+                    "reciprocal_rank_at_k": null,
+                    "no_answer_false_positive": false,
+                    "citation_count": 0,
+                    "relevant_citation_count": 0,
+                    "grounded_citation_count": 0
+                }
+            ],
+            "limits": [
+                "offline_authored_fixture",
+                "source_level_dedup_before_k",
+                "not_semantic_or_answer_quality",
+                "no_latency_or_cost_measurement"
+            ]
+        }
+    ],
+    "usage_origin": "controlled fixture, not provider billing"
+}

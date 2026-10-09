@@ -21,7 +21,6 @@ import { Label } from "@/components/ui/label";
 import WorkbenchShell, { WorkbenchDetails } from "@/features/workbench/components/workbench-shell";
 import WorkbenchIcon from "@/features/workbench/components/workbench-icon";
 import LoadingPlaceholder from "@/features/workbench/components/loading-placeholder";
-import { VAULT_MODEL_NOTICE } from "../vault-search-view";
 import { useRestoredRunSummary } from "@/features/workbench/use-restored-run-summary";
 import RunMetricsFooter from "./run-metrics-footer";
 import TaskChangesPanel from "@/features/workbench/components/task-changes-panel";
@@ -752,14 +751,14 @@ function TaskChat() {
                         </Label>
 
                         {workbench.localMode && (
-                            <p id="vault-model-notice" className="px-2 pb-1 text-xs text-muted-foreground">
-                                {VAULT_MODEL_NOTICE}
+                            <p id="retrieval-model-notice" className="px-2 pb-1 text-xs text-muted-foreground">
+                                检索代码或笔记时，查询和命中片段会发送给你配置的相应模型。
                             </p>
                         )}
 
                         <Textarea
                             id="prompt"
-                            aria-describedby={workbench.localMode ? "vault-model-notice" : undefined}
+                            aria-describedby={workbench.localMode ? "retrieval-model-notice" : undefined}
                             autoFocus
                             onKeyDown={(event) => {
                                 // 中文输入法确认候选词不能触发发送；Shift+Enter 保留换行。

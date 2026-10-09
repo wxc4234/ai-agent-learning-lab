@@ -105,7 +105,7 @@ interview-questions/
 
 Vault 只读专题：[Markdown范围与同次读取来源](backend/web/workspace-directory.md#为什么-vault-只检查-md-后缀仍可能读到配置)、[检索覆盖、Unicode坐标与PC展示边界](backend/web/workspace-directory.md#跨文件检索的空结果为什么必须附带覆盖状态)、[请求级工具装配与授权复核](backend/web/workspace-directory.md#vault-检索工具为什么要请求级装配而不是直接注册到全局)。复习优先级高，参考答案已整理、尚未模拟。
 
-代码上下文专题：[扫描授权、忽略子集与覆盖预算](backend/web/workspace-directory.md#为什么代码扫描不能直接递归所有文件或执行仓库中的-git)、[AST静态符号与解析预算](backend/web/workspace-directory.md#ast-解析成功为什么不等于代码可运行或安全)、[符号检索、引用与覆盖](backend/web/workspace-directory.md#精确符号检索怎样避免丢失命中或错配引用)、[定义分块、嵌套去重与版本来源](backend/web/workspace-directory.md#代码分块怎样避免嵌套重复与来源错配)、[Embedding/模型空间、授权生成保存/召回与批次摘要BFF传输边界](backend/web/workspace-directory.md#embedding-返回成功为什么仍不能直接入库)、[Context Builder实际预算、API/BFF与内部查询/产品边界、取消与分开用量](backend/web/workspace-directory.md#context-builder-为什么不能直接拼接-top-k)。复习优先级高，参考答案已整理、尚未模拟。
+代码上下文专题：[扫描授权、忽略子集与覆盖预算](backend/web/workspace-directory.md#为什么代码扫描不能直接递归所有文件或执行仓库中的-git)、[AST静态符号与解析预算](backend/web/workspace-directory.md#ast-解析成功为什么不等于代码可运行或安全)、[符号检索、引用与覆盖](backend/web/workspace-directory.md#精确符号检索怎样避免丢失命中或错配引用)、[定义分块、嵌套去重与版本来源](backend/web/workspace-directory.md#代码分块怎样避免嵌套重复与来源错配)、[Embedding/模型空间、授权生成保存/召回、有界兼容批次选择/查询组合的重新授权及两种空结果、query-only工具契约/白名单投影、请求级注册/发送前授权、完整提示字节预算、PC引用/取消收尾证据与摘要BFF传输边界](backend/web/workspace-directory.md#embedding-返回成功为什么仍不能直接入库)、[Context Builder实际预算、API/BFF与内部查询/产品边界、取消与分开用量](backend/web/workspace-directory.md#context-builder-为什么不能直接拼接-top-k)。复习优先级高，参考答案已整理、尚未模拟。
 
 ## 维护规范
 
@@ -171,3 +171,5 @@ Task 专题（含创建事务、HTTP 提交后失败、前端防重边界、异�
 2026-09-23：在同一道[工作空间目录与文件边界](backend/web/workspace-directory.md)题中补充BFF对清理待办诊断的资源匹配、七分类白名单、公开字段重建与故障脱敏，并补充PC工作台按需查询、取消/切换隔离与真实只读链路证据（高优先级；参考答案已整理、尚未模拟）。
 
 [工作空间目录与文件边界](backend/web/workspace-directory.md)的Git样例题已补充pack增量与全局预算/同作用域回退、暂存BFF与PC取消隔离、暂存只读API/公开白名单与UTF-8响应预算/身份初始化与业务只读边界、HEAD/index同作用域联合观察/缺失与无差异分离/公开投影边界、暂存纯比较/模式与对象ID/冲突stage及输入一致性/空差异非项目干净、tree图共享缓存/路径展开与全局资源预算/祖先循环和部分结果拒绝、HEAD根tree同作用域观察/上游描述符存活/分层缺失与非原子边界、loose tree二进制条目/目录排序与非相邻重复/压缩预算和引用未验证边界、index授权读取/缺失与空索引及读取未知分离/事务外I/O与前后复核、普通项目index v2二进制边界/对齐/stage与扩展限制、单个loose commit的压缩预算/长度与SHA-1/对象图边界、HEAD/loose及packed引用优先级/有界完整解析/未诞生候选与对象存在性分离、Git配置保守子集/兼容性限制与描述符内双读核对、元数据布局有界扫描/复杂布局兼容性与内容未验证边界、来源双阶段联表授权/目录身份观察与事务边界、固定计划与授权/仓库配置隔离的区别、纯契约尚未执行的边界，以及编码闭环来源一致性、摘要与原子快照的区别，以及独立差异工具协议/ready能力快照与执行重新授权，证据包括同一Task的真实审批/Git/Docker集成与PC联合入口；补充执行前已知拒绝与执行后未知封锁的区别，以及项目写入许可/审批/应用意图分离、绑定修订防ABA的事务/回滚/有损降级边界、可信快照的描述符/事务边界、许可一次发放/显式撤销/未知提交不重放、同宿主可信事实装配/读取未知/无排他证据拒绝、应用级宿主隔离与许可HTTP冲突/未知提交区分、同源BFF资源回执核对/取消阶段与未知保留、PC许可确认/刷新门禁/负向查询不能证明旧请求终止、真实提交丢回执与独立数据库/文件对账、前置检查HTTP只读语义/失败未知/意外eligible拒绝、assessment同源BFF安全整数/固定分类与资源投影/正文阶段取消/模拟上游验证边界、只读诊断PC请求身份与资源/许可修订隔离/取消后迟到回执、真实PC/BFF/API检查与逐请求数据库/文件无副作用对账、偶发404跨层关联/离线证据错配与缺失/事后快照边界/取证落盘与响应完成的区别及纯策略结果的边界（高优先级；参考答案已整理、尚未模拟）。
+
+检索评测专题：[来源级Recall/MRR、无答案与失败分母、引用定位/相关性/Top K支撑、受控向量/RRF对照、失败策略、开发校准/冻结/留出泄漏、拒答四状态、耗时分位/失败样本/未知用量及小样例泛化限制](ai/evaluation/code-retrieval-metrics.md)。复习优先级高，参考答案已整理、尚未模拟。

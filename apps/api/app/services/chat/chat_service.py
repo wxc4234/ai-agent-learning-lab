@@ -59,6 +59,8 @@ from app.tools.registry import (
     tools_for_execution,
 )
 
+from app.services.runtime.agent.code_search_binding import CodeSearchBinding, CODE_SEARCH_SYSTEM_PROMPT
+
 VaultSearchBindingProvider = Callable[
     [ToolExecutionContext],
     ToolDefinition,
@@ -361,6 +363,7 @@ async def stream_chat_reply(
     verification_binding_provider: VerificationBindingProvider | None = None,
     sample_diff_binding_provider: SampleDiffBindingProvider | None = None,
     vault_search_binding_provider: VaultSearchBindingProvider | None = None,
+    code_search_binding_provider: Callable[[ToolExecutionContext], CodeSearchBinding | None] | None = None,
 ) -> AsyncGenerator[str, None]:
     """运行 Agent Loop，并逐行返回结构化 NDJSON 事件。"""
 
@@ -472,6 +475,17 @@ async def stream_chat_reply(
                 ),
             }
 
+        code_search_binding = None
+        if tool_context is not None and code_search_binding_provider is not None:
+            code_search_binding = code_search_binding_provider(tool_context)
+        if code_search_binding is not None:
+            tool_definitions = (*tool_definitions, code_search_binding.definition)
+            # 保留同请求Vault提示，不修改共享历史。
+            messages_to_send[0] = {
+                "role": "system",
+                "content": str(messages_to_send[0].get("content", "")) + "\n\n" + CODE_SEARCH_SYSTEM_PROMPT,
+            }
+
         # 模型展示与 Runtime 查找必须使用同一份最终能力快照。
         decision_maker = DeepSeekDecisionMaker(
             client=client,
@@ -479,6 +493,7 @@ async def stream_chat_reply(
             messages=messages_to_send,
             tool_context=tool_context,
             tool_definitions=tool_definitions,
+            before_send=None if code_search_binding is None else code_search_binding.before_send,
         )
 
         agent_events = stream_agent_loop(
