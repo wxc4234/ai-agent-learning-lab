@@ -1,0 +1,822 @@
+{
+    "schema_version": 1,
+    "manifest": {
+        "config_sha256": "11a44206f0083f0f8376530a612bcbffe2c398b764f8926b135e1c11ac35944b",
+        "dataset_sha256": "f38316f72364b1e0ad0e4cd948ae04de684aeb56a233b57b903b00aebb239df9",
+        "source_count": 8,
+        "query_count": 8,
+        "planned_requests": 9,
+        "planned_body_bytes": 2558,
+        "dimensions": 1024,
+        "requested_model": "text-embedding-v4",
+        "expected_response_model": "text-embedding-v4",
+        "cost": null,
+        "cost_state": "unknown"
+    },
+    "requests": 9,
+    "request_body_bytes": 2558,
+    "literal": {
+        "schema_version": 1,
+        "dataset_id": "code-retrieval-v1",
+        "dataset_sha256": "f38316f72364b1e0ad0e4cd948ae04de684aeb56a233b57b903b00aebb239df9",
+        "strategy": "literal-term-overlap-v1",
+        "citation_origin": "retrieval_reference",
+        "k": 3,
+        "query_count": 8,
+        "answerable_count": 6,
+        "no_answer_count": 2,
+        "error_count": 0,
+        "recall_at_k": 0.8333333333333334,
+        "mrr_at_k": 0.8333333333333334,
+        "no_answer_false_positive_count": 1,
+        "no_answer_error_count": 0,
+        "citation_count": 6,
+        "citation_relevance": 0.8333333333333334,
+        "citation_grounding_at_k": 1.0,
+        "rows": [
+            {
+                "query_id": "cancel",
+                "status": "ok",
+                "top_source_ids": [
+                    "control.cancel_task",
+                    "control.cancellation_checkpoint",
+                    "history.save_turn"
+                ],
+                "duplicate_count": 0,
+                "relevant_count": 3,
+                "matched_source_ids": [
+                    "control.cancel_task",
+                    "control.cancellation_checkpoint",
+                    "history.save_turn"
+                ],
+                "recall_at_k": 1.0,
+                "reciprocal_rank_at_k": 1.0,
+                "no_answer_false_positive": null,
+                "citation_count": 1,
+                "relevant_citation_count": 1,
+                "grounded_citation_count": 1
+            },
+            {
+                "query_id": "history",
+                "status": "ok",
+                "top_source_ids": [
+                    "history.save_turn",
+                    "history.restore_history"
+                ],
+                "duplicate_count": 0,
+                "relevant_count": 2,
+                "matched_source_ids": [
+                    "history.restore_history",
+                    "history.save_turn"
+                ],
+                "recall_at_k": 1.0,
+                "reciprocal_rank_at_k": 1.0,
+                "no_answer_false_positive": null,
+                "citation_count": 1,
+                "relevant_citation_count": 1,
+                "grounded_citation_count": 1
+            },
+            {
+                "query_id": "authorization",
+                "status": "ok",
+                "top_source_ids": [
+                    "scope.authorize_workspace",
+                    "scope.verify_revision"
+                ],
+                "duplicate_count": 0,
+                "relevant_count": 2,
+                "matched_source_ids": [
+                    "scope.authorize_workspace",
+                    "scope.verify_revision"
+                ],
+                "recall_at_k": 1.0,
+                "reciprocal_rank_at_k": 1.0,
+                "no_answer_false_positive": null,
+                "citation_count": 1,
+                "relevant_citation_count": 1,
+                "grounded_citation_count": 1
+            },
+            {
+                "query_id": "budget",
+                "status": "ok",
+                "top_source_ids": [
+                    "budget.measure_request_bytes",
+                    "budget.check_request_budget",
+                    "control.cancel_task"
+                ],
+                "duplicate_count": 0,
+                "relevant_count": 2,
+                "matched_source_ids": [
+                    "budget.check_request_budget",
+                    "budget.measure_request_bytes"
+                ],
+                "recall_at_k": 1.0,
+                "reciprocal_rank_at_k": 1.0,
+                "no_answer_false_positive": null,
+                "citation_count": 1,
+                "relevant_citation_count": 1,
+                "grounded_citation_count": 1
+            },
+            {
+                "query_id": "exact-symbol",
+                "status": "ok",
+                "top_source_ids": [
+                    "history.restore_history",
+                    "history.save_turn"
+                ],
+                "duplicate_count": 0,
+                "relevant_count": 1,
+                "matched_source_ids": [
+                    "history.restore_history"
+                ],
+                "recall_at_k": 1.0,
+                "reciprocal_rank_at_k": 1.0,
+                "no_answer_false_positive": null,
+                "citation_count": 1,
+                "relevant_citation_count": 1,
+                "grounded_citation_count": 1
+            },
+            {
+                "query_id": "chinese",
+                "status": "ok",
+                "top_source_ids": [],
+                "duplicate_count": 0,
+                "relevant_count": 2,
+                "matched_source_ids": [],
+                "recall_at_k": 0.0,
+                "reciprocal_rank_at_k": 0.0,
+                "no_answer_false_positive": null,
+                "citation_count": 0,
+                "relevant_citation_count": 0,
+                "grounded_citation_count": 0
+            },
+            {
+                "query_id": "absent",
+                "status": "ok",
+                "top_source_ids": [],
+                "duplicate_count": 0,
+                "relevant_count": 0,
+                "matched_source_ids": [],
+                "recall_at_k": null,
+                "reciprocal_rank_at_k": null,
+                "no_answer_false_positive": false,
+                "citation_count": 0,
+                "relevant_citation_count": 0,
+                "grounded_citation_count": 0
+            },
+            {
+                "query_id": "absent-related",
+                "status": "ok",
+                "top_source_ids": [
+                    "budget.check_request_budget",
+                    "budget.measure_request_bytes",
+                    "control.cancel_task"
+                ],
+                "duplicate_count": 0,
+                "relevant_count": 0,
+                "matched_source_ids": [],
+                "recall_at_k": null,
+                "reciprocal_rank_at_k": null,
+                "no_answer_false_positive": true,
+                "citation_count": 1,
+                "relevant_citation_count": 0,
+                "grounded_citation_count": 1
+            }
+        ],
+        "limits": [
+            "offline_authored_fixture",
+            "source_level_dedup_before_k",
+            "not_semantic_or_answer_quality",
+            "no_latency_or_cost_measurement"
+        ]
+    },
+    "vector": {
+        "schema_version": 1,
+        "dataset_id": "code-retrieval-v1",
+        "dataset_sha256": "f38316f72364b1e0ad0e4cd948ae04de684aeb56a233b57b903b00aebb239df9",
+        "strategy": "configured-provider-v1",
+        "citation_origin": "retrieval_reference",
+        "k": 3,
+        "query_count": 8,
+        "answerable_count": 6,
+        "no_answer_count": 2,
+        "error_count": 0,
+        "recall_at_k": 1.0,
+        "mrr_at_k": 1.0,
+        "no_answer_false_positive_count": 2,
+        "no_answer_error_count": 0,
+        "citation_count": 8,
+        "citation_relevance": 0.75,
+        "citation_grounding_at_k": 1.0,
+        "rows": [
+            {
+                "query_id": "cancel",
+                "status": "ok",
+                "top_source_ids": [
+                    "control.cancellation_checkpoint",
+                    "control.cancel_task",
+                    "history.save_turn"
+                ],
+                "duplicate_count": 0,
+                "relevant_count": 3,
+                "matched_source_ids": [
+                    "control.cancel_task",
+                    "control.cancellation_checkpoint",
+                    "history.save_turn"
+                ],
+                "recall_at_k": 1.0,
+                "reciprocal_rank_at_k": 1.0,
+                "no_answer_false_positive": null,
+                "citation_count": 1,
+                "relevant_citation_count": 1,
+                "grounded_citation_count": 1
+            },
+            {
+                "query_id": "history",
+                "status": "ok",
+                "top_source_ids": [
+                    "history.restore_history",
+                    "history.save_turn",
+                    "budget.measure_request_bytes"
+                ],
+                "duplicate_count": 0,
+                "relevant_count": 2,
+                "matched_source_ids": [
+                    "history.restore_history",
+                    "history.save_turn"
+                ],
+                "recall_at_k": 1.0,
+                "reciprocal_rank_at_k": 1.0,
+                "no_answer_false_positive": null,
+                "citation_count": 1,
+                "relevant_citation_count": 1,
+                "grounded_citation_count": 1
+            },
+            {
+                "query_id": "authorization",
+                "status": "ok",
+                "top_source_ids": [
+                    "scope.verify_revision",
+                    "scope.authorize_workspace",
+                    "control.cancel_task"
+                ],
+                "duplicate_count": 0,
+                "relevant_count": 2,
+                "matched_source_ids": [
+                    "scope.authorize_workspace",
+                    "scope.verify_revision"
+                ],
+                "recall_at_k": 1.0,
+                "reciprocal_rank_at_k": 1.0,
+                "no_answer_false_positive": null,
+                "citation_count": 1,
+                "relevant_citation_count": 1,
+                "grounded_citation_count": 1
+            },
+            {
+                "query_id": "budget",
+                "status": "ok",
+                "top_source_ids": [
+                    "budget.check_request_budget",
+                    "budget.measure_request_bytes",
+                    "scope.verify_revision"
+                ],
+                "duplicate_count": 0,
+                "relevant_count": 2,
+                "matched_source_ids": [
+                    "budget.check_request_budget",
+                    "budget.measure_request_bytes"
+                ],
+                "recall_at_k": 1.0,
+                "reciprocal_rank_at_k": 1.0,
+                "no_answer_false_positive": null,
+                "citation_count": 1,
+                "relevant_citation_count": 1,
+                "grounded_citation_count": 1
+            },
+            {
+                "query_id": "exact-symbol",
+                "status": "ok",
+                "top_source_ids": [
+                    "history.restore_history",
+                    "history.save_turn",
+                    "scope.verify_revision"
+                ],
+                "duplicate_count": 0,
+                "relevant_count": 1,
+                "matched_source_ids": [
+                    "history.restore_history"
+                ],
+                "recall_at_k": 1.0,
+                "reciprocal_rank_at_k": 1.0,
+                "no_answer_false_positive": null,
+                "citation_count": 1,
+                "relevant_citation_count": 1,
+                "grounded_citation_count": 1
+            },
+            {
+                "query_id": "chinese",
+                "status": "ok",
+                "top_source_ids": [
+                    "history.save_turn",
+                    "history.restore_history",
+                    "control.cancellation_checkpoint"
+                ],
+                "duplicate_count": 0,
+                "relevant_count": 2,
+                "matched_source_ids": [
+                    "control.cancellation_checkpoint",
+                    "history.save_turn"
+                ],
+                "recall_at_k": 1.0,
+                "reciprocal_rank_at_k": 1.0,
+                "no_answer_false_positive": null,
+                "citation_count": 1,
+                "relevant_citation_count": 1,
+                "grounded_citation_count": 1
+            },
+            {
+                "query_id": "absent",
+                "status": "ok",
+                "top_source_ids": [
+                    "history.save_turn",
+                    "history.restore_history",
+                    "control.cancellation_checkpoint"
+                ],
+                "duplicate_count": 0,
+                "relevant_count": 0,
+                "matched_source_ids": [],
+                "recall_at_k": null,
+                "reciprocal_rank_at_k": null,
+                "no_answer_false_positive": true,
+                "citation_count": 1,
+                "relevant_citation_count": 0,
+                "grounded_citation_count": 1
+            },
+            {
+                "query_id": "absent-related",
+                "status": "ok",
+                "top_source_ids": [
+                    "budget.measure_request_bytes",
+                    "scope.verify_revision",
+                    "budget.check_request_budget"
+                ],
+                "duplicate_count": 0,
+                "relevant_count": 0,
+                "matched_source_ids": [],
+                "recall_at_k": null,
+                "reciprocal_rank_at_k": null,
+                "no_answer_false_positive": true,
+                "citation_count": 1,
+                "relevant_citation_count": 0,
+                "grounded_citation_count": 1
+            }
+        ],
+        "limits": [
+            "offline_authored_fixture",
+            "source_level_dedup_before_k",
+            "not_semantic_or_answer_quality",
+            "no_latency_or_cost_measurement"
+        ]
+    },
+    "rrf": {
+        "schema_version": 1,
+        "dataset_id": "code-retrieval-v1",
+        "dataset_sha256": "f38316f72364b1e0ad0e4cd948ae04de684aeb56a233b57b903b00aebb239df9",
+        "strategy": "rrf-c60-v1",
+        "citation_origin": "retrieval_reference",
+        "k": 3,
+        "query_count": 8,
+        "answerable_count": 6,
+        "no_answer_count": 2,
+        "error_count": 0,
+        "recall_at_k": 1.0,
+        "mrr_at_k": 1.0,
+        "no_answer_false_positive_count": 2,
+        "no_answer_error_count": 0,
+        "citation_count": 8,
+        "citation_relevance": 0.75,
+        "citation_grounding_at_k": 1.0,
+        "rows": [
+            {
+                "query_id": "cancel",
+                "status": "ok",
+                "top_source_ids": [
+                    "control.cancel_task",
+                    "control.cancellation_checkpoint",
+                    "history.save_turn"
+                ],
+                "duplicate_count": 0,
+                "relevant_count": 3,
+                "matched_source_ids": [
+                    "control.cancel_task",
+                    "control.cancellation_checkpoint",
+                    "history.save_turn"
+                ],
+                "recall_at_k": 1.0,
+                "reciprocal_rank_at_k": 1.0,
+                "no_answer_false_positive": null,
+                "citation_count": 1,
+                "relevant_citation_count": 1,
+                "grounded_citation_count": 1
+            },
+            {
+                "query_id": "history",
+                "status": "ok",
+                "top_source_ids": [
+                    "history.restore_history",
+                    "history.save_turn",
+                    "budget.measure_request_bytes"
+                ],
+                "duplicate_count": 0,
+                "relevant_count": 2,
+                "matched_source_ids": [
+                    "history.restore_history",
+                    "history.save_turn"
+                ],
+                "recall_at_k": 1.0,
+                "reciprocal_rank_at_k": 1.0,
+                "no_answer_false_positive": null,
+                "citation_count": 1,
+                "relevant_citation_count": 1,
+                "grounded_citation_count": 1
+            },
+            {
+                "query_id": "authorization",
+                "status": "ok",
+                "top_source_ids": [
+                    "scope.authorize_workspace",
+                    "scope.verify_revision",
+                    "control.cancel_task"
+                ],
+                "duplicate_count": 0,
+                "relevant_count": 2,
+                "matched_source_ids": [
+                    "scope.authorize_workspace",
+                    "scope.verify_revision"
+                ],
+                "recall_at_k": 1.0,
+                "reciprocal_rank_at_k": 1.0,
+                "no_answer_false_positive": null,
+                "citation_count": 1,
+                "relevant_citation_count": 1,
+                "grounded_citation_count": 1
+            },
+            {
+                "query_id": "budget",
+                "status": "ok",
+                "top_source_ids": [
+                    "budget.check_request_budget",
+                    "budget.measure_request_bytes",
+                    "control.cancel_task"
+                ],
+                "duplicate_count": 0,
+                "relevant_count": 2,
+                "matched_source_ids": [
+                    "budget.check_request_budget",
+                    "budget.measure_request_bytes"
+                ],
+                "recall_at_k": 1.0,
+                "reciprocal_rank_at_k": 1.0,
+                "no_answer_false_positive": null,
+                "citation_count": 1,
+                "relevant_citation_count": 1,
+                "grounded_citation_count": 1
+            },
+            {
+                "query_id": "exact-symbol",
+                "status": "ok",
+                "top_source_ids": [
+                    "history.restore_history",
+                    "history.save_turn",
+                    "scope.verify_revision"
+                ],
+                "duplicate_count": 0,
+                "relevant_count": 1,
+                "matched_source_ids": [
+                    "history.restore_history"
+                ],
+                "recall_at_k": 1.0,
+                "reciprocal_rank_at_k": 1.0,
+                "no_answer_false_positive": null,
+                "citation_count": 1,
+                "relevant_citation_count": 1,
+                "grounded_citation_count": 1
+            },
+            {
+                "query_id": "chinese",
+                "status": "ok",
+                "top_source_ids": [
+                    "history.save_turn",
+                    "history.restore_history",
+                    "control.cancellation_checkpoint"
+                ],
+                "duplicate_count": 0,
+                "relevant_count": 2,
+                "matched_source_ids": [
+                    "control.cancellation_checkpoint",
+                    "history.save_turn"
+                ],
+                "recall_at_k": 1.0,
+                "reciprocal_rank_at_k": 1.0,
+                "no_answer_false_positive": null,
+                "citation_count": 1,
+                "relevant_citation_count": 1,
+                "grounded_citation_count": 1
+            },
+            {
+                "query_id": "absent",
+                "status": "ok",
+                "top_source_ids": [
+                    "history.save_turn",
+                    "history.restore_history",
+                    "control.cancellation_checkpoint"
+                ],
+                "duplicate_count": 0,
+                "relevant_count": 0,
+                "matched_source_ids": [],
+                "recall_at_k": null,
+                "reciprocal_rank_at_k": null,
+                "no_answer_false_positive": true,
+                "citation_count": 1,
+                "relevant_citation_count": 0,
+                "grounded_citation_count": 1
+            },
+            {
+                "query_id": "absent-related",
+                "status": "ok",
+                "top_source_ids": [
+                    "budget.measure_request_bytes",
+                    "budget.check_request_budget",
+                    "control.cancel_task"
+                ],
+                "duplicate_count": 0,
+                "relevant_count": 0,
+                "matched_source_ids": [],
+                "recall_at_k": null,
+                "reciprocal_rank_at_k": null,
+                "no_answer_false_positive": true,
+                "citation_count": 1,
+                "relevant_citation_count": 0,
+                "grounded_citation_count": 1
+            }
+        ],
+        "limits": [
+            "offline_authored_fixture",
+            "source_level_dedup_before_k",
+            "not_semantic_or_answer_quality",
+            "no_latency_or_cost_measurement"
+        ]
+    },
+    "observation": {
+        "schema_version": 1,
+        "clock": "monotonic",
+        "percentile": "nearest-rank",
+        "spans": [
+            {
+                "phase": "build",
+                "sample": "build",
+                "stage": "end_to_end",
+                "status": "ok",
+                "duration_ms": 371.34362501092255
+            },
+            {
+                "phase": "query",
+                "sample": "cancel",
+                "stage": "end_to_end",
+                "status": "ok",
+                "duration_ms": 174.73929197876714
+            },
+            {
+                "phase": "query",
+                "sample": "history",
+                "stage": "end_to_end",
+                "status": "ok",
+                "duration_ms": 933.8551670080051
+            },
+            {
+                "phase": "query",
+                "sample": "authorization",
+                "stage": "end_to_end",
+                "status": "ok",
+                "duration_ms": 329.92895899224095
+            },
+            {
+                "phase": "query",
+                "sample": "budget",
+                "stage": "end_to_end",
+                "status": "ok",
+                "duration_ms": 255.15650000306778
+            },
+            {
+                "phase": "query",
+                "sample": "exact-symbol",
+                "stage": "end_to_end",
+                "status": "ok",
+                "duration_ms": 437.5695420021657
+            },
+            {
+                "phase": "query",
+                "sample": "chinese",
+                "stage": "end_to_end",
+                "status": "ok",
+                "duration_ms": 360.1622909773141
+            },
+            {
+                "phase": "query",
+                "sample": "absent",
+                "stage": "end_to_end",
+                "status": "ok",
+                "duration_ms": 247.84929200541228
+            },
+            {
+                "phase": "query",
+                "sample": "absent-related",
+                "stage": "end_to_end",
+                "status": "ok",
+                "duration_ms": 394.83895801822655
+            },
+            {
+                "phase": "evaluation",
+                "sample": "dataset",
+                "stage": "literal",
+                "status": "ok",
+                "duration_ms": 0.8996249816846102
+            },
+            {
+                "phase": "evaluation",
+                "sample": "dataset",
+                "stage": "fusion",
+                "status": "ok",
+                "duration_ms": 1.415625010849908
+            }
+        ],
+        "latency": [
+            {
+                "phase": "build",
+                "stage": "end_to_end",
+                "status": "ok",
+                "count": 1,
+                "mean_ms": 371.34362501092255,
+                "p50_ms": 371.34362501092255,
+                "p95_ms": 371.34362501092255
+            },
+            {
+                "phase": "evaluation",
+                "stage": "fusion",
+                "status": "ok",
+                "count": 1,
+                "mean_ms": 1.415625010849908,
+                "p50_ms": 1.415625010849908,
+                "p95_ms": 1.415625010849908
+            },
+            {
+                "phase": "evaluation",
+                "stage": "literal",
+                "status": "ok",
+                "count": 1,
+                "mean_ms": 0.8996249816846102,
+                "p50_ms": 0.8996249816846102,
+                "p95_ms": 0.8996249816846102
+            },
+            {
+                "phase": "query",
+                "stage": "end_to_end",
+                "status": "ok",
+                "count": 8,
+                "mean_ms": 391.76250012314995,
+                "p50_ms": 329.92895899224095,
+                "p95_ms": 933.8551670080051
+            }
+        ],
+        "usage": [
+            {
+                "phase": "build",
+                "sample": "build",
+                "attempts": 1,
+                "validated_requests": 1,
+                "prompt_tokens": 315,
+                "total_tokens": 315,
+                "state": "reported"
+            },
+            {
+                "phase": "query",
+                "sample": "absent",
+                "attempts": 1,
+                "validated_requests": 1,
+                "prompt_tokens": 6,
+                "total_tokens": 6,
+                "state": "reported"
+            },
+            {
+                "phase": "query",
+                "sample": "absent-related",
+                "attempts": 1,
+                "validated_requests": 1,
+                "prompt_tokens": 5,
+                "total_tokens": 5,
+                "state": "reported"
+            },
+            {
+                "phase": "query",
+                "sample": "authorization",
+                "attempts": 1,
+                "validated_requests": 1,
+                "prompt_tokens": 5,
+                "total_tokens": 5,
+                "state": "reported"
+            },
+            {
+                "phase": "query",
+                "sample": "budget",
+                "attempts": 1,
+                "validated_requests": 1,
+                "prompt_tokens": 6,
+                "total_tokens": 6,
+                "state": "reported"
+            },
+            {
+                "phase": "query",
+                "sample": "cancel",
+                "attempts": 1,
+                "validated_requests": 1,
+                "prompt_tokens": 8,
+                "total_tokens": 8,
+                "state": "reported"
+            },
+            {
+                "phase": "query",
+                "sample": "chinese",
+                "attempts": 1,
+                "validated_requests": 1,
+                "prompt_tokens": 9,
+                "total_tokens": 9,
+                "state": "reported"
+            },
+            {
+                "phase": "query",
+                "sample": "exact-symbol",
+                "attempts": 1,
+                "validated_requests": 1,
+                "prompt_tokens": 3,
+                "total_tokens": 3,
+                "state": "reported"
+            },
+            {
+                "phase": "query",
+                "sample": "history",
+                "attempts": 1,
+                "validated_requests": 1,
+                "prompt_tokens": 5,
+                "total_tokens": 5,
+                "state": "reported"
+            }
+        ],
+        "usage_totals": [
+            {
+                "phase": "build",
+                "samples": 1,
+                "attempts": 1,
+                "unknown_samples": 0,
+                "prompt_tokens": 315,
+                "total_tokens": 315,
+                "cost": null,
+                "cost_state": "unknown"
+            },
+            {
+                "phase": "query",
+                "samples": 8,
+                "attempts": 8,
+                "unknown_samples": 0,
+                "prompt_tokens": 47,
+                "total_tokens": 47,
+                "cost": null,
+                "cost_state": "unknown"
+            }
+        ],
+        "timing_scope": "nested spans overlap; do not sum stage percentiles",
+        "environment": "local PostgreSQL; configured real provider"
+    },
+    "limitations": [
+        "no calibrated provider abstention",
+        "cost unknown",
+        "query usage unknown when failure occurs before combined result"
+    ],
+    "mode": "real",
+    "execution": {
+        "date": "2026-10-10",
+        "timezone": "Asia/Shanghai",
+        "provider": "Alibaba Cloud Model Studio, Beijing",
+        "model": "text-embedding-v4",
+        "probe": {
+            "probe_success": true,
+            "model": "text-embedding-v4",
+            "dimensions": 1024,
+            "prompt_tokens": 5,
+            "total_tokens": 5,
+            "requests": 1
+        },
+        "scope": "fixed learning corpus only; isolated PostgreSQL cleaned by fixture; no user project indexing",
+        "billing": "reported token usage only; actual billed cost unknown"
+    }
+}

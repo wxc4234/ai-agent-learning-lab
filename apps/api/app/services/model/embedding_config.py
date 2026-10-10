@@ -113,6 +113,23 @@ class EmbeddingConfig(BaseModel):
 def load_embedding_config(source: Settings = settings) -> EmbeddingConfig:
     """调用时才核对完整配置；关闭状态不阻止原有聊天功能启动。"""
 
+    # 延迟导入避免配置验证器与本地存储互相导入；显式测试/宿主配置不受覆盖。
+    if source is settings and settings.app_mode == "local":
+        from app.services.model.local_model_settings import override, validate_channel
+        try:
+            selected = override("embedding")
+            if selected is not None:
+                if not selected.enabled:
+                    raise ValueError("disabled")
+                validate_channel(selected, "embedding")
+                assert selected.dimensions is not None
+                return EmbeddingConfig(api_key=selected.api_key, base_url=selected.base_url,
+                                       model=selected.model, dimensions=selected.dimensions,
+                                       request_dimensions=selected.request_dimensions,
+                                       timeout_seconds=source.embedding_timeout_seconds)
+        except (ValueError, OSError):
+            raise EmbeddingError("embedding_config_invalid", "本地Embedding配置不可用") from None
+
     if (
         not source.embedding_base_url
         or not source.embedding_model

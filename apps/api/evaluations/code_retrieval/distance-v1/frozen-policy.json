@@ -1,0 +1,998 @@
+{
+    "schema_version": 1,
+    "policy": {
+        "schema_version": 1,
+        "rule": "query-nearest-cosine-lte-v1",
+        "objective": "equal-query-false-refusal-and-false-acceptance-v1",
+        "threshold_milli": 500,
+        "corpus_sha256": "901f3cf917419df0d1b07e6a29fca9c94b25691bee6f83d4a825d4c5d8341e08",
+        "development_sha256": "9ed06a3186674a69d17854b1b41d4072dc59652d483540584f1521f9288d5c96",
+        "report_sha256": "82e4bb717c40dc4a51299892ee096eff77ce104b9370da7e2793dbc5aa72b92a",
+        "config_sha256": "11a44206f0083f0f8376530a612bcbffe2c398b764f8926b135e1c11ac35944b",
+        "requested_model": "text-embedding-v4",
+        "response_model": "text-embedding-v4",
+        "dimensions": 1024,
+        "grid_milli": [
+            0,
+            100,
+            200,
+            300,
+            400,
+            500,
+            600,
+            700,
+            800,
+            900,
+            1000,
+            1100,
+            1200,
+            1300,
+            1400,
+            1500,
+            1600,
+            1700,
+            1800,
+            1900,
+            2000
+        ],
+        "tie_break": "loss,false_acceptance,lower_threshold",
+        "status": "development_only_not_validated_on_holdout"
+    },
+    "positive_count": 4,
+    "negative_count": 4,
+    "trials": [
+        {
+            "threshold_milli": 0,
+            "balanced_loss": "1/2",
+            "false_refusal_count": 4,
+            "false_acceptance_count": 0,
+            "false_refusal_rate": "1",
+            "false_acceptance_rate": "0",
+            "positive_recall_at_3": "0",
+            "decisions": [
+                {
+                    "query_id": "dev-cancel",
+                    "decision": "abstained"
+                },
+                {
+                    "query_id": "dev-revision",
+                    "decision": "abstained"
+                },
+                {
+                    "query_id": "dev-bytes",
+                    "decision": "abstained"
+                },
+                {
+                    "query_id": "dev-history",
+                    "decision": "abstained"
+                },
+                {
+                    "query_id": "dev-token",
+                    "decision": "abstained"
+                },
+                {
+                    "query_id": "dev-retry",
+                    "decision": "abstained"
+                },
+                {
+                    "query_id": "dev-encryption",
+                    "decision": "abstained"
+                },
+                {
+                    "query_id": "dev-stream",
+                    "decision": "abstained"
+                }
+            ]
+        },
+        {
+            "threshold_milli": 100,
+            "balanced_loss": "1/2",
+            "false_refusal_count": 4,
+            "false_acceptance_count": 0,
+            "false_refusal_rate": "1",
+            "false_acceptance_rate": "0",
+            "positive_recall_at_3": "0",
+            "decisions": [
+                {
+                    "query_id": "dev-cancel",
+                    "decision": "abstained"
+                },
+                {
+                    "query_id": "dev-revision",
+                    "decision": "abstained"
+                },
+                {
+                    "query_id": "dev-bytes",
+                    "decision": "abstained"
+                },
+                {
+                    "query_id": "dev-history",
+                    "decision": "abstained"
+                },
+                {
+                    "query_id": "dev-token",
+                    "decision": "abstained"
+                },
+                {
+                    "query_id": "dev-retry",
+                    "decision": "abstained"
+                },
+                {
+                    "query_id": "dev-encryption",
+                    "decision": "abstained"
+                },
+                {
+                    "query_id": "dev-stream",
+                    "decision": "abstained"
+                }
+            ]
+        },
+        {
+            "threshold_milli": 200,
+            "balanced_loss": "1/2",
+            "false_refusal_count": 4,
+            "false_acceptance_count": 0,
+            "false_refusal_rate": "1",
+            "false_acceptance_rate": "0",
+            "positive_recall_at_3": "0",
+            "decisions": [
+                {
+                    "query_id": "dev-cancel",
+                    "decision": "abstained"
+                },
+                {
+                    "query_id": "dev-revision",
+                    "decision": "abstained"
+                },
+                {
+                    "query_id": "dev-bytes",
+                    "decision": "abstained"
+                },
+                {
+                    "query_id": "dev-history",
+                    "decision": "abstained"
+                },
+                {
+                    "query_id": "dev-token",
+                    "decision": "abstained"
+                },
+                {
+                    "query_id": "dev-retry",
+                    "decision": "abstained"
+                },
+                {
+                    "query_id": "dev-encryption",
+                    "decision": "abstained"
+                },
+                {
+                    "query_id": "dev-stream",
+                    "decision": "abstained"
+                }
+            ]
+        },
+        {
+            "threshold_milli": 300,
+            "balanced_loss": "1/2",
+            "false_refusal_count": 4,
+            "false_acceptance_count": 0,
+            "false_refusal_rate": "1",
+            "false_acceptance_rate": "0",
+            "positive_recall_at_3": "0",
+            "decisions": [
+                {
+                    "query_id": "dev-cancel",
+                    "decision": "abstained"
+                },
+                {
+                    "query_id": "dev-revision",
+                    "decision": "abstained"
+                },
+                {
+                    "query_id": "dev-bytes",
+                    "decision": "abstained"
+                },
+                {
+                    "query_id": "dev-history",
+                    "decision": "abstained"
+                },
+                {
+                    "query_id": "dev-token",
+                    "decision": "abstained"
+                },
+                {
+                    "query_id": "dev-retry",
+                    "decision": "abstained"
+                },
+                {
+                    "query_id": "dev-encryption",
+                    "decision": "abstained"
+                },
+                {
+                    "query_id": "dev-stream",
+                    "decision": "abstained"
+                }
+            ]
+        },
+        {
+            "threshold_milli": 400,
+            "balanced_loss": "1/2",
+            "false_refusal_count": 4,
+            "false_acceptance_count": 0,
+            "false_refusal_rate": "1",
+            "false_acceptance_rate": "0",
+            "positive_recall_at_3": "0",
+            "decisions": [
+                {
+                    "query_id": "dev-cancel",
+                    "decision": "abstained"
+                },
+                {
+                    "query_id": "dev-revision",
+                    "decision": "abstained"
+                },
+                {
+                    "query_id": "dev-bytes",
+                    "decision": "abstained"
+                },
+                {
+                    "query_id": "dev-history",
+                    "decision": "abstained"
+                },
+                {
+                    "query_id": "dev-token",
+                    "decision": "abstained"
+                },
+                {
+                    "query_id": "dev-retry",
+                    "decision": "abstained"
+                },
+                {
+                    "query_id": "dev-encryption",
+                    "decision": "abstained"
+                },
+                {
+                    "query_id": "dev-stream",
+                    "decision": "abstained"
+                }
+            ]
+        },
+        {
+            "threshold_milli": 500,
+            "balanced_loss": "1/8",
+            "false_refusal_count": 1,
+            "false_acceptance_count": 0,
+            "false_refusal_rate": "1/4",
+            "false_acceptance_rate": "0",
+            "positive_recall_at_3": "2/3",
+            "decisions": [
+                {
+                    "query_id": "dev-cancel",
+                    "decision": "retained"
+                },
+                {
+                    "query_id": "dev-revision",
+                    "decision": "retained"
+                },
+                {
+                    "query_id": "dev-bytes",
+                    "decision": "abstained"
+                },
+                {
+                    "query_id": "dev-history",
+                    "decision": "retained"
+                },
+                {
+                    "query_id": "dev-token",
+                    "decision": "abstained"
+                },
+                {
+                    "query_id": "dev-retry",
+                    "decision": "abstained"
+                },
+                {
+                    "query_id": "dev-encryption",
+                    "decision": "abstained"
+                },
+                {
+                    "query_id": "dev-stream",
+                    "decision": "abstained"
+                }
+            ]
+        },
+        {
+            "threshold_milli": 600,
+            "balanced_loss": "1/4",
+            "false_refusal_count": 0,
+            "false_acceptance_count": 2,
+            "false_refusal_rate": "0",
+            "false_acceptance_rate": "1/2",
+            "positive_recall_at_3": "11/12",
+            "decisions": [
+                {
+                    "query_id": "dev-cancel",
+                    "decision": "retained"
+                },
+                {
+                    "query_id": "dev-revision",
+                    "decision": "retained"
+                },
+                {
+                    "query_id": "dev-bytes",
+                    "decision": "retained"
+                },
+                {
+                    "query_id": "dev-history",
+                    "decision": "retained"
+                },
+                {
+                    "query_id": "dev-token",
+                    "decision": "retained"
+                },
+                {
+                    "query_id": "dev-retry",
+                    "decision": "abstained"
+                },
+                {
+                    "query_id": "dev-encryption",
+                    "decision": "abstained"
+                },
+                {
+                    "query_id": "dev-stream",
+                    "decision": "retained"
+                }
+            ]
+        },
+        {
+            "threshold_milli": 700,
+            "balanced_loss": "1/2",
+            "false_refusal_count": 0,
+            "false_acceptance_count": 4,
+            "false_refusal_rate": "0",
+            "false_acceptance_rate": "1",
+            "positive_recall_at_3": "11/12",
+            "decisions": [
+                {
+                    "query_id": "dev-cancel",
+                    "decision": "retained"
+                },
+                {
+                    "query_id": "dev-revision",
+                    "decision": "retained"
+                },
+                {
+                    "query_id": "dev-bytes",
+                    "decision": "retained"
+                },
+                {
+                    "query_id": "dev-history",
+                    "decision": "retained"
+                },
+                {
+                    "query_id": "dev-token",
+                    "decision": "retained"
+                },
+                {
+                    "query_id": "dev-retry",
+                    "decision": "retained"
+                },
+                {
+                    "query_id": "dev-encryption",
+                    "decision": "retained"
+                },
+                {
+                    "query_id": "dev-stream",
+                    "decision": "retained"
+                }
+            ]
+        },
+        {
+            "threshold_milli": 800,
+            "balanced_loss": "1/2",
+            "false_refusal_count": 0,
+            "false_acceptance_count": 4,
+            "false_refusal_rate": "0",
+            "false_acceptance_rate": "1",
+            "positive_recall_at_3": "11/12",
+            "decisions": [
+                {
+                    "query_id": "dev-cancel",
+                    "decision": "retained"
+                },
+                {
+                    "query_id": "dev-revision",
+                    "decision": "retained"
+                },
+                {
+                    "query_id": "dev-bytes",
+                    "decision": "retained"
+                },
+                {
+                    "query_id": "dev-history",
+                    "decision": "retained"
+                },
+                {
+                    "query_id": "dev-token",
+                    "decision": "retained"
+                },
+                {
+                    "query_id": "dev-retry",
+                    "decision": "retained"
+                },
+                {
+                    "query_id": "dev-encryption",
+                    "decision": "retained"
+                },
+                {
+                    "query_id": "dev-stream",
+                    "decision": "retained"
+                }
+            ]
+        },
+        {
+            "threshold_milli": 900,
+            "balanced_loss": "1/2",
+            "false_refusal_count": 0,
+            "false_acceptance_count": 4,
+            "false_refusal_rate": "0",
+            "false_acceptance_rate": "1",
+            "positive_recall_at_3": "11/12",
+            "decisions": [
+                {
+                    "query_id": "dev-cancel",
+                    "decision": "retained"
+                },
+                {
+                    "query_id": "dev-revision",
+                    "decision": "retained"
+                },
+                {
+                    "query_id": "dev-bytes",
+                    "decision": "retained"
+                },
+                {
+                    "query_id": "dev-history",
+                    "decision": "retained"
+                },
+                {
+                    "query_id": "dev-token",
+                    "decision": "retained"
+                },
+                {
+                    "query_id": "dev-retry",
+                    "decision": "retained"
+                },
+                {
+                    "query_id": "dev-encryption",
+                    "decision": "retained"
+                },
+                {
+                    "query_id": "dev-stream",
+                    "decision": "retained"
+                }
+            ]
+        },
+        {
+            "threshold_milli": 1000,
+            "balanced_loss": "1/2",
+            "false_refusal_count": 0,
+            "false_acceptance_count": 4,
+            "false_refusal_rate": "0",
+            "false_acceptance_rate": "1",
+            "positive_recall_at_3": "11/12",
+            "decisions": [
+                {
+                    "query_id": "dev-cancel",
+                    "decision": "retained"
+                },
+                {
+                    "query_id": "dev-revision",
+                    "decision": "retained"
+                },
+                {
+                    "query_id": "dev-bytes",
+                    "decision": "retained"
+                },
+                {
+                    "query_id": "dev-history",
+                    "decision": "retained"
+                },
+                {
+                    "query_id": "dev-token",
+                    "decision": "retained"
+                },
+                {
+                    "query_id": "dev-retry",
+                    "decision": "retained"
+                },
+                {
+                    "query_id": "dev-encryption",
+                    "decision": "retained"
+                },
+                {
+                    "query_id": "dev-stream",
+                    "decision": "retained"
+                }
+            ]
+        },
+        {
+            "threshold_milli": 1100,
+            "balanced_loss": "1/2",
+            "false_refusal_count": 0,
+            "false_acceptance_count": 4,
+            "false_refusal_rate": "0",
+            "false_acceptance_rate": "1",
+            "positive_recall_at_3": "11/12",
+            "decisions": [
+                {
+                    "query_id": "dev-cancel",
+                    "decision": "retained"
+                },
+                {
+                    "query_id": "dev-revision",
+                    "decision": "retained"
+                },
+                {
+                    "query_id": "dev-bytes",
+                    "decision": "retained"
+                },
+                {
+                    "query_id": "dev-history",
+                    "decision": "retained"
+                },
+                {
+                    "query_id": "dev-token",
+                    "decision": "retained"
+                },
+                {
+                    "query_id": "dev-retry",
+                    "decision": "retained"
+                },
+                {
+                    "query_id": "dev-encryption",
+                    "decision": "retained"
+                },
+                {
+                    "query_id": "dev-stream",
+                    "decision": "retained"
+                }
+            ]
+        },
+        {
+            "threshold_milli": 1200,
+            "balanced_loss": "1/2",
+            "false_refusal_count": 0,
+            "false_acceptance_count": 4,
+            "false_refusal_rate": "0",
+            "false_acceptance_rate": "1",
+            "positive_recall_at_3": "11/12",
+            "decisions": [
+                {
+                    "query_id": "dev-cancel",
+                    "decision": "retained"
+                },
+                {
+                    "query_id": "dev-revision",
+                    "decision": "retained"
+                },
+                {
+                    "query_id": "dev-bytes",
+                    "decision": "retained"
+                },
+                {
+                    "query_id": "dev-history",
+                    "decision": "retained"
+                },
+                {
+                    "query_id": "dev-token",
+                    "decision": "retained"
+                },
+                {
+                    "query_id": "dev-retry",
+                    "decision": "retained"
+                },
+                {
+                    "query_id": "dev-encryption",
+                    "decision": "retained"
+                },
+                {
+                    "query_id": "dev-stream",
+                    "decision": "retained"
+                }
+            ]
+        },
+        {
+            "threshold_milli": 1300,
+            "balanced_loss": "1/2",
+            "false_refusal_count": 0,
+            "false_acceptance_count": 4,
+            "false_refusal_rate": "0",
+            "false_acceptance_rate": "1",
+            "positive_recall_at_3": "11/12",
+            "decisions": [
+                {
+                    "query_id": "dev-cancel",
+                    "decision": "retained"
+                },
+                {
+                    "query_id": "dev-revision",
+                    "decision": "retained"
+                },
+                {
+                    "query_id": "dev-bytes",
+                    "decision": "retained"
+                },
+                {
+                    "query_id": "dev-history",
+                    "decision": "retained"
+                },
+                {
+                    "query_id": "dev-token",
+                    "decision": "retained"
+                },
+                {
+                    "query_id": "dev-retry",
+                    "decision": "retained"
+                },
+                {
+                    "query_id": "dev-encryption",
+                    "decision": "retained"
+                },
+                {
+                    "query_id": "dev-stream",
+                    "decision": "retained"
+                }
+            ]
+        },
+        {
+            "threshold_milli": 1400,
+            "balanced_loss": "1/2",
+            "false_refusal_count": 0,
+            "false_acceptance_count": 4,
+            "false_refusal_rate": "0",
+            "false_acceptance_rate": "1",
+            "positive_recall_at_3": "11/12",
+            "decisions": [
+                {
+                    "query_id": "dev-cancel",
+                    "decision": "retained"
+                },
+                {
+                    "query_id": "dev-revision",
+                    "decision": "retained"
+                },
+                {
+                    "query_id": "dev-bytes",
+                    "decision": "retained"
+                },
+                {
+                    "query_id": "dev-history",
+                    "decision": "retained"
+                },
+                {
+                    "query_id": "dev-token",
+                    "decision": "retained"
+                },
+                {
+                    "query_id": "dev-retry",
+                    "decision": "retained"
+                },
+                {
+                    "query_id": "dev-encryption",
+                    "decision": "retained"
+                },
+                {
+                    "query_id": "dev-stream",
+                    "decision": "retained"
+                }
+            ]
+        },
+        {
+            "threshold_milli": 1500,
+            "balanced_loss": "1/2",
+            "false_refusal_count": 0,
+            "false_acceptance_count": 4,
+            "false_refusal_rate": "0",
+            "false_acceptance_rate": "1",
+            "positive_recall_at_3": "11/12",
+            "decisions": [
+                {
+                    "query_id": "dev-cancel",
+                    "decision": "retained"
+                },
+                {
+                    "query_id": "dev-revision",
+                    "decision": "retained"
+                },
+                {
+                    "query_id": "dev-bytes",
+                    "decision": "retained"
+                },
+                {
+                    "query_id": "dev-history",
+                    "decision": "retained"
+                },
+                {
+                    "query_id": "dev-token",
+                    "decision": "retained"
+                },
+                {
+                    "query_id": "dev-retry",
+                    "decision": "retained"
+                },
+                {
+                    "query_id": "dev-encryption",
+                    "decision": "retained"
+                },
+                {
+                    "query_id": "dev-stream",
+                    "decision": "retained"
+                }
+            ]
+        },
+        {
+            "threshold_milli": 1600,
+            "balanced_loss": "1/2",
+            "false_refusal_count": 0,
+            "false_acceptance_count": 4,
+            "false_refusal_rate": "0",
+            "false_acceptance_rate": "1",
+            "positive_recall_at_3": "11/12",
+            "decisions": [
+                {
+                    "query_id": "dev-cancel",
+                    "decision": "retained"
+                },
+                {
+                    "query_id": "dev-revision",
+                    "decision": "retained"
+                },
+                {
+                    "query_id": "dev-bytes",
+                    "decision": "retained"
+                },
+                {
+                    "query_id": "dev-history",
+                    "decision": "retained"
+                },
+                {
+                    "query_id": "dev-token",
+                    "decision": "retained"
+                },
+                {
+                    "query_id": "dev-retry",
+                    "decision": "retained"
+                },
+                {
+                    "query_id": "dev-encryption",
+                    "decision": "retained"
+                },
+                {
+                    "query_id": "dev-stream",
+                    "decision": "retained"
+                }
+            ]
+        },
+        {
+            "threshold_milli": 1700,
+            "balanced_loss": "1/2",
+            "false_refusal_count": 0,
+            "false_acceptance_count": 4,
+            "false_refusal_rate": "0",
+            "false_acceptance_rate": "1",
+            "positive_recall_at_3": "11/12",
+            "decisions": [
+                {
+                    "query_id": "dev-cancel",
+                    "decision": "retained"
+                },
+                {
+                    "query_id": "dev-revision",
+                    "decision": "retained"
+                },
+                {
+                    "query_id": "dev-bytes",
+                    "decision": "retained"
+                },
+                {
+                    "query_id": "dev-history",
+                    "decision": "retained"
+                },
+                {
+                    "query_id": "dev-token",
+                    "decision": "retained"
+                },
+                {
+                    "query_id": "dev-retry",
+                    "decision": "retained"
+                },
+                {
+                    "query_id": "dev-encryption",
+                    "decision": "retained"
+                },
+                {
+                    "query_id": "dev-stream",
+                    "decision": "retained"
+                }
+            ]
+        },
+        {
+            "threshold_milli": 1800,
+            "balanced_loss": "1/2",
+            "false_refusal_count": 0,
+            "false_acceptance_count": 4,
+            "false_refusal_rate": "0",
+            "false_acceptance_rate": "1",
+            "positive_recall_at_3": "11/12",
+            "decisions": [
+                {
+                    "query_id": "dev-cancel",
+                    "decision": "retained"
+                },
+                {
+                    "query_id": "dev-revision",
+                    "decision": "retained"
+                },
+                {
+                    "query_id": "dev-bytes",
+                    "decision": "retained"
+                },
+                {
+                    "query_id": "dev-history",
+                    "decision": "retained"
+                },
+                {
+                    "query_id": "dev-token",
+                    "decision": "retained"
+                },
+                {
+                    "query_id": "dev-retry",
+                    "decision": "retained"
+                },
+                {
+                    "query_id": "dev-encryption",
+                    "decision": "retained"
+                },
+                {
+                    "query_id": "dev-stream",
+                    "decision": "retained"
+                }
+            ]
+        },
+        {
+            "threshold_milli": 1900,
+            "balanced_loss": "1/2",
+            "false_refusal_count": 0,
+            "false_acceptance_count": 4,
+            "false_refusal_rate": "0",
+            "false_acceptance_rate": "1",
+            "positive_recall_at_3": "11/12",
+            "decisions": [
+                {
+                    "query_id": "dev-cancel",
+                    "decision": "retained"
+                },
+                {
+                    "query_id": "dev-revision",
+                    "decision": "retained"
+                },
+                {
+                    "query_id": "dev-bytes",
+                    "decision": "retained"
+                },
+                {
+                    "query_id": "dev-history",
+                    "decision": "retained"
+                },
+                {
+                    "query_id": "dev-token",
+                    "decision": "retained"
+                },
+                {
+                    "query_id": "dev-retry",
+                    "decision": "retained"
+                },
+                {
+                    "query_id": "dev-encryption",
+                    "decision": "retained"
+                },
+                {
+                    "query_id": "dev-stream",
+                    "decision": "retained"
+                }
+            ]
+        },
+        {
+            "threshold_milli": 2000,
+            "balanced_loss": "1/2",
+            "false_refusal_count": 0,
+            "false_acceptance_count": 4,
+            "false_refusal_rate": "0",
+            "false_acceptance_rate": "1",
+            "positive_recall_at_3": "11/12",
+            "decisions": [
+                {
+                    "query_id": "dev-cancel",
+                    "decision": "retained"
+                },
+                {
+                    "query_id": "dev-revision",
+                    "decision": "retained"
+                },
+                {
+                    "query_id": "dev-bytes",
+                    "decision": "retained"
+                },
+                {
+                    "query_id": "dev-history",
+                    "decision": "retained"
+                },
+                {
+                    "query_id": "dev-token",
+                    "decision": "retained"
+                },
+                {
+                    "query_id": "dev-retry",
+                    "decision": "retained"
+                },
+                {
+                    "query_id": "dev-encryption",
+                    "decision": "retained"
+                },
+                {
+                    "query_id": "dev-stream",
+                    "decision": "retained"
+                }
+            ]
+        }
+    ],
+    "selected": {
+        "threshold_milli": 500,
+        "balanced_loss": "1/8",
+        "false_refusal_count": 1,
+        "false_acceptance_count": 0,
+        "false_refusal_rate": "1/4",
+        "false_acceptance_rate": "0",
+        "positive_recall_at_3": "2/3",
+        "decisions": [
+            {
+                "query_id": "dev-cancel",
+                "decision": "retained"
+            },
+            {
+                "query_id": "dev-revision",
+                "decision": "retained"
+            },
+            {
+                "query_id": "dev-bytes",
+                "decision": "abstained"
+            },
+            {
+                "query_id": "dev-history",
+                "decision": "retained"
+            },
+            {
+                "query_id": "dev-token",
+                "decision": "abstained"
+            },
+            {
+                "query_id": "dev-retry",
+                "decision": "abstained"
+            },
+            {
+                "query_id": "dev-encryption",
+                "decision": "abstained"
+            },
+            {
+                "query_id": "dev-stream",
+                "decision": "abstained"
+            }
+        ]
+    },
+    "limits": [
+        "query-level rejection; retained candidates are not individually filtered",
+        "development score is not holdout performance",
+        "same small authored corpus",
+        "error or empty development retrieval prevents freezing",
+        "not enabled in product"
+    ]
+}

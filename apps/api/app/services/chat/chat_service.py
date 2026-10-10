@@ -27,7 +27,8 @@ from app.services.runtime.agent.agent_runtime import (
     ToolCallSucceeded,
     stream_agent_loop,
 )
-from app.services.model.model_client import client
+from app.services.model.model_client import client, chat_model_session
+from contextlib import AsyncExitStack
 from app.services.model.model_decision import (
     DEFAULT_SYSTEM_PROMPT,
     ModelDecisionError,
@@ -140,6 +141,7 @@ def build_run_metrics_payload(
     result: AgentLoopResult,
     *,
     priced_at: datetime | None = None,
+    custom_model: str | None = None,
 ) -> dict[str, object]:
     """把 Runtime 已产生的指标转换为公共事件 Payload。"""
 
@@ -186,6 +188,9 @@ def build_run_metrics_payload(
         ),
     }
 
+    if custom_model is not None:
+        estimated_cost_cny = None
+
     return {
         "model_usage": model_usage_payload,
         "model_duration_ms": result.model_duration_ms,
@@ -197,7 +202,7 @@ def build_run_metrics_payload(
             if estimated_cost_cny is not None
             else None
         ),
-        "pricing": pricing_payload,
+        "pricing": None if custom_model is not None else pricing_payload,
     }
 
 
@@ -205,6 +210,7 @@ def build_run_finished_payload(
     result: AgentLoopResult,
     *,
     priced_at: datetime | None = None,
+    custom_model: str | None = None,
 ) -> dict[str, object]:
     """构造正常完成的 RUN_FINISHED Payload。"""
 
@@ -215,6 +221,7 @@ def build_run_finished_payload(
         "metrics": build_run_metrics_payload(
             result,
             priced_at=priced_at,
+            **({"custom_model": custom_model} if custom_model is not None else {}),
         ),
     }
 
@@ -314,11 +321,10 @@ async def create_chat_reply(
     )
 
     try:
-        response = await client.chat.completions.create(
-            model=settings.deepseek_model,
-            messages=messages_to_send,
-            stream=False,
-        )
+        async with chat_model_session(client, settings.deepseek_model) as (active_client, active_model, _):
+            response = await active_client.chat.completions.create(
+                model=active_model, messages=messages_to_send, stream=False,
+            )
         reply = response.choices[0].message.content or ""
 
         await execution_threads.run(
@@ -341,7 +347,7 @@ async def create_chat_reply(
             del history[1:-max_saved_messages]
 
         return reply
-    except OpenAIError:
+    except (OpenAIError, ValueError, OSError):
         history.pop()
         raise
 
@@ -377,6 +383,7 @@ async def stream_chat_reply(
     if stream_task is None:
         raise RuntimeError("流式回复必须在 asyncio Task 中执行")
 
+    model_sessions = AsyncExitStack()
     cancellation_monitor = asyncio.create_task(
         _cancel_stream_when_requested(run_id, stream_task)
     )
@@ -487,9 +494,12 @@ async def stream_chat_reply(
             }
 
         # 模型展示与 Runtime 查找必须使用同一份最终能力快照。
+        active_client, active_model, custom = await model_sessions.enter_async_context(
+            chat_model_session(client, settings.deepseek_model)
+        )
         decision_maker = DeepSeekDecisionMaker(
-            client=client,
-            model=settings.deepseek_model,
+            client=active_client,
+            model=active_model,
             messages=messages_to_send,
             tool_context=tool_context,
             tool_definitions=tool_definitions,
@@ -580,7 +590,7 @@ async def stream_chat_reply(
                         "code": result.status,
                         "message": AGENT_LOOP_ERROR_MESSAGES[result.status],
                         "steps_taken": result.steps_taken,
-                        "metrics": build_run_metrics_payload(result),
+                        "metrics": (build_run_metrics_payload(result, custom_model=active_model) if custom else build_run_metrics_payload(result)),
                     }
 
                     await execution_threads.run(
@@ -653,7 +663,7 @@ async def stream_chat_reply(
                     del history[1:-max_saved_messages]
 
                 # 数据库和浏览器共用同一份指标 Payload
-                finished_payload: dict[str, object] = build_run_finished_payload(result)
+                finished_payload: dict[str, object] = (build_run_finished_payload(result, custom_model=active_model) if custom else build_run_finished_payload(result))
 
                 await execution_threads.run(
                     finish_agent_run,
@@ -776,6 +786,7 @@ async def stream_chat_reply(
                 await agent_events.aclose()
         finally:
             cancellation_monitor.cancel()
+            await model_sessions.aclose()
 
         # 请求级依赖会在释放占用前受保护地等待监听器退出。
 

@@ -1,0 +1,50 @@
+{
+    "created_at": "2026-10-10T16:27:35.159006+08:00",
+    "stage": "before_real_development_sampling",
+    "rule": "query-nearest-cosine-lte-v1",
+    "objective": "equal-query-false-refusal-and-false-acceptance-v1",
+    "grid_milli": [
+        0,
+        100,
+        200,
+        300,
+        400,
+        500,
+        600,
+        700,
+        800,
+        900,
+        1000,
+        1100,
+        1200,
+        1300,
+        1400,
+        1500,
+        1600,
+        1700,
+        1800,
+        1900,
+        2000
+    ],
+    "tie_break": "loss,false_acceptance,lower_threshold",
+    "manifest": {
+        "config_sha256": "11a44206f0083f0f8376530a612bcbffe2c398b764f8926b135e1c11ac35944b",
+        "dataset_sha256": "9ed06a3186674a69d17854b1b41d4072dc59652d483540584f1521f9288d5c96",
+        "source_count": 8,
+        "query_count": 8,
+        "dataset_role": "distance-development",
+        "planned_requests": 9,
+        "planned_body_bytes": 2831,
+        "dimensions": 1024,
+        "requested_model": "text-embedding-v4",
+        "expected_response_model": "text-embedding-v4",
+        "cost": null,
+        "cost_state": "unknown"
+    },
+    "calibrator_sha256": "c038b6f5b997cb9fa3f9363954544988bc590f8bab54dae1548b962148eb30be",
+    "limits": [
+        "authored after observing v1; not independent holdout",
+        "no production activation",
+        "holdout not loaded or evaluated"
+    ]
+}

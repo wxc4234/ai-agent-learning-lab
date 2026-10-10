@@ -12,6 +12,7 @@ from app.database import check_database_ready
 from app.routers.chat.chat import router as chat_router
 from app.routers.chat.conversation import router as conversation_router
 from app.routers.system.health import router as health_router
+from app.routers.model.settings import router as model_settings_router
 from app.routers.runtime.runs import router as runs_router
 from app.routers.runtime.tools import router as tools_router
 from app.routers.auth.registration import router as registration_router
@@ -70,6 +71,7 @@ app.middleware("http")(local_access_boundary)
 
 # 入口不实现具体业务；各业务接口由独立 router 按领域注册。
 app.include_router(health_router)
+app.include_router(model_settings_router)
 app.include_router(chat_router)
 app.include_router(conversation_router)
 app.include_router(tools_router)

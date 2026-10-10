@@ -22,7 +22,7 @@ export type AgentRunMetrics = {
 	model_duration_ms: number | null;
 	tool_duration_ms: number;
 	estimated_cost_cny: string | null;
-	pricing: AgentPricingSnapshot;
+	pricing: AgentPricingSnapshot | null;
 };
 
 // 浏览器只接受 Runtime 当前定义的四种稳定工具错误码。
@@ -214,8 +214,12 @@ function readModelUsage(metrics: JsonObject): AgentModelUsage | null {
 }
 
 // 校验价格快照对象、时段枚举与三个精确金额字符串。
-function readPricingSnapshot(metrics: JsonObject): AgentPricingSnapshot {
+function readPricingSnapshot(metrics: JsonObject): AgentPricingSnapshot | null {
 	const value = metrics.pricing;
+	if (value === null) {
+		if (metrics.estimated_cost_cny !== null) throw new Error("未知价格不能估算费用");
+		return null;
+	}
 
 	if (!isJsonObject(value)) {
 		throw new Error("Agent 事件字段类型错误：pricing");

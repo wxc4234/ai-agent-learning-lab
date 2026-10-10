@@ -2,7 +2,7 @@
 
 from dataclasses import asdict, dataclass
 import json
-from typing import Annotated, Any, Literal
+from typing import TYPE_CHECKING, Annotated, Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_validator
 
@@ -15,6 +15,9 @@ from app.services.workspace.files.code_vector_storage import (
 )
 from app.services.workspace.files.python_chunks import ChunkIncompleteReason
 
+
+if TYPE_CHECKING:
+    from app.services.workspace.files.code_hybrid_context import _HybridSnapshot
 
 MAX_SNAPSHOT_BYTES = 2 * 1024 * 1024
 
@@ -227,7 +230,7 @@ def _read_snapshot(result: CodeVectorSearchResult) -> _Snapshot:
 
 
 def _render(
-    snapshot: _Snapshot,
+    snapshot: "_Snapshot | _HybridSnapshot",
     chunks: list[dict[str, Any]],
 ) -> str:
     # 明确这是单批选择结果。原覆盖、召回省略和本轮省略分别表达。
@@ -244,6 +247,9 @@ def _render(
         "builder_omitted_hits": len(snapshot.hits) - len(chunks),
         "chunks": chunks,
     }
+    strategy = getattr(snapshot, "strategy", None)
+    if strategy is not None:
+        payload["retrieval_strategy"] = strategy
     return json.dumps(
         payload,
         ensure_ascii=False,
@@ -263,6 +269,20 @@ def build_code_context(
         raise CodeContextError("code_context_budget_invalid")
 
     snapshot = _read_snapshot(result)
+    return _build_context(snapshot, active, recall_summary={
+        "batch_chunk_count": snapshot.batch_chunk_count,
+        "searchable_chunk_count": snapshot.searchable_chunk_count,
+        "excluded_zero_chunk_count": snapshot.excluded_zero_chunk_count,
+        "omitted_by_top_k": snapshot.omitted_by_top_k,
+    }, source="bounded_code_context")
+
+
+def _build_context(
+    snapshot: "_Snapshot | _HybridSnapshot",
+    active: CodeContextBudget,
+    *, recall_summary: dict[str, int], source: str,
+) -> CodeContextPackage:
+    """只接收已经验证的快照；两种检索共用完整片段与实际JSON预算算法。"""
     selected: list[dict[str, Any]] = []
     omissions: list[CodeContextOmission] = []
     seen: set[str] = set()
@@ -324,10 +344,6 @@ def build_code_context(
         selected_chunks=tuple(selected),
         omissions=tuple(omissions),
         source_metadata=snapshot.metadata.model_dump(mode="json"),
-        recall_summary={
-            "batch_chunk_count": snapshot.batch_chunk_count,
-            "searchable_chunk_count": snapshot.searchable_chunk_count,
-            "excluded_zero_chunk_count": snapshot.excluded_zero_chunk_count,
-            "omitted_by_top_k": snapshot.omitted_by_top_k,
-        },
+        recall_summary=recall_summary,
+        source=source,
     )

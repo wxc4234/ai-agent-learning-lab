@@ -1,6 +1,6 @@
 # 单批代码上下文协议
 
-[构建服务](../apps/api/app/services/workspace/files/code_context.py)提供 `build_code_context(result: CodeVectorSearchResult, *, budget: CodeContextBudget | None = None) -> CodeContextPackage`。可信宿主显式选择[单批召回快照](code-vector-storage.md#指定批次精确召回)，服务只做纯内存校验、去重和选择，没有数据库事务、文件读取或模型请求。另有[候选选择→查询上下文内部组合](#授权候选选择与查询上下文内部组合)、下述显式查询→授权召回→构建组合、本地HTTP入口、同源BFF及[内部查询校验](#内部查询校验与产品边界)；已有[内部工具定义](#代码检索工具契约与内部适配)，已由[请求级注册与发送复核](#代码检索请求级注册与发送复核)接入本地流式Agent；没有混合排序或Rerank。
+[构建服务](../apps/api/app/services/workspace/files/code_context.py)提供 `build_code_context(result: CodeVectorSearchResult, *, budget: CodeContextBudget | None = None) -> CodeContextPackage`。可信宿主显式选择[单批召回快照](code-vector-storage.md#指定批次精确召回)，服务只做纯内存校验、去重和选择，没有数据库事务、文件读取或模型请求。另有[候选选择→查询上下文内部组合](#授权候选选择与查询上下文内部组合)、下述显式查询→授权召回→构建组合、本地HTTP入口、同源BFF及[内部查询校验](#内部查询校验与产品边界)；已有[内部工具定义](#代码检索工具契约与内部适配)，已由[请求级注册与发送复核](#代码检索请求级注册与发送复核)接入本地流式Agent；现有Agent链路仍使用向量召回；另有下述独立混合快照适配，已提供显式单批查询生成组合，未接入产品，尚无Rerank。
 
 ## 输入与来源
 
@@ -37,6 +37,42 @@
 JSON明确scope为`selected_chunks_from_one_batch`。原`truncated/incomplete_reasons`描述生成覆盖，`recall_omitted_by_top_k`描述召回选择，`builder_omitted_hits`描述本轮上下文选择；互不替代，也不代表整个项目覆盖。全零批次可产生明确的无片段上下文，零向量排除数量保留在审计摘要。
 
 审计字段与context_text分开，不自动进入模型提示；当前预算不涵盖整个返回DTO、系统指令、历史或其他工具结果。本地search_code请求通过下述发送守卫对完整messages/tools另行计量并确认当前发送许可；直接构建DTO仍不授予许可。DTO和预算字段冻结，但审计嵌套字典仍可由调用方修改；它们是与输入及其他构建结果无别名的副本，修改不会改写已生成的context_text。
+
+## 混合召回的有界上下文
+
+[混合适配服务](../apps/api/app/services/workspace/files/code_hybrid_context.py)提供`build_code_hybrid_context(result: CodeHybridSearchResult, *, budget: CodeContextBudget | None = None) -> CodeContextPackage`，消费[内部RRF快照](code-vector-storage.md#授权单批rrf混合召回)。与向量Builder共用完整片段选择和实际JSON预算算法；纯内存操作，不重新授权，不生成查询向量，不读取数据库或文件，不发送模型。
+
+- 独立严格快照模型校验策略`single-batch-rrf-v1`、常数60、空间、计数及完整来源。用两路rank重新计算精确RRF贡献，核对有限分值、稳定排序、通道rank范围/唯一性、命中词与正文/符号/路径相符，以及缺失通道不得携带伪证据。全批返回候选均先校验；重复chunk ID、预算外坏尾部及计数不一致整次拒绝。此校验不重新检索，不能证明缺失候选的真实排名或内容可信。
+- `source`为`bounded_hybrid_code_context`，JSON附`retrieval_strategy`。选中片段保留`rrf_score`、`keyword_rank`、`vector_rank`、`matched_terms`、`keyword_score`、`vector_distance`与完整chunk；不会生成含糊的`distance`字段或把RRF伪装为余弦距离。不存在的通道证据为null/空数组。原向量Builder的JSON结构保持原样。
+- 同样限制序列化快照最多2 MiB，预算包含RRF证据、来源、JSON键与转义；空上下文头也须放得下。超预算跳过整个片段后继续尝试较小片段，不裁剪正文。共享`CodeContextBudget`默认值及错误码沿用前文，字符/字节不等于Token。
+- 原`source_metadata`保留覆盖及历史代码Embedding用量；`recall_summary`分别保留批次片段、关键词/向量候选、零向量排除、融合候选及Top K省略数。JSON的`snapshot_truncated`、`recall_omitted_by_top_k`与`builder_omitted_hits`分别表示生成、融合选择与预算选择的不足。没有候选仍保留来源声明，不能据此判定语义无答案。
+- 成功只得到与输入隔离的快照和context_text，不授予未来模型发送许可；完整提示预算、发送前当前授权和上游查询向量与query的一致性仍由组合链路负责。已由下述显式单批查询组合复用，尚未接入Agent/API/UI，未验证真实融合收益。
+
+[32项混合Builder测试](../apps/api/tests/workspace/files/test_code_hybrid_context.py)覆盖来源/证据、精确预算、Unicode与JSON转义、完整小片段继续选择、三层覆盖、20候选、单路/双路为空、坏尾部/计数/排序和无I/O；共用算法同时通过[122项原向量Builder回归](../apps/api/tests/workspace/files/test_code_context.py)。均为纯内存测试，无数据库或真实模型调用。`apps/api`运行：
+
+```bash
+../../.venv/bin/python -m pytest tests/workspace/files/test_code_hybrid_context.py tests/workspace/files/test_code_context.py -q --tb=short -W error
+```
+
+## 授权查询与混合上下文串联
+
+[内部入口](../apps/api/app/services/workspace/files/code_hybrid_query_context.py)`build_code_hybrid_query_context`接收query、当前user/workspace/task、显式batch_id、宿主Embedding配置/预期返回模型名、Top K和Context预算。复用`CodeQueryContextResult`，source为`code_hybrid_query_context`，其中context.source为`bounded_hybrid_code_context`。不增加自动批次选择、Agent工具或HTTP/UI入口。
+
+1. 任何I/O前重新验证Context预算字段（包含绕过构造的模型实例）、查询Embedding约束及关键词约束、Top K/模型名/空间。混合入口要求查询不含控制字符、至少一个词项且最多32个不同词项，沿用2000字符/4096字节限制；不strip或改写查询。合法预算仍可能容纳不下真实上下文头，此时后置失败。
+2. 第一段短事务锁定并复核当前归属、绑定修订、指定批次与空间。退出后观察待生效取消，再发送原始query一次；不发送项目正文、不重试。复用生成器的HTTP/总等待超时与客户端收尾，模型等待不持有Session。
+3. HTTP关闭后核对query摘要、返回模型/空间、维度、单次请求计数和成对已知/未知用量；观察取消后调用单批RRF，两条通道各自开启短事务重新授权。模型等待时撤销归属或重绑，即使改根再改回，也不能凭预检返回旧内容。通道失败不回退为关键词成功。
+4. 核对召回DTO的批次、空间、Top K及metadata中的workspace/task/模型/维度，观察待生效取消后纯内存构建。所有三个事务和HTTP均退出才交付上下文；构建失败不放宽预算、不重试模型、不回退旧包。
+
+本次查询用量保留在外层，历史代码Embedding用量保留在context.source_metadata，不相加，不把未知当零。后置失败不能撤销已发生的用量。返回值没有查询正文、原始向量或凭据，候选正文只在有界上下文包中。成功不授予后续模型发送许可，完整提示预算仍需调用方检查。
+
+可传入现有`ExecutionThreads`将同步数据库步骤交给受跟踪线程；调用方负责`wait_closed()`收尾。取消等待不会强制停止后台同步数据库工作，默认同步短事务和纯内存构建也没有硬时间隔离；HTTP预算不是整个组合的硬截止时间。模型发送与权限变更无共同原子事务，RRF两次读取仍依赖不可变批次约定。本课没有真实模型调用或融合质量评测。
+
+[29项组合测试](../apps/api/tests/workspace/files/test_code_hybrid_query_context.py)使用隔离PostgreSQL与受控HTTP，覆盖三个事务/HTTP关闭、同步与线程执行、用量分离、预检无I/O、前置及模型等待期间撤销、模型/召回错配、零向量、HTTP/超时/预算失败及取消；关键词预检提取另通过14项既有非法输入回归。`apps/api`运行：
+
+```bash
+../../.venv/bin/python -m pytest tests/workspace/files/test_code_hybrid_query_context.py -q --tb=short -W error
+../../.venv/bin/python -m pytest tests/workspace/files/test_code_keyword_search.py -k invalid_query -q --tb=short -W error
+```
 
 ## 授权查询上下文串联
 

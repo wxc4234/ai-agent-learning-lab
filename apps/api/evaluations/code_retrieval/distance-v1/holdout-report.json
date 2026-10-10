@@ -1,0 +1,1354 @@
+{
+    "schema_version": 1,
+    "manifest": {
+        "config_sha256": "11a44206f0083f0f8376530a612bcbffe2c398b764f8926b135e1c11ac35944b",
+        "dataset_sha256": "2985dee67e7a3204a542112167a382594b57151ae09d02cf2dd5a4c092e16bac",
+        "source_count": 8,
+        "query_count": 8,
+        "dataset_role": "distance-holdout",
+        "planned_requests": 9,
+        "planned_body_bytes": 2954,
+        "dimensions": 1024,
+        "requested_model": "text-embedding-v4",
+        "expected_response_model": "text-embedding-v4",
+        "cost": null,
+        "cost_state": "unknown"
+    },
+    "requests": 9,
+    "request_body_bytes": 2954,
+    "literal": {
+        "schema_version": 1,
+        "dataset_id": "code-distance-holdout-v1",
+        "dataset_sha256": "2985dee67e7a3204a542112167a382594b57151ae09d02cf2dd5a4c092e16bac",
+        "strategy": "literal-term-overlap-v1",
+        "citation_origin": "retrieval_reference",
+        "k": 3,
+        "query_count": 8,
+        "answerable_count": 4,
+        "no_answer_count": 4,
+        "error_count": 0,
+        "recall_at_k": 0.5,
+        "mrr_at_k": 0.5,
+        "no_answer_false_positive_count": 3,
+        "no_answer_error_count": 0,
+        "citation_count": 5,
+        "citation_relevance": 0.4,
+        "citation_grounding_at_k": 1.0,
+        "rows": [
+            {
+                "query_id": "hold-owner",
+                "status": "ok",
+                "top_source_ids": [
+                    "scope.authorize_workspace",
+                    "scope.verify_revision",
+                    "budget.check_request_budget"
+                ],
+                "duplicate_count": 0,
+                "relevant_count": 2,
+                "matched_source_ids": [
+                    "scope.authorize_workspace",
+                    "scope.verify_revision"
+                ],
+                "recall_at_k": 1.0,
+                "reciprocal_rank_at_k": 1.0,
+                "no_answer_false_positive": null,
+                "citation_count": 1,
+                "relevant_citation_count": 1,
+                "grounded_citation_count": 1
+            },
+            {
+                "query_id": "hold-size",
+                "status": "ok",
+                "top_source_ids": [],
+                "duplicate_count": 0,
+                "relevant_count": 2,
+                "matched_source_ids": [],
+                "recall_at_k": 0.0,
+                "reciprocal_rank_at_k": 0.0,
+                "no_answer_false_positive": null,
+                "citation_count": 0,
+                "relevant_citation_count": 0,
+                "grounded_citation_count": 0
+            },
+            {
+                "query_id": "hold-aborted",
+                "status": "ok",
+                "top_source_ids": [
+                    "control.cancellation_checkpoint",
+                    "history.save_turn",
+                    "budget.check_request_budget"
+                ],
+                "duplicate_count": 0,
+                "relevant_count": 2,
+                "matched_source_ids": [
+                    "control.cancellation_checkpoint",
+                    "history.save_turn"
+                ],
+                "recall_at_k": 1.0,
+                "reciprocal_rank_at_k": 1.0,
+                "no_answer_false_positive": null,
+                "citation_count": 1,
+                "relevant_citation_count": 1,
+                "grounded_citation_count": 1
+            },
+            {
+                "query_id": "hold-messages",
+                "status": "ok",
+                "top_source_ids": [],
+                "duplicate_count": 0,
+                "relevant_count": 2,
+                "matched_source_ids": [],
+                "recall_at_k": 0.0,
+                "reciprocal_rank_at_k": 0.0,
+                "no_answer_false_positive": null,
+                "citation_count": 0,
+                "relevant_citation_count": 0,
+                "grounded_citation_count": 0
+            },
+            {
+                "query_id": "hold-resume",
+                "status": "ok",
+                "top_source_ids": [
+                    "control.cancel_task",
+                    "control.cancellation_checkpoint",
+                    "history.save_turn"
+                ],
+                "duplicate_count": 0,
+                "relevant_count": 0,
+                "matched_source_ids": [],
+                "recall_at_k": null,
+                "reciprocal_rank_at_k": null,
+                "no_answer_false_positive": true,
+                "citation_count": 1,
+                "relevant_citation_count": 0,
+                "grounded_citation_count": 1
+            },
+            {
+                "query_id": "hold-truncate",
+                "status": "ok",
+                "top_source_ids": [
+                    "budget.check_request_budget",
+                    "budget.measure_request_bytes",
+                    "scope.authorize_workspace"
+                ],
+                "duplicate_count": 0,
+                "relevant_count": 0,
+                "matched_source_ids": [],
+                "recall_at_k": null,
+                "reciprocal_rank_at_k": null,
+                "no_answer_false_positive": true,
+                "citation_count": 1,
+                "relevant_citation_count": 0,
+                "grounded_citation_count": 1
+            },
+            {
+                "query_id": "hold-delete",
+                "status": "ok",
+                "top_source_ids": [],
+                "duplicate_count": 0,
+                "relevant_count": 0,
+                "matched_source_ids": [],
+                "recall_at_k": null,
+                "reciprocal_rank_at_k": null,
+                "no_answer_false_positive": false,
+                "citation_count": 0,
+                "relevant_citation_count": 0,
+                "grounded_citation_count": 0
+            },
+            {
+                "query_id": "hold-signature",
+                "status": "ok",
+                "top_source_ids": [
+                    "budget.check_request_budget",
+                    "scope.verify_revision",
+                    "budget.measure_request_bytes"
+                ],
+                "duplicate_count": 0,
+                "relevant_count": 0,
+                "matched_source_ids": [],
+                "recall_at_k": null,
+                "reciprocal_rank_at_k": null,
+                "no_answer_false_positive": true,
+                "citation_count": 1,
+                "relevant_citation_count": 0,
+                "grounded_citation_count": 1
+            }
+        ],
+        "limits": [
+            "offline_authored_fixture",
+            "source_level_dedup_before_k",
+            "not_semantic_or_answer_quality",
+            "no_latency_or_cost_measurement"
+        ]
+    },
+    "vector": {
+        "schema_version": 1,
+        "dataset_id": "code-distance-holdout-v1",
+        "dataset_sha256": "2985dee67e7a3204a542112167a382594b57151ae09d02cf2dd5a4c092e16bac",
+        "strategy": "configured-provider-v1",
+        "citation_origin": "retrieval_reference",
+        "k": 3,
+        "query_count": 8,
+        "answerable_count": 4,
+        "no_answer_count": 4,
+        "error_count": 0,
+        "recall_at_k": 1.0,
+        "mrr_at_k": 1.0,
+        "no_answer_false_positive_count": 4,
+        "no_answer_error_count": 0,
+        "citation_count": 8,
+        "citation_relevance": 0.5,
+        "citation_grounding_at_k": 1.0,
+        "rows": [
+            {
+                "query_id": "hold-owner",
+                "status": "ok",
+                "top_source_ids": [
+                    "scope.authorize_workspace",
+                    "scope.verify_revision",
+                    "control.cancellation_checkpoint"
+                ],
+                "duplicate_count": 0,
+                "relevant_count": 2,
+                "matched_source_ids": [
+                    "scope.authorize_workspace",
+                    "scope.verify_revision"
+                ],
+                "recall_at_k": 1.0,
+                "reciprocal_rank_at_k": 1.0,
+                "no_answer_false_positive": null,
+                "citation_count": 1,
+                "relevant_citation_count": 1,
+                "grounded_citation_count": 1
+            },
+            {
+                "query_id": "hold-size",
+                "status": "ok",
+                "top_source_ids": [
+                    "budget.check_request_budget",
+                    "budget.measure_request_bytes",
+                    "scope.verify_revision"
+                ],
+                "duplicate_count": 0,
+                "relevant_count": 2,
+                "matched_source_ids": [
+                    "budget.check_request_budget",
+                    "budget.measure_request_bytes"
+                ],
+                "recall_at_k": 1.0,
+                "reciprocal_rank_at_k": 1.0,
+                "no_answer_false_positive": null,
+                "citation_count": 1,
+                "relevant_citation_count": 1,
+                "grounded_citation_count": 1
+            },
+            {
+                "query_id": "hold-aborted",
+                "status": "ok",
+                "top_source_ids": [
+                    "history.save_turn",
+                    "control.cancellation_checkpoint",
+                    "control.cancel_task"
+                ],
+                "duplicate_count": 0,
+                "relevant_count": 2,
+                "matched_source_ids": [
+                    "control.cancellation_checkpoint",
+                    "history.save_turn"
+                ],
+                "recall_at_k": 1.0,
+                "reciprocal_rank_at_k": 1.0,
+                "no_answer_false_positive": null,
+                "citation_count": 1,
+                "relevant_citation_count": 1,
+                "grounded_citation_count": 1
+            },
+            {
+                "query_id": "hold-messages",
+                "status": "ok",
+                "top_source_ids": [
+                    "history.restore_history",
+                    "history.save_turn",
+                    "budget.measure_request_bytes"
+                ],
+                "duplicate_count": 0,
+                "relevant_count": 2,
+                "matched_source_ids": [
+                    "history.restore_history",
+                    "history.save_turn"
+                ],
+                "recall_at_k": 1.0,
+                "reciprocal_rank_at_k": 1.0,
+                "no_answer_false_positive": null,
+                "citation_count": 1,
+                "relevant_citation_count": 1,
+                "grounded_citation_count": 1
+            },
+            {
+                "query_id": "hold-resume",
+                "status": "ok",
+                "top_source_ids": [
+                    "control.cancel_task",
+                    "control.cancellation_checkpoint",
+                    "history.save_turn"
+                ],
+                "duplicate_count": 0,
+                "relevant_count": 0,
+                "matched_source_ids": [],
+                "recall_at_k": null,
+                "reciprocal_rank_at_k": null,
+                "no_answer_false_positive": true,
+                "citation_count": 1,
+                "relevant_citation_count": 0,
+                "grounded_citation_count": 1
+            },
+            {
+                "query_id": "hold-truncate",
+                "status": "ok",
+                "top_source_ids": [
+                    "budget.check_request_budget",
+                    "budget.measure_request_bytes",
+                    "history.restore_history"
+                ],
+                "duplicate_count": 0,
+                "relevant_count": 0,
+                "matched_source_ids": [],
+                "recall_at_k": null,
+                "reciprocal_rank_at_k": null,
+                "no_answer_false_positive": true,
+                "citation_count": 1,
+                "relevant_citation_count": 0,
+                "grounded_citation_count": 1
+            },
+            {
+                "query_id": "hold-delete",
+                "status": "ok",
+                "top_source_ids": [
+                    "history.restore_history",
+                    "history.save_turn",
+                    "control.cancel_task"
+                ],
+                "duplicate_count": 0,
+                "relevant_count": 0,
+                "matched_source_ids": [],
+                "recall_at_k": null,
+                "reciprocal_rank_at_k": null,
+                "no_answer_false_positive": true,
+                "citation_count": 1,
+                "relevant_citation_count": 0,
+                "grounded_citation_count": 1
+            },
+            {
+                "query_id": "hold-signature",
+                "status": "ok",
+                "top_source_ids": [
+                    "scope.verify_revision",
+                    "control.cancel_task",
+                    "scope.authorize_workspace"
+                ],
+                "duplicate_count": 0,
+                "relevant_count": 0,
+                "matched_source_ids": [],
+                "recall_at_k": null,
+                "reciprocal_rank_at_k": null,
+                "no_answer_false_positive": true,
+                "citation_count": 1,
+                "relevant_citation_count": 0,
+                "grounded_citation_count": 1
+            }
+        ],
+        "limits": [
+            "offline_authored_fixture",
+            "source_level_dedup_before_k",
+            "not_semantic_or_answer_quality",
+            "no_latency_or_cost_measurement"
+        ]
+    },
+    "rrf": {
+        "schema_version": 1,
+        "dataset_id": "code-distance-holdout-v1",
+        "dataset_sha256": "2985dee67e7a3204a542112167a382594b57151ae09d02cf2dd5a4c092e16bac",
+        "strategy": "rrf-c60-v1",
+        "citation_origin": "retrieval_reference",
+        "k": 3,
+        "query_count": 8,
+        "answerable_count": 4,
+        "no_answer_count": 4,
+        "error_count": 0,
+        "recall_at_k": 1.0,
+        "mrr_at_k": 1.0,
+        "no_answer_false_positive_count": 4,
+        "no_answer_error_count": 0,
+        "citation_count": 8,
+        "citation_relevance": 0.5,
+        "citation_grounding_at_k": 1.0,
+        "rows": [
+            {
+                "query_id": "hold-owner",
+                "status": "ok",
+                "top_source_ids": [
+                    "scope.authorize_workspace",
+                    "scope.verify_revision",
+                    "budget.check_request_budget"
+                ],
+                "duplicate_count": 0,
+                "relevant_count": 2,
+                "matched_source_ids": [
+                    "scope.authorize_workspace",
+                    "scope.verify_revision"
+                ],
+                "recall_at_k": 1.0,
+                "reciprocal_rank_at_k": 1.0,
+                "no_answer_false_positive": null,
+                "citation_count": 1,
+                "relevant_citation_count": 1,
+                "grounded_citation_count": 1
+            },
+            {
+                "query_id": "hold-size",
+                "status": "ok",
+                "top_source_ids": [
+                    "budget.check_request_budget",
+                    "budget.measure_request_bytes",
+                    "scope.verify_revision"
+                ],
+                "duplicate_count": 0,
+                "relevant_count": 2,
+                "matched_source_ids": [
+                    "budget.check_request_budget",
+                    "budget.measure_request_bytes"
+                ],
+                "recall_at_k": 1.0,
+                "reciprocal_rank_at_k": 1.0,
+                "no_answer_false_positive": null,
+                "citation_count": 1,
+                "relevant_citation_count": 1,
+                "grounded_citation_count": 1
+            },
+            {
+                "query_id": "hold-aborted",
+                "status": "ok",
+                "top_source_ids": [
+                    "control.cancellation_checkpoint",
+                    "history.save_turn",
+                    "control.cancel_task"
+                ],
+                "duplicate_count": 0,
+                "relevant_count": 2,
+                "matched_source_ids": [
+                    "control.cancellation_checkpoint",
+                    "history.save_turn"
+                ],
+                "recall_at_k": 1.0,
+                "reciprocal_rank_at_k": 1.0,
+                "no_answer_false_positive": null,
+                "citation_count": 1,
+                "relevant_citation_count": 1,
+                "grounded_citation_count": 1
+            },
+            {
+                "query_id": "hold-messages",
+                "status": "ok",
+                "top_source_ids": [
+                    "history.restore_history",
+                    "history.save_turn",
+                    "budget.measure_request_bytes"
+                ],
+                "duplicate_count": 0,
+                "relevant_count": 2,
+                "matched_source_ids": [
+                    "history.restore_history",
+                    "history.save_turn"
+                ],
+                "recall_at_k": 1.0,
+                "reciprocal_rank_at_k": 1.0,
+                "no_answer_false_positive": null,
+                "citation_count": 1,
+                "relevant_citation_count": 1,
+                "grounded_citation_count": 1
+            },
+            {
+                "query_id": "hold-resume",
+                "status": "ok",
+                "top_source_ids": [
+                    "control.cancel_task",
+                    "control.cancellation_checkpoint",
+                    "history.save_turn"
+                ],
+                "duplicate_count": 0,
+                "relevant_count": 0,
+                "matched_source_ids": [],
+                "recall_at_k": null,
+                "reciprocal_rank_at_k": null,
+                "no_answer_false_positive": true,
+                "citation_count": 1,
+                "relevant_citation_count": 0,
+                "grounded_citation_count": 1
+            },
+            {
+                "query_id": "hold-truncate",
+                "status": "ok",
+                "top_source_ids": [
+                    "budget.check_request_budget",
+                    "budget.measure_request_bytes",
+                    "control.cancellation_checkpoint"
+                ],
+                "duplicate_count": 0,
+                "relevant_count": 0,
+                "matched_source_ids": [],
+                "recall_at_k": null,
+                "reciprocal_rank_at_k": null,
+                "no_answer_false_positive": true,
+                "citation_count": 1,
+                "relevant_citation_count": 0,
+                "grounded_citation_count": 1
+            },
+            {
+                "query_id": "hold-delete",
+                "status": "ok",
+                "top_source_ids": [
+                    "history.restore_history",
+                    "history.save_turn",
+                    "control.cancel_task"
+                ],
+                "duplicate_count": 0,
+                "relevant_count": 0,
+                "matched_source_ids": [],
+                "recall_at_k": null,
+                "reciprocal_rank_at_k": null,
+                "no_answer_false_positive": true,
+                "citation_count": 1,
+                "relevant_citation_count": 0,
+                "grounded_citation_count": 1
+            },
+            {
+                "query_id": "hold-signature",
+                "status": "ok",
+                "top_source_ids": [
+                    "scope.verify_revision",
+                    "control.cancel_task",
+                    "budget.check_request_budget"
+                ],
+                "duplicate_count": 0,
+                "relevant_count": 0,
+                "matched_source_ids": [],
+                "recall_at_k": null,
+                "reciprocal_rank_at_k": null,
+                "no_answer_false_positive": true,
+                "citation_count": 1,
+                "relevant_citation_count": 0,
+                "grounded_citation_count": 1
+            }
+        ],
+        "limits": [
+            "offline_authored_fixture",
+            "source_level_dedup_before_k",
+            "not_semantic_or_answer_quality",
+            "no_latency_or_cost_measurement"
+        ]
+    },
+    "observation": {
+        "schema_version": 1,
+        "clock": "monotonic",
+        "percentile": "nearest-rank",
+        "spans": [
+            {
+                "phase": "build",
+                "sample": "build",
+                "stage": "end_to_end",
+                "status": "ok",
+                "duration_ms": 315.96758298110217
+            },
+            {
+                "phase": "query",
+                "sample": "hold-owner",
+                "stage": "end_to_end",
+                "status": "ok",
+                "duration_ms": 313.8049580156803
+            },
+            {
+                "phase": "query",
+                "sample": "hold-size",
+                "stage": "end_to_end",
+                "status": "ok",
+                "duration_ms": 339.86716700019315
+            },
+            {
+                "phase": "query",
+                "sample": "hold-aborted",
+                "stage": "end_to_end",
+                "status": "ok",
+                "duration_ms": 165.1015829993412
+            },
+            {
+                "phase": "query",
+                "sample": "hold-messages",
+                "stage": "end_to_end",
+                "status": "ok",
+                "duration_ms": 217.759000021033
+            },
+            {
+                "phase": "query",
+                "sample": "hold-resume",
+                "stage": "end_to_end",
+                "status": "ok",
+                "duration_ms": 245.8660420088563
+            },
+            {
+                "phase": "query",
+                "sample": "hold-truncate",
+                "stage": "end_to_end",
+                "status": "ok",
+                "duration_ms": 185.54808298358694
+            },
+            {
+                "phase": "query",
+                "sample": "hold-delete",
+                "stage": "end_to_end",
+                "status": "ok",
+                "duration_ms": 761.5233749966137
+            },
+            {
+                "phase": "query",
+                "sample": "hold-signature",
+                "stage": "end_to_end",
+                "status": "ok",
+                "duration_ms": 527.4212910153437
+            },
+            {
+                "phase": "evaluation",
+                "sample": "dataset",
+                "stage": "literal",
+                "status": "ok",
+                "duration_ms": 1.2999580067116767
+            },
+            {
+                "phase": "evaluation",
+                "sample": "dataset",
+                "stage": "fusion",
+                "status": "ok",
+                "duration_ms": 1.6867920057848096
+            }
+        ],
+        "latency": [
+            {
+                "phase": "build",
+                "stage": "end_to_end",
+                "status": "ok",
+                "count": 1,
+                "mean_ms": 315.96758298110217,
+                "p50_ms": 315.96758298110217,
+                "p95_ms": 315.96758298110217
+            },
+            {
+                "phase": "evaluation",
+                "stage": "fusion",
+                "status": "ok",
+                "count": 1,
+                "mean_ms": 1.6867920057848096,
+                "p50_ms": 1.6867920057848096,
+                "p95_ms": 1.6867920057848096
+            },
+            {
+                "phase": "evaluation",
+                "stage": "literal",
+                "status": "ok",
+                "count": 1,
+                "mean_ms": 1.2999580067116767,
+                "p50_ms": 1.2999580067116767,
+                "p95_ms": 1.2999580067116767
+            },
+            {
+                "phase": "query",
+                "stage": "end_to_end",
+                "status": "ok",
+                "count": 8,
+                "mean_ms": 344.61143738008104,
+                "p50_ms": 245.8660420088563,
+                "p95_ms": 761.5233749966137
+            }
+        ],
+        "usage": [
+            {
+                "phase": "build",
+                "sample": "build",
+                "attempts": 1,
+                "validated_requests": 1,
+                "prompt_tokens": 315,
+                "total_tokens": 315,
+                "state": "reported"
+            },
+            {
+                "phase": "query",
+                "sample": "hold-aborted",
+                "attempts": 1,
+                "validated_requests": 1,
+                "prompt_tokens": 21,
+                "total_tokens": 21,
+                "state": "reported"
+            },
+            {
+                "phase": "query",
+                "sample": "hold-delete",
+                "attempts": 1,
+                "validated_requests": 1,
+                "prompt_tokens": 16,
+                "total_tokens": 16,
+                "state": "reported"
+            },
+            {
+                "phase": "query",
+                "sample": "hold-messages",
+                "attempts": 1,
+                "validated_requests": 1,
+                "prompt_tokens": 16,
+                "total_tokens": 16,
+                "state": "reported"
+            },
+            {
+                "phase": "query",
+                "sample": "hold-owner",
+                "attempts": 1,
+                "validated_requests": 1,
+                "prompt_tokens": 18,
+                "total_tokens": 18,
+                "state": "reported"
+            },
+            {
+                "phase": "query",
+                "sample": "hold-resume",
+                "attempts": 1,
+                "validated_requests": 1,
+                "prompt_tokens": 12,
+                "total_tokens": 12,
+                "state": "reported"
+            },
+            {
+                "phase": "query",
+                "sample": "hold-signature",
+                "attempts": 1,
+                "validated_requests": 1,
+                "prompt_tokens": 14,
+                "total_tokens": 14,
+                "state": "reported"
+            },
+            {
+                "phase": "query",
+                "sample": "hold-size",
+                "attempts": 1,
+                "validated_requests": 1,
+                "prompt_tokens": 20,
+                "total_tokens": 20,
+                "state": "reported"
+            },
+            {
+                "phase": "query",
+                "sample": "hold-truncate",
+                "attempts": 1,
+                "validated_requests": 1,
+                "prompt_tokens": 17,
+                "total_tokens": 17,
+                "state": "reported"
+            }
+        ],
+        "usage_totals": [
+            {
+                "phase": "build",
+                "samples": 1,
+                "attempts": 1,
+                "unknown_samples": 0,
+                "prompt_tokens": 315,
+                "total_tokens": 315,
+                "cost": null,
+                "cost_state": "unknown"
+            },
+            {
+                "phase": "query",
+                "samples": 8,
+                "attempts": 8,
+                "unknown_samples": 0,
+                "prompt_tokens": 134,
+                "total_tokens": 134,
+                "cost": null,
+                "cost_state": "unknown"
+            }
+        ],
+        "timing_scope": "nested spans overlap; do not sum stage percentiles",
+        "environment": "local PostgreSQL; configured real provider"
+    },
+    "distance_observation": {
+        "schema_version": 1,
+        "metric": "cosine_distance",
+        "direction": "lower_is_closer",
+        "scope": "same configured model space; all returned source candidates",
+        "error_count": 0,
+        "empty_success_count": 0,
+        "rows": [
+            {
+                "query_id": "hold-owner",
+                "status": "ok",
+                "answerable": true,
+                "candidates": [
+                    {
+                        "source_id": "scope.authorize_workspace",
+                        "rank": 1,
+                        "distance": 0.33147154246185817,
+                        "relevant": true,
+                        "in_top_k": true
+                    },
+                    {
+                        "source_id": "scope.verify_revision",
+                        "rank": 2,
+                        "distance": 0.3998890519142151,
+                        "relevant": true,
+                        "in_top_k": true
+                    },
+                    {
+                        "source_id": "control.cancellation_checkpoint",
+                        "rank": 3,
+                        "distance": 0.6777916550636292,
+                        "relevant": false,
+                        "in_top_k": true
+                    },
+                    {
+                        "source_id": "budget.check_request_budget",
+                        "rank": 4,
+                        "distance": 0.694696146565905,
+                        "relevant": false,
+                        "in_top_k": false
+                    },
+                    {
+                        "source_id": "control.cancel_task",
+                        "rank": 5,
+                        "distance": 0.7016228615270335,
+                        "relevant": false,
+                        "in_top_k": false
+                    },
+                    {
+                        "source_id": "history.restore_history",
+                        "rank": 6,
+                        "distance": 0.7761476071056835,
+                        "relevant": false,
+                        "in_top_k": false
+                    },
+                    {
+                        "source_id": "history.save_turn",
+                        "rank": 7,
+                        "distance": 0.7796692997217178,
+                        "relevant": false,
+                        "in_top_k": false
+                    },
+                    {
+                        "source_id": "budget.measure_request_bytes",
+                        "rank": 8,
+                        "distance": 0.8352979421615601,
+                        "relevant": false,
+                        "in_top_k": false
+                    }
+                ],
+                "nearest_distance": 0.33147154246185817,
+                "first_second_gap": 0.06841750945235692
+            },
+            {
+                "query_id": "hold-size",
+                "status": "ok",
+                "answerable": true,
+                "candidates": [
+                    {
+                        "source_id": "budget.check_request_budget",
+                        "rank": 1,
+                        "distance": 0.43476800426148754,
+                        "relevant": true,
+                        "in_top_k": true
+                    },
+                    {
+                        "source_id": "budget.measure_request_bytes",
+                        "rank": 2,
+                        "distance": 0.45735175526306604,
+                        "relevant": true,
+                        "in_top_k": true
+                    },
+                    {
+                        "source_id": "scope.verify_revision",
+                        "rank": 3,
+                        "distance": 0.66647154091044,
+                        "relevant": false,
+                        "in_top_k": true
+                    },
+                    {
+                        "source_id": "control.cancellation_checkpoint",
+                        "rank": 4,
+                        "distance": 0.7299423274346276,
+                        "relevant": false,
+                        "in_top_k": false
+                    },
+                    {
+                        "source_id": "history.save_turn",
+                        "rank": 5,
+                        "distance": 0.7361274125689925,
+                        "relevant": false,
+                        "in_top_k": false
+                    },
+                    {
+                        "source_id": "history.restore_history",
+                        "rank": 6,
+                        "distance": 0.7441578569741545,
+                        "relevant": false,
+                        "in_top_k": false
+                    },
+                    {
+                        "source_id": "control.cancel_task",
+                        "rank": 7,
+                        "distance": 0.7758797936403665,
+                        "relevant": false,
+                        "in_top_k": false
+                    },
+                    {
+                        "source_id": "scope.authorize_workspace",
+                        "rank": 8,
+                        "distance": 0.7770664873202424,
+                        "relevant": false,
+                        "in_top_k": false
+                    }
+                ],
+                "nearest_distance": 0.43476800426148754,
+                "first_second_gap": 0.0225837510015785
+            },
+            {
+                "query_id": "hold-aborted",
+                "status": "ok",
+                "answerable": true,
+                "candidates": [
+                    {
+                        "source_id": "history.save_turn",
+                        "rank": 1,
+                        "distance": 0.4247613638923886,
+                        "relevant": true,
+                        "in_top_k": true
+                    },
+                    {
+                        "source_id": "control.cancellation_checkpoint",
+                        "rank": 2,
+                        "distance": 0.45458418672272927,
+                        "relevant": true,
+                        "in_top_k": true
+                    },
+                    {
+                        "source_id": "control.cancel_task",
+                        "rank": 3,
+                        "distance": 0.508346049485316,
+                        "relevant": false,
+                        "in_top_k": true
+                    },
+                    {
+                        "source_id": "history.restore_history",
+                        "rank": 4,
+                        "distance": 0.5779982805251955,
+                        "relevant": false,
+                        "in_top_k": false
+                    },
+                    {
+                        "source_id": "scope.verify_revision",
+                        "rank": 5,
+                        "distance": 0.5962175016143887,
+                        "relevant": false,
+                        "in_top_k": false
+                    },
+                    {
+                        "source_id": "budget.check_request_budget",
+                        "rank": 6,
+                        "distance": 0.6508871941172127,
+                        "relevant": false,
+                        "in_top_k": false
+                    },
+                    {
+                        "source_id": "budget.measure_request_bytes",
+                        "rank": 7,
+                        "distance": 0.6896939051516147,
+                        "relevant": false,
+                        "in_top_k": false
+                    },
+                    {
+                        "source_id": "scope.authorize_workspace",
+                        "rank": 8,
+                        "distance": 0.7051322425783624,
+                        "relevant": false,
+                        "in_top_k": false
+                    }
+                ],
+                "nearest_distance": 0.4247613638923886,
+                "first_second_gap": 0.029822822830340656
+            },
+            {
+                "query_id": "hold-messages",
+                "status": "ok",
+                "answerable": true,
+                "candidates": [
+                    {
+                        "source_id": "history.restore_history",
+                        "rank": 1,
+                        "distance": 0.4197139894450874,
+                        "relevant": true,
+                        "in_top_k": true
+                    },
+                    {
+                        "source_id": "history.save_turn",
+                        "rank": 2,
+                        "distance": 0.42603972113369126,
+                        "relevant": true,
+                        "in_top_k": true
+                    },
+                    {
+                        "source_id": "budget.measure_request_bytes",
+                        "rank": 3,
+                        "distance": 0.6557117495364988,
+                        "relevant": false,
+                        "in_top_k": true
+                    },
+                    {
+                        "source_id": "control.cancellation_checkpoint",
+                        "rank": 4,
+                        "distance": 0.6633926429386516,
+                        "relevant": false,
+                        "in_top_k": false
+                    },
+                    {
+                        "source_id": "budget.check_request_budget",
+                        "rank": 5,
+                        "distance": 0.6731864809989906,
+                        "relevant": false,
+                        "in_top_k": false
+                    },
+                    {
+                        "source_id": "scope.verify_revision",
+                        "rank": 6,
+                        "distance": 0.7035822393645186,
+                        "relevant": false,
+                        "in_top_k": false
+                    },
+                    {
+                        "source_id": "control.cancel_task",
+                        "rank": 7,
+                        "distance": 0.7091059982776622,
+                        "relevant": false,
+                        "in_top_k": false
+                    },
+                    {
+                        "source_id": "scope.authorize_workspace",
+                        "rank": 8,
+                        "distance": 0.7164127573143919,
+                        "relevant": false,
+                        "in_top_k": false
+                    }
+                ],
+                "nearest_distance": 0.4197139894450874,
+                "first_second_gap": 0.006325731688603842
+            },
+            {
+                "query_id": "hold-resume",
+                "status": "ok",
+                "answerable": false,
+                "candidates": [
+                    {
+                        "source_id": "control.cancel_task",
+                        "rank": 1,
+                        "distance": 0.35369888455893905,
+                        "relevant": false,
+                        "in_top_k": true
+                    },
+                    {
+                        "source_id": "control.cancellation_checkpoint",
+                        "rank": 2,
+                        "distance": 0.42161290259129625,
+                        "relevant": false,
+                        "in_top_k": true
+                    },
+                    {
+                        "source_id": "history.save_turn",
+                        "rank": 3,
+                        "distance": 0.6438425224108897,
+                        "relevant": false,
+                        "in_top_k": true
+                    },
+                    {
+                        "source_id": "history.restore_history",
+                        "rank": 4,
+                        "distance": 0.6487437397990226,
+                        "relevant": false,
+                        "in_top_k": false
+                    },
+                    {
+                        "source_id": "scope.authorize_workspace",
+                        "rank": 5,
+                        "distance": 0.7386190088660944,
+                        "relevant": false,
+                        "in_top_k": false
+                    },
+                    {
+                        "source_id": "scope.verify_revision",
+                        "rank": 6,
+                        "distance": 0.7579995975495066,
+                        "relevant": false,
+                        "in_top_k": false
+                    },
+                    {
+                        "source_id": "budget.check_request_budget",
+                        "rank": 7,
+                        "distance": 0.7656686566665974,
+                        "relevant": false,
+                        "in_top_k": false
+                    },
+                    {
+                        "source_id": "budget.measure_request_bytes",
+                        "rank": 8,
+                        "distance": 0.8122259416176155,
+                        "relevant": false,
+                        "in_top_k": false
+                    }
+                ],
+                "nearest_distance": 0.35369888455893905,
+                "first_second_gap": 0.06791401803235719
+            },
+            {
+                "query_id": "hold-truncate",
+                "status": "ok",
+                "answerable": false,
+                "candidates": [
+                    {
+                        "source_id": "budget.check_request_budget",
+                        "rank": 1,
+                        "distance": 0.3733780535008844,
+                        "relevant": false,
+                        "in_top_k": true
+                    },
+                    {
+                        "source_id": "budget.measure_request_bytes",
+                        "rank": 2,
+                        "distance": 0.47535684851665116,
+                        "relevant": false,
+                        "in_top_k": true
+                    },
+                    {
+                        "source_id": "history.restore_history",
+                        "rank": 3,
+                        "distance": 0.6476142792471757,
+                        "relevant": false,
+                        "in_top_k": true
+                    },
+                    {
+                        "source_id": "scope.verify_revision",
+                        "rank": 4,
+                        "distance": 0.6485069603617805,
+                        "relevant": false,
+                        "in_top_k": false
+                    },
+                    {
+                        "source_id": "control.cancellation_checkpoint",
+                        "rank": 5,
+                        "distance": 0.6631044052180997,
+                        "relevant": false,
+                        "in_top_k": false
+                    },
+                    {
+                        "source_id": "history.save_turn",
+                        "rank": 6,
+                        "distance": 0.6773607923173426,
+                        "relevant": false,
+                        "in_top_k": false
+                    },
+                    {
+                        "source_id": "control.cancel_task",
+                        "rank": 7,
+                        "distance": 0.6985560418896626,
+                        "relevant": false,
+                        "in_top_k": false
+                    },
+                    {
+                        "source_id": "scope.authorize_workspace",
+                        "rank": 8,
+                        "distance": 0.7127114619996697,
+                        "relevant": false,
+                        "in_top_k": false
+                    }
+                ],
+                "nearest_distance": 0.3733780535008844,
+                "first_second_gap": 0.10197879501576679
+            },
+            {
+                "query_id": "hold-delete",
+                "status": "ok",
+                "answerable": false,
+                "candidates": [
+                    {
+                        "source_id": "history.restore_history",
+                        "rank": 1,
+                        "distance": 0.6050306087768775,
+                        "relevant": false,
+                        "in_top_k": true
+                    },
+                    {
+                        "source_id": "history.save_turn",
+                        "rank": 2,
+                        "distance": 0.6147269904613495,
+                        "relevant": false,
+                        "in_top_k": true
+                    },
+                    {
+                        "source_id": "control.cancel_task",
+                        "rank": 3,
+                        "distance": 0.6935424689327194,
+                        "relevant": false,
+                        "in_top_k": true
+                    },
+                    {
+                        "source_id": "budget.measure_request_bytes",
+                        "rank": 4,
+                        "distance": 0.6985327303409576,
+                        "relevant": false,
+                        "in_top_k": false
+                    },
+                    {
+                        "source_id": "control.cancellation_checkpoint",
+                        "rank": 5,
+                        "distance": 0.7015097141265869,
+                        "relevant": false,
+                        "in_top_k": false
+                    },
+                    {
+                        "source_id": "budget.check_request_budget",
+                        "rank": 6,
+                        "distance": 0.71494685322363,
+                        "relevant": false,
+                        "in_top_k": false
+                    },
+                    {
+                        "source_id": "scope.verify_revision",
+                        "rank": 7,
+                        "distance": 0.7163251042366028,
+                        "relevant": false,
+                        "in_top_k": false
+                    },
+                    {
+                        "source_id": "scope.authorize_workspace",
+                        "rank": 8,
+                        "distance": 0.7442710919460979,
+                        "relevant": false,
+                        "in_top_k": false
+                    }
+                ],
+                "nearest_distance": 0.6050306087768775,
+                "first_second_gap": 0.009696381684471955
+            },
+            {
+                "query_id": "hold-signature",
+                "status": "ok",
+                "answerable": false,
+                "candidates": [
+                    {
+                        "source_id": "scope.verify_revision",
+                        "rank": 1,
+                        "distance": 0.6277255041762879,
+                        "relevant": false,
+                        "in_top_k": true
+                    },
+                    {
+                        "source_id": "control.cancel_task",
+                        "rank": 2,
+                        "distance": 0.6385122968539838,
+                        "relevant": false,
+                        "in_top_k": true
+                    },
+                    {
+                        "source_id": "scope.authorize_workspace",
+                        "rank": 3,
+                        "distance": 0.6404793965673612,
+                        "relevant": false,
+                        "in_top_k": true
+                    },
+                    {
+                        "source_id": "control.cancellation_checkpoint",
+                        "rank": 4,
+                        "distance": 0.6478035659907116,
+                        "relevant": false,
+                        "in_top_k": false
+                    },
+                    {
+                        "source_id": "history.save_turn",
+                        "rank": 5,
+                        "distance": 0.6664651235064785,
+                        "relevant": false,
+                        "in_top_k": false
+                    },
+                    {
+                        "source_id": "history.restore_history",
+                        "rank": 6,
+                        "distance": 0.6745491429894599,
+                        "relevant": false,
+                        "in_top_k": false
+                    },
+                    {
+                        "source_id": "budget.check_request_budget",
+                        "rank": 7,
+                        "distance": 0.6861859636085077,
+                        "relevant": false,
+                        "in_top_k": false
+                    },
+                    {
+                        "source_id": "budget.measure_request_bytes",
+                        "rank": 8,
+                        "distance": 0.7187395263469496,
+                        "relevant": false,
+                        "in_top_k": false
+                    }
+                ],
+                "nearest_distance": 0.6277255041762879,
+                "first_second_gap": 0.010786792677695889
+            }
+        ],
+        "groups": {
+            "nearest_answerable": {
+                "count": 4,
+                "min": 0.33147154246185817,
+                "max": 0.43476800426148754,
+                "mean": 0.4026787250152054
+            },
+            "nearest_no_answer": {
+                "count": 4,
+                "min": 0.35369888455893905,
+                "max": 0.6277255041762879,
+                "mean": 0.4899582627532472
+            },
+            "relevant_candidates": {
+                "count": 8,
+                "min": 0.33147154246185817,
+                "max": 0.45735175526306604,
+                "mean": 0.4185724518868154
+            },
+            "irrelevant_candidates": {
+                "count": 56,
+                "min": 0.35369888455893905,
+                "max": 0.8352979421615601,
+                "mean": 0.6709443598588026
+            }
+        },
+        "limits": [
+            "distance is not confidence",
+            "descriptive only; no threshold selected",
+            "candidate samples from the same query are not independent",
+            "labels never change ranking or provider requests"
+        ]
+    },
+    "limitations": [
+        "no calibrated provider abstention",
+        "cost unknown",
+        "query usage unknown when failure occurs before combined result"
+    ],
+    "mode": "real",
+    "execution": {
+        "date": "2026-10-10",
+        "provider": "Alibaba Cloud Model Studio, Beijing",
+        "stage": "holdout",
+        "scope": "fixed authored learning corpus; isolated PostgreSQL cleaned; no user projects",
+        "design": "holdout-design.json"
+    }
+}

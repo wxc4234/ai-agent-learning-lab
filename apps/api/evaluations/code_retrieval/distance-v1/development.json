@@ -1,0 +1,136 @@
+{
+    "role": "development",
+    "dataset": {
+        "schema_version": 1,
+        "dataset_id": "code-distance-development-v1",
+        "label_origin": "coach_authored",
+        "sources": [
+            {
+                "id": "budget.measure_request_bytes",
+                "relative_path": "budget.py",
+                "symbol": "measure_request_bytes",
+                "start_line": 4,
+                "end_line": 6,
+                "file_sha256": "099fd6bc878cd43a39f7abd3815c5f0b8606f510f2643494d9f8b629f41bbef5"
+            },
+            {
+                "id": "budget.check_request_budget",
+                "relative_path": "budget.py",
+                "symbol": "check_request_budget",
+                "start_line": 9,
+                "end_line": 13,
+                "file_sha256": "099fd6bc878cd43a39f7abd3815c5f0b8606f510f2643494d9f8b629f41bbef5"
+            },
+            {
+                "id": "control.cancel_task",
+                "relative_path": "control.py",
+                "symbol": "cancel_task",
+                "start_line": 1,
+                "end_line": 4,
+                "file_sha256": "363fbad07c53db956800fb888df960bb553144862de4d759e631133a3ca9a4a7"
+            },
+            {
+                "id": "control.cancellation_checkpoint",
+                "relative_path": "control.py",
+                "symbol": "cancellation_checkpoint",
+                "start_line": 7,
+                "end_line": 11,
+                "file_sha256": "363fbad07c53db956800fb888df960bb553144862de4d759e631133a3ca9a4a7"
+            },
+            {
+                "id": "history.save_turn",
+                "relative_path": "history.py",
+                "symbol": "save_turn",
+                "start_line": 1,
+                "end_line": 5,
+                "file_sha256": "d1b5b7b212206ffa2d408e2a8134d908f39c4125b89b5d5b5dbc2e94e78a44cb"
+            },
+            {
+                "id": "history.restore_history",
+                "relative_path": "history.py",
+                "symbol": "restore_history",
+                "start_line": 8,
+                "end_line": 10,
+                "file_sha256": "d1b5b7b212206ffa2d408e2a8134d908f39c4125b89b5d5b5dbc2e94e78a44cb"
+            },
+            {
+                "id": "scope.authorize_workspace",
+                "relative_path": "scope.py",
+                "symbol": "authorize_workspace",
+                "start_line": 1,
+                "end_line": 5,
+                "file_sha256": "7bfe73cbdb554cd11dc9d8ec3ddf879adb244e5c09c428891fb7560c4e92683c"
+            },
+            {
+                "id": "scope.verify_revision",
+                "relative_path": "scope.py",
+                "symbol": "verify_revision",
+                "start_line": 8,
+                "end_line": 12,
+                "file_sha256": "7bfe73cbdb554cd11dc9d8ec3ddf879adb244e5c09c428891fb7560c4e92683c"
+            }
+        ],
+        "queries": [
+            {
+                "id": "dev-cancel",
+                "query": "How does an abort request prevent an unfinished turn from entering message history?",
+                "relevant_source_ids": [
+                    "control.cancel_task",
+                    "control.cancellation_checkpoint",
+                    "history.save_turn"
+                ],
+                "rationale": "开发标注：所列定义支持查询；空列表表示固定语料未实现此功能。"
+            },
+            {
+                "id": "dev-revision",
+                "query": "目录绑定版本变了，如何阻止继续使用之前的工作区授权？",
+                "relevant_source_ids": [
+                    "scope.authorize_workspace",
+                    "scope.verify_revision"
+                ],
+                "rationale": "开发标注：所列定义支持查询；空列表表示固定语料未实现此功能。"
+            },
+            {
+                "id": "dev-bytes",
+                "query": "Where is a complete payload encoded and rejected when its byte count exceeds the cap?",
+                "relevant_source_ids": [
+                    "budget.measure_request_bytes",
+                    "budget.check_request_budget"
+                ],
+                "rationale": "开发标注：所列定义支持查询；空列表表示固定语料未实现此功能。"
+            },
+            {
+                "id": "dev-history",
+                "query": "重新进入会话时如何加载已保存的消息？",
+                "relevant_source_ids": [
+                    "history.restore_history"
+                ],
+                "rationale": "开发标注：所列定义支持查询；空列表表示固定语料未实现此功能。"
+            },
+            {
+                "id": "dev-token",
+                "query": "Refresh an expired OAuth access token using a refresh token",
+                "relevant_source_ids": [],
+                "rationale": "开发标注：所列定义支持查询；空列表表示固定语料未实现此功能。"
+            },
+            {
+                "id": "dev-retry",
+                "query": "How are failed database writes retried with exponential backoff?",
+                "relevant_source_ids": [],
+                "rationale": "开发标注：所列定义支持查询；空列表表示固定语料未实现此功能。"
+            },
+            {
+                "id": "dev-encryption",
+                "query": "保存对话前在哪里进行AES加密？",
+                "relevant_source_ids": [],
+                "rationale": "开发标注：所列定义支持查询；空列表表示固定语料未实现此功能。"
+            },
+            {
+                "id": "dev-stream",
+                "query": "How are partial UTF-8 characters buffered across SSE network chunks?",
+                "relevant_source_ids": [],
+                "rationale": "开发标注：所列定义支持查询；空列表表示固定语料未实现此功能。"
+            }
+        ]
+    }
+}

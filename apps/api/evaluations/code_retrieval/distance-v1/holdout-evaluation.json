@@ -1,0 +1,151 @@
+{
+    "schema_version": 1,
+    "stage": "holdout_evaluated_not_enabled_in_product",
+    "policy_sha256": "bfb83f2262387d4c511a65e7e3f257c72798ce2d58d4b95ebe4dccd439177a4c",
+    "report_sha256": "95931074a01330c92fb18d89eb3543d5c8085673ba963d55bcf8bab4b22efcef",
+    "holdout_sha256": "2985dee67e7a3204a542112167a382594b57151ae09d02cf2dd5a4c092e16bac",
+    "threshold_milli": 500,
+    "positive_count": 4,
+    "negative_count": 4,
+    "counts": {
+        "false_refusal": 0,
+        "false_acceptance": 2,
+        "correct_abstention": 2,
+        "positive_no_candidates": 0,
+        "negative_no_candidates": 0,
+        "positive_error": 0,
+        "negative_error": 0
+    },
+    "false_refusal_rate": "0",
+    "false_acceptance_rate": "1/2",
+    "positive_recall_at_3_before": "1",
+    "positive_recall_at_3_after": "1",
+    "decisions": [
+        {
+            "query_id": "hold-owner",
+            "answerable": true,
+            "decision": "retained",
+            "nearest_distance": 0.33147154246185817,
+            "before_top_source_ids": [
+                "scope.authorize_workspace",
+                "scope.verify_revision",
+                "control.cancellation_checkpoint"
+            ],
+            "retained_top_source_ids": [
+                "scope.authorize_workspace",
+                "scope.verify_revision",
+                "control.cancellation_checkpoint"
+            ]
+        },
+        {
+            "query_id": "hold-size",
+            "answerable": true,
+            "decision": "retained",
+            "nearest_distance": 0.43476800426148754,
+            "before_top_source_ids": [
+                "budget.check_request_budget",
+                "budget.measure_request_bytes",
+                "scope.verify_revision"
+            ],
+            "retained_top_source_ids": [
+                "budget.check_request_budget",
+                "budget.measure_request_bytes",
+                "scope.verify_revision"
+            ]
+        },
+        {
+            "query_id": "hold-aborted",
+            "answerable": true,
+            "decision": "retained",
+            "nearest_distance": 0.4247613638923886,
+            "before_top_source_ids": [
+                "history.save_turn",
+                "control.cancellation_checkpoint",
+                "control.cancel_task"
+            ],
+            "retained_top_source_ids": [
+                "history.save_turn",
+                "control.cancellation_checkpoint",
+                "control.cancel_task"
+            ]
+        },
+        {
+            "query_id": "hold-messages",
+            "answerable": true,
+            "decision": "retained",
+            "nearest_distance": 0.4197139894450874,
+            "before_top_source_ids": [
+                "history.restore_history",
+                "history.save_turn",
+                "budget.measure_request_bytes"
+            ],
+            "retained_top_source_ids": [
+                "history.restore_history",
+                "history.save_turn",
+                "budget.measure_request_bytes"
+            ]
+        },
+        {
+            "query_id": "hold-resume",
+            "answerable": false,
+            "decision": "retained",
+            "nearest_distance": 0.35369888455893905,
+            "before_top_source_ids": [
+                "control.cancel_task",
+                "control.cancellation_checkpoint",
+                "history.save_turn"
+            ],
+            "retained_top_source_ids": [
+                "control.cancel_task",
+                "control.cancellation_checkpoint",
+                "history.save_turn"
+            ]
+        },
+        {
+            "query_id": "hold-truncate",
+            "answerable": false,
+            "decision": "retained",
+            "nearest_distance": 0.3733780535008844,
+            "before_top_source_ids": [
+                "budget.check_request_budget",
+                "budget.measure_request_bytes",
+                "history.restore_history"
+            ],
+            "retained_top_source_ids": [
+                "budget.check_request_budget",
+                "budget.measure_request_bytes",
+                "history.restore_history"
+            ]
+        },
+        {
+            "query_id": "hold-delete",
+            "answerable": false,
+            "decision": "abstained",
+            "nearest_distance": 0.6050306087768775,
+            "before_top_source_ids": [
+                "history.restore_history",
+                "history.save_turn",
+                "control.cancel_task"
+            ],
+            "retained_top_source_ids": []
+        },
+        {
+            "query_id": "hold-signature",
+            "answerable": false,
+            "decision": "abstained",
+            "nearest_distance": 0.6277255041762879,
+            "before_top_source_ids": [
+                "scope.verify_revision",
+                "control.cancel_task",
+                "scope.authorize_workspace"
+            ],
+            "retained_top_source_ids": []
+        }
+    ],
+    "limits": [
+        "question-level authored holdout on shared small corpus; not blind or real-project generalization",
+        "retrieval errors and no-candidates are separate; not correct abstentions",
+        "no threshold search or policy rewrite",
+        "query-level rule does not filter individual candidates"
+    ]
+}

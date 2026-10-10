@@ -43,7 +43,7 @@ Copy-Item .env.example .env
 
 不想安装 pnpm 时，也可在根目录运行 `npm install`，但它不使用项目的 `pnpm-lock.yaml`，因此只作为兼容入口。只需单独修复 Python 环境时，可运行 `pnpm install:python`，或使用项目解释器执行 `-m pip install -r requirements.txt`；已安装 uv 时也可用 `uv pip install -r requirements.txt`。缺 pip 可先用项目解释器执行 `-m ensurepip --upgrade`。PowerShell 可直接调用 `.venv\Scripts\python.exe`；需要激活时使用 `.\.venv\Scripts\Activate.ps1`，受限终端仅按需设置当前进程的 ExecutionPolicy。
 
-在根目录 `.env` 填写自己的 `DEEPSEEK_API_KEY`，按 `.env.example` 配置 `DATABASE_URL`、Redis 与模型设置。不要把服务端变量加上 `NEXT_PUBLIC_` 前缀。VS Code 的 Python 解释器选择项目 `.venv/bin/python`（Windows 为 `.venv\Scripts\python.exe`）。
+按 `.env.example` 配置 `DATABASE_URL`、Redis；本地模式可启动后在侧边栏[模型设置](docs/model-settings.md)填写模型和密钥，也可在根目录 `.env` 设置 `DEEPSEEK_API_KEY`。不要把服务端变量加上 `NEXT_PUBLIC_` 前缀。VS Code 的 Python 解释器选择项目 `.venv/bin/python`（Windows 为 `.venv\Scripts\python.exe`）。
 
 Embedding使用独立 `EMBEDDING_*` 配置，默认留空关闭，不复用聊天配置；字段和预算见[代码Embedding协议](docs/code-embeddings.md#配置与调用)，批次存储/扩展迁移见[向量存储协议](docs/code-vector-storage.md#迁移与环境)。配置不会自动发送、入库或启用召回。
 

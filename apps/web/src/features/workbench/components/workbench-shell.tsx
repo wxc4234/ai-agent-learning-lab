@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import { useWorkbench } from "../workbench-session";
 import WorkbenchIcon from "./workbench-icon";
 import WorkspaceSidebar from "./workspace-sidebar";
+import ModelSettingsDialog from "@/features/model-settings/model-settings-dialog";
 
 import { Button } from "@/components/ui/button";
 
@@ -95,7 +96,9 @@ export default function WorkbenchShell({
                         {/* 项目数据由侧栏独立管理，不改变中间聊天组件的挂载位置。 */}
                         {localMode && <WorkspaceSidebar />}
 
-                        <p className="mt-auto px-2 pt-8 text-xs text-muted-foreground/70">
+                        <div className="mt-auto">{localMode && <ModelSettingsDialog />}</div>
+
+                        <p className="px-2 pt-8 text-xs text-muted-foreground/70">
                             AI Agent Learning Lab
                         </p>
                     </div>

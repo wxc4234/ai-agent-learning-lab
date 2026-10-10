@@ -36,7 +36,7 @@ class Settings(BaseSettings):
 
     # SecretStr 会在日志或 print 时隐藏真实 Key，降低误泄露风险。
     deepseek_api_key: SecretStr = Field(
-        validation_alias="DEEPSEEK_API_KEY",
+        default=SecretStr(""), validation_alias="DEEPSEEK_API_KEY",
     )
 
     # 后续切换模型或服务地址时，只改环境变量，无需修改业务代码。

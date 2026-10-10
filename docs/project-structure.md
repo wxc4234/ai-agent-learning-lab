@@ -76,7 +76,7 @@ apps/api/
 
 批次摘要BFF：`apps/web/src/app/api/workspaces/[workspaceId]/tasks/[taskId]/code-embedding-batches/route.ts` → `_shared/code-batch-summaries-proxy.ts` → `features/workbench/code-batch-summaries-data.ts`，复用上述`code-query-context-json.ts`读取器。专项位于`apps/web/test/features/workspaces/code-batch-summaries-{data,route}.test.ts`，协议见[摘要BFF](code-vector-storage.md#批次摘要同源-bff)。
 
-当前产品工作台：`features/chat/components/chat-panel.tsx`只挂载对话和按需`task-changes-panel.tsx`；`workbench-shell.tsx`仅提供“查看改动”，`workbench-session.tsx`不再有advanced详情状态。内部批次/上下文实验组件没有产品引用，公开数据校验/API/BFF保留；产品验收为`test/browser/workbench-product/run.mjs`，范围见[UI协议](agent-ui-events.md#当前产品界面验收)。
+当前产品工作台：`features/chat/components/chat-panel.tsx`只挂载对话和按需`task-changes-panel.tsx`；`workbench-shell.tsx`提供“查看改动”和本机“模型设置”，`workbench-session.tsx`不再有advanced详情状态。内部批次/上下文实验组件没有产品引用，公开数据校验/API/BFF保留；产品验收为`test/browser/workbench-product/run.mjs`，范围见[UI协议](agent-ui-events.md#当前产品界面验收)。
 
 离线代码检索评测：`services/workspace/files/code_retrieval_evaluation.py`负责任务集/来源验证、透明词面基线和来源级指标；`apps/api/evaluations/code_retrieval/v1/`维护跨周演进的版本化样例与基准报告，根目录`scripts/evaluate_code_retrieval.py`提供CLI，专项位于`tests/workspace/files/test_code_retrieval_evaluation.py`。范围/命令见[评测协议](code-retrieval-evaluation.md)，不接数据库、模型或产品入口。
 
@@ -87,3 +87,21 @@ apps/api/
 离线拒答评测：`services/workspace/files/code_abstention_evaluation.py`负责开发校准、冻结策略与候选过滤，`scripts/evaluate_code_abstention.py`提供calibrate/evaluate两阶段入口；数据与预期位于`apps/api/evaluations/code_retrieval/abstention-v1/`。见[开发/留出协议](code-retrieval-evaluation.md#无答案判定与开发留出评测)。
 
 离线观测：`services/workspace/files/code_evaluation_observation.py`统计耗时/用量，`scripts/evaluate_code_observation.py`复用隔离PG包装入口发布本轮报告；[统计口径](code-retrieval-evaluation.md#延迟与模型用量观测)区分建库/查询、失败/取消和未知用量。
+
+通用供应商评测：`code_evaluation_mapping.py`负责显式模型空间映射，`code_provider_evaluation.py`负责固定语料预检/发送预算，`code_provider_runner.py`复用授权生成和召回；根脚本`scripts/evaluate_code_provider.py`默认仅受控预检。见[配置与运行协议](code-retrieval-evaluation.md#真实供应商适配与配置预检)。
+
+本机模型配置：`routers/model/settings.py` → `services/model/local_model_settings.py`；前端 `features/model-settings/` 经 `/api/model-settings` 与 `_shared/model-settings-proxy.ts` 转发。存储、生效和专项入口见[模型设置](model-settings.md)。
+
+检索距离观测：`services/workspace/files/code_distance_observation.py`在通用评测执行器完成来源映射后消费候选，保存排名/余弦距离/标注及错误分母；只用于[离线距离报告](code-retrieval-evaluation.md#真实向量距离观测)，不增加产品入口或改变检索策略。
+
+真实距离校准：`services/workspace/files/code_distance_calibration.py`离线校准查询级拒答；`scripts/calibrate_code_distance.py`独占创建冻结文件，`evaluations/code_retrieval/distance-v1/`保存固定开发题/设计/报告/规则。真实采样由现有CLI的固定`--dataset distance-development`选择，见[校准协议](code-retrieval-evaluation.md#真实距离开发集校准与冻结)。
+
+冻结规则留出：`services/workspace/files/code_distance_holdout.py`校验冻结来源、题目重合与模型空间，`scripts/evaluate_distance_holdout.py`离线应用规则并独占输出；固定`--dataset distance-holdout`复用受限真实采样，证据见[留出协议](code-retrieval-evaluation.md#冻结距离规则的问题级留出评估)。
+
+内部批次关键词召回：`services/workspace/files/code_keyword_search.py` → `repositories/workspace/code_embedding_repository.py::read_batch_keyword_chunks`，复用存储来源校验；专项为`tests/workspace/files/test_code_keyword_search.py`。见[词面协议](code-vector-storage.md#授权批次关键词召回)，不加载向量列或请求模型，尚未接入Agent。
+
+内部单批混合召回：`services/workspace/files/code_hybrid_search.py`复用关键词/向量授权通道，专项为`tests/workspace/files/test_code_hybrid_search.py`；[RRF协议](code-vector-storage.md#授权单批rrf混合召回)定义精确排名融合、失败不降级及两段事务边界，尚未接入产品。
+
+混合上下文构建：`services/workspace/files/code_hybrid_context.py`校验RRF快照，与`code_context.py`共用完整片段预算选择；专项为`tests/workspace/files/test_code_hybrid_context.py`。见[上下文协议](code-context.md#混合召回的有界上下文)，仅纯内存适配，不改变Agent链路。
+
+显式混合查询组合：`services/workspace/files/code_hybrid_query_context.py` → 查询Embedding / 单批RRF / 混合Context Builder，复用查询预检及来源复核；专项为`tests/workspace/files/test_code_hybrid_query_context.py`。见[组合协议](code-context.md#授权查询与混合上下文串联)，不切换产品检索策略。

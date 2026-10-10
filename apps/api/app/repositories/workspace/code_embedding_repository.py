@@ -216,3 +216,21 @@ def rank_batch_vectors(
         rows = session.execute(statement).all()
 
     return [(vector, value) for vector, value in rows]
+
+
+def read_batch_keyword_chunks(session: Session, *, batch: CodeEmbeddingBatch) -> list[RowMapping]:
+    """调用方已在同一事务授权；最多21行检测超量，不加载向量列。"""
+    content_bytes = func.octet_length(CodeEmbeddingVector.content)
+    metadata_bytes = func.octet_length(cast(CodeEmbeddingVector.chunk_metadata, Text))
+    statement = select(
+        CodeEmbeddingVector.ordinal, CodeEmbeddingVector.chunk_id,
+        content_bytes.label("content_bytes"), metadata_bytes.label("metadata_bytes"),
+        case((content_bytes <= 4096, CodeEmbeddingVector.content), else_=None).label("content"),
+        case((metadata_bytes <= 16384, CodeEmbeddingVector.chunk_metadata), else_=None).label("chunk_metadata"),
+    ).where(
+        CodeEmbeddingVector.batch_id == batch.id,
+        CodeEmbeddingVector.space_id == batch.space_id,
+        CodeEmbeddingVector.dimensions == batch.dimensions,
+    ).order_by(CodeEmbeddingVector.ordinal).limit(21)
+    with session.no_autoflush:
+        return list(session.execute(statement).mappings())

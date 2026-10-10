@@ -1,0 +1,9 @@
+{
+    "created_at": "2026-10-10T16:42:41.903485+08:00",
+    "stage": "before_holdout_sampling",
+    "frozen_sha256": "3001020844e827211fd1f94925e2e3ed86d0711c8f3502795ac9276dc4b7449a",
+    "holdout_sha256": "2985dee67e7a3204a542112167a382594b57151ae09d02cf2dd5a4c092e16bac",
+    "threshold_milli": 500,
+    "scope": "question-level holdout; same corpus; authored after development; not blind",
+    "rule": "apply frozen threshold once; no search; keep errors/empty separate; no product activation"
+}

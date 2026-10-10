@@ -1,0 +1,1344 @@
+{
+    "schema_version": 1,
+    "manifest": {
+        "config_sha256": "11a44206f0083f0f8376530a612bcbffe2c398b764f8926b135e1c11ac35944b",
+        "dataset_sha256": "9ed06a3186674a69d17854b1b41d4072dc59652d483540584f1521f9288d5c96",
+        "source_count": 8,
+        "query_count": 8,
+        "dataset_role": "distance-development",
+        "planned_requests": 9,
+        "planned_body_bytes": 2831,
+        "dimensions": 1024,
+        "requested_model": "text-embedding-v4",
+        "expected_response_model": "text-embedding-v4",
+        "cost": null,
+        "cost_state": "unknown"
+    },
+    "requests": 9,
+    "request_body_bytes": 2831,
+    "literal": {
+        "schema_version": 1,
+        "dataset_id": "code-distance-development-v1",
+        "dataset_sha256": "9ed06a3186674a69d17854b1b41d4072dc59652d483540584f1521f9288d5c96",
+        "strategy": "literal-term-overlap-v1",
+        "citation_origin": "retrieval_reference",
+        "k": 3,
+        "query_count": 8,
+        "answerable_count": 4,
+        "no_answer_count": 4,
+        "error_count": 0,
+        "recall_at_k": 0.3333333333333333,
+        "mrr_at_k": 0.5,
+        "no_answer_false_positive_count": 2,
+        "no_answer_error_count": 0,
+        "citation_count": 4,
+        "citation_relevance": 0.5,
+        "citation_grounding_at_k": 1.0,
+        "rows": [
+            {
+                "query_id": "dev-cancel",
+                "status": "ok",
+                "top_source_ids": [
+                    "history.save_turn",
+                    "budget.check_request_budget",
+                    "budget.measure_request_bytes"
+                ],
+                "duplicate_count": 0,
+                "relevant_count": 3,
+                "matched_source_ids": [
+                    "history.save_turn"
+                ],
+                "recall_at_k": 0.3333333333333333,
+                "reciprocal_rank_at_k": 1.0,
+                "no_answer_false_positive": null,
+                "citation_count": 1,
+                "relevant_citation_count": 1,
+                "grounded_citation_count": 1
+            },
+            {
+                "query_id": "dev-revision",
+                "status": "ok",
+                "top_source_ids": [],
+                "duplicate_count": 0,
+                "relevant_count": 2,
+                "matched_source_ids": [],
+                "recall_at_k": 0.0,
+                "reciprocal_rank_at_k": 0.0,
+                "no_answer_false_positive": null,
+                "citation_count": 0,
+                "relevant_citation_count": 0,
+                "grounded_citation_count": 0
+            },
+            {
+                "query_id": "dev-bytes",
+                "status": "ok",
+                "top_source_ids": [
+                    "budget.measure_request_bytes",
+                    "scope.authorize_workspace",
+                    "budget.check_request_budget"
+                ],
+                "duplicate_count": 0,
+                "relevant_count": 2,
+                "matched_source_ids": [
+                    "budget.check_request_budget",
+                    "budget.measure_request_bytes"
+                ],
+                "recall_at_k": 1.0,
+                "reciprocal_rank_at_k": 1.0,
+                "no_answer_false_positive": null,
+                "citation_count": 1,
+                "relevant_citation_count": 1,
+                "grounded_citation_count": 1
+            },
+            {
+                "query_id": "dev-history",
+                "status": "ok",
+                "top_source_ids": [],
+                "duplicate_count": 0,
+                "relevant_count": 1,
+                "matched_source_ids": [],
+                "recall_at_k": 0.0,
+                "reciprocal_rank_at_k": 0.0,
+                "no_answer_false_positive": null,
+                "citation_count": 0,
+                "relevant_citation_count": 0,
+                "grounded_citation_count": 0
+            },
+            {
+                "query_id": "dev-token",
+                "status": "ok",
+                "top_source_ids": [
+                    "history.save_turn",
+                    "budget.check_request_budget",
+                    "scope.authorize_workspace"
+                ],
+                "duplicate_count": 0,
+                "relevant_count": 0,
+                "matched_source_ids": [],
+                "recall_at_k": null,
+                "reciprocal_rank_at_k": null,
+                "no_answer_false_positive": true,
+                "citation_count": 1,
+                "relevant_citation_count": 0,
+                "grounded_citation_count": 1
+            },
+            {
+                "query_id": "dev-retry",
+                "status": "ok",
+                "top_source_ids": [],
+                "duplicate_count": 0,
+                "relevant_count": 0,
+                "matched_source_ids": [],
+                "recall_at_k": null,
+                "reciprocal_rank_at_k": null,
+                "no_answer_false_positive": false,
+                "citation_count": 0,
+                "relevant_citation_count": 0,
+                "grounded_citation_count": 0
+            },
+            {
+                "query_id": "dev-encryption",
+                "status": "ok",
+                "top_source_ids": [],
+                "duplicate_count": 0,
+                "relevant_count": 0,
+                "matched_source_ids": [],
+                "recall_at_k": null,
+                "reciprocal_rank_at_k": null,
+                "no_answer_false_positive": false,
+                "citation_count": 0,
+                "relevant_citation_count": 0,
+                "grounded_citation_count": 0
+            },
+            {
+                "query_id": "dev-stream",
+                "status": "ok",
+                "top_source_ids": [
+                    "budget.measure_request_bytes"
+                ],
+                "duplicate_count": 0,
+                "relevant_count": 0,
+                "matched_source_ids": [],
+                "recall_at_k": null,
+                "reciprocal_rank_at_k": null,
+                "no_answer_false_positive": true,
+                "citation_count": 1,
+                "relevant_citation_count": 0,
+                "grounded_citation_count": 1
+            }
+        ],
+        "limits": [
+            "offline_authored_fixture",
+            "source_level_dedup_before_k",
+            "not_semantic_or_answer_quality",
+            "no_latency_or_cost_measurement"
+        ]
+    },
+    "vector": {
+        "schema_version": 1,
+        "dataset_id": "code-distance-development-v1",
+        "dataset_sha256": "9ed06a3186674a69d17854b1b41d4072dc59652d483540584f1521f9288d5c96",
+        "strategy": "configured-provider-v1",
+        "citation_origin": "retrieval_reference",
+        "k": 3,
+        "query_count": 8,
+        "answerable_count": 4,
+        "no_answer_count": 4,
+        "error_count": 0,
+        "recall_at_k": 0.9166666666666666,
+        "mrr_at_k": 1.0,
+        "no_answer_false_positive_count": 4,
+        "no_answer_error_count": 0,
+        "citation_count": 8,
+        "citation_relevance": 0.5,
+        "citation_grounding_at_k": 1.0,
+        "rows": [
+            {
+                "query_id": "dev-cancel",
+                "status": "ok",
+                "top_source_ids": [
+                    "history.save_turn",
+                    "history.restore_history",
+                    "control.cancellation_checkpoint"
+                ],
+                "duplicate_count": 0,
+                "relevant_count": 3,
+                "matched_source_ids": [
+                    "control.cancellation_checkpoint",
+                    "history.save_turn"
+                ],
+                "recall_at_k": 0.6666666666666666,
+                "reciprocal_rank_at_k": 1.0,
+                "no_answer_false_positive": null,
+                "citation_count": 1,
+                "relevant_citation_count": 1,
+                "grounded_citation_count": 1
+            },
+            {
+                "query_id": "dev-revision",
+                "status": "ok",
+                "top_source_ids": [
+                    "scope.verify_revision",
+                    "scope.authorize_workspace",
+                    "control.cancellation_checkpoint"
+                ],
+                "duplicate_count": 0,
+                "relevant_count": 2,
+                "matched_source_ids": [
+                    "scope.authorize_workspace",
+                    "scope.verify_revision"
+                ],
+                "recall_at_k": 1.0,
+                "reciprocal_rank_at_k": 1.0,
+                "no_answer_false_positive": null,
+                "citation_count": 1,
+                "relevant_citation_count": 1,
+                "grounded_citation_count": 1
+            },
+            {
+                "query_id": "dev-bytes",
+                "status": "ok",
+                "top_source_ids": [
+                    "budget.check_request_budget",
+                    "budget.measure_request_bytes",
+                    "scope.verify_revision"
+                ],
+                "duplicate_count": 0,
+                "relevant_count": 2,
+                "matched_source_ids": [
+                    "budget.check_request_budget",
+                    "budget.measure_request_bytes"
+                ],
+                "recall_at_k": 1.0,
+                "reciprocal_rank_at_k": 1.0,
+                "no_answer_false_positive": null,
+                "citation_count": 1,
+                "relevant_citation_count": 1,
+                "grounded_citation_count": 1
+            },
+            {
+                "query_id": "dev-history",
+                "status": "ok",
+                "top_source_ids": [
+                    "history.restore_history",
+                    "history.save_turn",
+                    "budget.measure_request_bytes"
+                ],
+                "duplicate_count": 0,
+                "relevant_count": 1,
+                "matched_source_ids": [
+                    "history.restore_history"
+                ],
+                "recall_at_k": 1.0,
+                "reciprocal_rank_at_k": 1.0,
+                "no_answer_false_positive": null,
+                "citation_count": 1,
+                "relevant_citation_count": 1,
+                "grounded_citation_count": 1
+            },
+            {
+                "query_id": "dev-token",
+                "status": "ok",
+                "top_source_ids": [
+                    "scope.authorize_workspace",
+                    "scope.verify_revision",
+                    "budget.check_request_budget"
+                ],
+                "duplicate_count": 0,
+                "relevant_count": 0,
+                "matched_source_ids": [],
+                "recall_at_k": null,
+                "reciprocal_rank_at_k": null,
+                "no_answer_false_positive": true,
+                "citation_count": 1,
+                "relevant_citation_count": 0,
+                "grounded_citation_count": 1
+            },
+            {
+                "query_id": "dev-retry",
+                "status": "ok",
+                "top_source_ids": [
+                    "scope.verify_revision",
+                    "control.cancellation_checkpoint",
+                    "scope.authorize_workspace"
+                ],
+                "duplicate_count": 0,
+                "relevant_count": 0,
+                "matched_source_ids": [],
+                "recall_at_k": null,
+                "reciprocal_rank_at_k": null,
+                "no_answer_false_positive": true,
+                "citation_count": 1,
+                "relevant_citation_count": 0,
+                "grounded_citation_count": 1
+            },
+            {
+                "query_id": "dev-encryption",
+                "status": "ok",
+                "top_source_ids": [
+                    "history.save_turn",
+                    "scope.verify_revision",
+                    "history.restore_history"
+                ],
+                "duplicate_count": 0,
+                "relevant_count": 0,
+                "matched_source_ids": [],
+                "recall_at_k": null,
+                "reciprocal_rank_at_k": null,
+                "no_answer_false_positive": true,
+                "citation_count": 1,
+                "relevant_citation_count": 0,
+                "grounded_citation_count": 1
+            },
+            {
+                "query_id": "dev-stream",
+                "status": "ok",
+                "top_source_ids": [
+                    "budget.measure_request_bytes",
+                    "budget.check_request_budget",
+                    "scope.verify_revision"
+                ],
+                "duplicate_count": 0,
+                "relevant_count": 0,
+                "matched_source_ids": [],
+                "recall_at_k": null,
+                "reciprocal_rank_at_k": null,
+                "no_answer_false_positive": true,
+                "citation_count": 1,
+                "relevant_citation_count": 0,
+                "grounded_citation_count": 1
+            }
+        ],
+        "limits": [
+            "offline_authored_fixture",
+            "source_level_dedup_before_k",
+            "not_semantic_or_answer_quality",
+            "no_latency_or_cost_measurement"
+        ]
+    },
+    "rrf": {
+        "schema_version": 1,
+        "dataset_id": "code-distance-development-v1",
+        "dataset_sha256": "9ed06a3186674a69d17854b1b41d4072dc59652d483540584f1521f9288d5c96",
+        "strategy": "rrf-c60-v1",
+        "citation_origin": "retrieval_reference",
+        "k": 3,
+        "query_count": 8,
+        "answerable_count": 4,
+        "no_answer_count": 4,
+        "error_count": 0,
+        "recall_at_k": 0.8333333333333334,
+        "mrr_at_k": 1.0,
+        "no_answer_false_positive_count": 4,
+        "no_answer_error_count": 0,
+        "citation_count": 8,
+        "citation_relevance": 0.5,
+        "citation_grounding_at_k": 1.0,
+        "rows": [
+            {
+                "query_id": "dev-cancel",
+                "status": "ok",
+                "top_source_ids": [
+                    "history.save_turn",
+                    "history.restore_history",
+                    "budget.check_request_budget"
+                ],
+                "duplicate_count": 0,
+                "relevant_count": 3,
+                "matched_source_ids": [
+                    "history.save_turn"
+                ],
+                "recall_at_k": 0.3333333333333333,
+                "reciprocal_rank_at_k": 1.0,
+                "no_answer_false_positive": null,
+                "citation_count": 1,
+                "relevant_citation_count": 1,
+                "grounded_citation_count": 1
+            },
+            {
+                "query_id": "dev-revision",
+                "status": "ok",
+                "top_source_ids": [
+                    "scope.verify_revision",
+                    "scope.authorize_workspace",
+                    "control.cancellation_checkpoint"
+                ],
+                "duplicate_count": 0,
+                "relevant_count": 2,
+                "matched_source_ids": [
+                    "scope.authorize_workspace",
+                    "scope.verify_revision"
+                ],
+                "recall_at_k": 1.0,
+                "reciprocal_rank_at_k": 1.0,
+                "no_answer_false_positive": null,
+                "citation_count": 1,
+                "relevant_citation_count": 1,
+                "grounded_citation_count": 1
+            },
+            {
+                "query_id": "dev-bytes",
+                "status": "ok",
+                "top_source_ids": [
+                    "budget.measure_request_bytes",
+                    "budget.check_request_budget",
+                    "control.cancel_task"
+                ],
+                "duplicate_count": 0,
+                "relevant_count": 2,
+                "matched_source_ids": [
+                    "budget.check_request_budget",
+                    "budget.measure_request_bytes"
+                ],
+                "recall_at_k": 1.0,
+                "reciprocal_rank_at_k": 1.0,
+                "no_answer_false_positive": null,
+                "citation_count": 1,
+                "relevant_citation_count": 1,
+                "grounded_citation_count": 1
+            },
+            {
+                "query_id": "dev-history",
+                "status": "ok",
+                "top_source_ids": [
+                    "history.restore_history",
+                    "history.save_turn",
+                    "budget.measure_request_bytes"
+                ],
+                "duplicate_count": 0,
+                "relevant_count": 1,
+                "matched_source_ids": [
+                    "history.restore_history"
+                ],
+                "recall_at_k": 1.0,
+                "reciprocal_rank_at_k": 1.0,
+                "no_answer_false_positive": null,
+                "citation_count": 1,
+                "relevant_citation_count": 1,
+                "grounded_citation_count": 1
+            },
+            {
+                "query_id": "dev-token",
+                "status": "ok",
+                "top_source_ids": [
+                    "scope.authorize_workspace",
+                    "budget.check_request_budget",
+                    "history.save_turn"
+                ],
+                "duplicate_count": 0,
+                "relevant_count": 0,
+                "matched_source_ids": [],
+                "recall_at_k": null,
+                "reciprocal_rank_at_k": null,
+                "no_answer_false_positive": true,
+                "citation_count": 1,
+                "relevant_citation_count": 0,
+                "grounded_citation_count": 1
+            },
+            {
+                "query_id": "dev-retry",
+                "status": "ok",
+                "top_source_ids": [
+                    "scope.verify_revision",
+                    "control.cancellation_checkpoint",
+                    "scope.authorize_workspace"
+                ],
+                "duplicate_count": 0,
+                "relevant_count": 0,
+                "matched_source_ids": [],
+                "recall_at_k": null,
+                "reciprocal_rank_at_k": null,
+                "no_answer_false_positive": true,
+                "citation_count": 1,
+                "relevant_citation_count": 0,
+                "grounded_citation_count": 1
+            },
+            {
+                "query_id": "dev-encryption",
+                "status": "ok",
+                "top_source_ids": [
+                    "history.save_turn",
+                    "scope.verify_revision",
+                    "history.restore_history"
+                ],
+                "duplicate_count": 0,
+                "relevant_count": 0,
+                "matched_source_ids": [],
+                "recall_at_k": null,
+                "reciprocal_rank_at_k": null,
+                "no_answer_false_positive": true,
+                "citation_count": 1,
+                "relevant_citation_count": 0,
+                "grounded_citation_count": 1
+            },
+            {
+                "query_id": "dev-stream",
+                "status": "ok",
+                "top_source_ids": [
+                    "budget.measure_request_bytes",
+                    "budget.check_request_budget",
+                    "scope.verify_revision"
+                ],
+                "duplicate_count": 0,
+                "relevant_count": 0,
+                "matched_source_ids": [],
+                "recall_at_k": null,
+                "reciprocal_rank_at_k": null,
+                "no_answer_false_positive": true,
+                "citation_count": 1,
+                "relevant_citation_count": 0,
+                "grounded_citation_count": 1
+            }
+        ],
+        "limits": [
+            "offline_authored_fixture",
+            "source_level_dedup_before_k",
+            "not_semantic_or_answer_quality",
+            "no_latency_or_cost_measurement"
+        ]
+    },
+    "observation": {
+        "schema_version": 1,
+        "clock": "monotonic",
+        "percentile": "nearest-rank",
+        "spans": [
+            {
+                "phase": "build",
+                "sample": "build",
+                "stage": "end_to_end",
+                "status": "ok",
+                "duration_ms": 367.1257499954663
+            },
+            {
+                "phase": "query",
+                "sample": "dev-cancel",
+                "stage": "end_to_end",
+                "status": "ok",
+                "duration_ms": 272.2629590134602
+            },
+            {
+                "phase": "query",
+                "sample": "dev-revision",
+                "stage": "end_to_end",
+                "status": "ok",
+                "duration_ms": 192.1453749819193
+            },
+            {
+                "phase": "query",
+                "sample": "dev-bytes",
+                "stage": "end_to_end",
+                "status": "ok",
+                "duration_ms": 189.65066599776037
+            },
+            {
+                "phase": "query",
+                "sample": "dev-history",
+                "stage": "end_to_end",
+                "status": "ok",
+                "duration_ms": 263.37287499336526
+            },
+            {
+                "phase": "query",
+                "sample": "dev-token",
+                "stage": "end_to_end",
+                "status": "ok",
+                "duration_ms": 180.62437500339
+            },
+            {
+                "phase": "query",
+                "sample": "dev-retry",
+                "stage": "end_to_end",
+                "status": "ok",
+                "duration_ms": 240.44983301428147
+            },
+            {
+                "phase": "query",
+                "sample": "dev-encryption",
+                "stage": "end_to_end",
+                "status": "ok",
+                "duration_ms": 178.61458400147967
+            },
+            {
+                "phase": "query",
+                "sample": "dev-stream",
+                "stage": "end_to_end",
+                "status": "ok",
+                "duration_ms": 2039.4627499917988
+            },
+            {
+                "phase": "evaluation",
+                "sample": "dataset",
+                "stage": "literal",
+                "status": "ok",
+                "duration_ms": 0.6877910054754466
+            },
+            {
+                "phase": "evaluation",
+                "sample": "dataset",
+                "stage": "fusion",
+                "status": "ok",
+                "duration_ms": 0.8068750030361116
+            }
+        ],
+        "latency": [
+            {
+                "phase": "build",
+                "stage": "end_to_end",
+                "status": "ok",
+                "count": 1,
+                "mean_ms": 367.1257499954663,
+                "p50_ms": 367.1257499954663,
+                "p95_ms": 367.1257499954663
+            },
+            {
+                "phase": "evaluation",
+                "stage": "fusion",
+                "status": "ok",
+                "count": 1,
+                "mean_ms": 0.8068750030361116,
+                "p50_ms": 0.8068750030361116,
+                "p95_ms": 0.8068750030361116
+            },
+            {
+                "phase": "evaluation",
+                "stage": "literal",
+                "status": "ok",
+                "count": 1,
+                "mean_ms": 0.6877910054754466,
+                "p50_ms": 0.6877910054754466,
+                "p95_ms": 0.6877910054754466
+            },
+            {
+                "phase": "query",
+                "stage": "end_to_end",
+                "status": "ok",
+                "count": 8,
+                "mean_ms": 444.5729271246819,
+                "p50_ms": 192.1453749819193,
+                "p95_ms": 2039.4627499917988
+            }
+        ],
+        "usage": [
+            {
+                "phase": "build",
+                "sample": "build",
+                "attempts": 1,
+                "validated_requests": 1,
+                "prompt_tokens": 315,
+                "total_tokens": 315,
+                "state": "reported"
+            },
+            {
+                "phase": "query",
+                "sample": "dev-bytes",
+                "attempts": 1,
+                "validated_requests": 1,
+                "prompt_tokens": 17,
+                "total_tokens": 17,
+                "state": "reported"
+            },
+            {
+                "phase": "query",
+                "sample": "dev-cancel",
+                "attempts": 1,
+                "validated_requests": 1,
+                "prompt_tokens": 15,
+                "total_tokens": 15,
+                "state": "reported"
+            },
+            {
+                "phase": "query",
+                "sample": "dev-encryption",
+                "attempts": 1,
+                "validated_requests": 1,
+                "prompt_tokens": 9,
+                "total_tokens": 9,
+                "state": "reported"
+            },
+            {
+                "phase": "query",
+                "sample": "dev-history",
+                "attempts": 1,
+                "validated_requests": 1,
+                "prompt_tokens": 12,
+                "total_tokens": 12,
+                "state": "reported"
+            },
+            {
+                "phase": "query",
+                "sample": "dev-retry",
+                "attempts": 1,
+                "validated_requests": 1,
+                "prompt_tokens": 13,
+                "total_tokens": 13,
+                "state": "reported"
+            },
+            {
+                "phase": "query",
+                "sample": "dev-revision",
+                "attempts": 1,
+                "validated_requests": 1,
+                "prompt_tokens": 15,
+                "total_tokens": 15,
+                "state": "reported"
+            },
+            {
+                "phase": "query",
+                "sample": "dev-stream",
+                "attempts": 1,
+                "validated_requests": 1,
+                "prompt_tokens": 14,
+                "total_tokens": 14,
+                "state": "reported"
+            },
+            {
+                "phase": "query",
+                "sample": "dev-token",
+                "attempts": 1,
+                "validated_requests": 1,
+                "prompt_tokens": 11,
+                "total_tokens": 11,
+                "state": "reported"
+            }
+        ],
+        "usage_totals": [
+            {
+                "phase": "build",
+                "samples": 1,
+                "attempts": 1,
+                "unknown_samples": 0,
+                "prompt_tokens": 315,
+                "total_tokens": 315,
+                "cost": null,
+                "cost_state": "unknown"
+            },
+            {
+                "phase": "query",
+                "samples": 8,
+                "attempts": 8,
+                "unknown_samples": 0,
+                "prompt_tokens": 106,
+                "total_tokens": 106,
+                "cost": null,
+                "cost_state": "unknown"
+            }
+        ],
+        "timing_scope": "nested spans overlap; do not sum stage percentiles",
+        "environment": "local PostgreSQL; configured real provider"
+    },
+    "distance_observation": {
+        "schema_version": 1,
+        "metric": "cosine_distance",
+        "direction": "lower_is_closer",
+        "scope": "same configured model space; all returned source candidates",
+        "error_count": 0,
+        "empty_success_count": 0,
+        "rows": [
+            {
+                "query_id": "dev-cancel",
+                "status": "ok",
+                "answerable": true,
+                "candidates": [
+                    {
+                        "source_id": "history.save_turn",
+                        "rank": 1,
+                        "distance": 0.4774597727495362,
+                        "relevant": true,
+                        "in_top_k": true
+                    },
+                    {
+                        "source_id": "history.restore_history",
+                        "rank": 2,
+                        "distance": 0.5055634238665419,
+                        "relevant": false,
+                        "in_top_k": true
+                    },
+                    {
+                        "source_id": "control.cancellation_checkpoint",
+                        "rank": 3,
+                        "distance": 0.5087456556780829,
+                        "relevant": true,
+                        "in_top_k": true
+                    },
+                    {
+                        "source_id": "control.cancel_task",
+                        "rank": 4,
+                        "distance": 0.5605024230330442,
+                        "relevant": true,
+                        "in_top_k": false
+                    },
+                    {
+                        "source_id": "scope.verify_revision",
+                        "rank": 5,
+                        "distance": 0.6398879778351776,
+                        "relevant": false,
+                        "in_top_k": false
+                    },
+                    {
+                        "source_id": "budget.check_request_budget",
+                        "rank": 6,
+                        "distance": 0.6737898387375509,
+                        "relevant": false,
+                        "in_top_k": false
+                    },
+                    {
+                        "source_id": "budget.measure_request_bytes",
+                        "rank": 7,
+                        "distance": 0.6751488052352905,
+                        "relevant": false,
+                        "in_top_k": false
+                    },
+                    {
+                        "source_id": "scope.authorize_workspace",
+                        "rank": 8,
+                        "distance": 0.7454753962442515,
+                        "relevant": false,
+                        "in_top_k": false
+                    }
+                ],
+                "nearest_distance": 0.4774597727495362,
+                "first_second_gap": 0.028103651117005635
+            },
+            {
+                "query_id": "dev-revision",
+                "status": "ok",
+                "answerable": true,
+                "candidates": [
+                    {
+                        "source_id": "scope.verify_revision",
+                        "rank": 1,
+                        "distance": 0.402389252328231,
+                        "relevant": true,
+                        "in_top_k": true
+                    },
+                    {
+                        "source_id": "scope.authorize_workspace",
+                        "rank": 2,
+                        "distance": 0.4384245966456467,
+                        "relevant": true,
+                        "in_top_k": true
+                    },
+                    {
+                        "source_id": "control.cancellation_checkpoint",
+                        "rank": 3,
+                        "distance": 0.6825960089323521,
+                        "relevant": false,
+                        "in_top_k": true
+                    },
+                    {
+                        "source_id": "control.cancel_task",
+                        "rank": 4,
+                        "distance": 0.6946209371089913,
+                        "relevant": false,
+                        "in_top_k": false
+                    },
+                    {
+                        "source_id": "history.restore_history",
+                        "rank": 5,
+                        "distance": 0.7307278330435449,
+                        "relevant": false,
+                        "in_top_k": false
+                    },
+                    {
+                        "source_id": "budget.check_request_budget",
+                        "rank": 6,
+                        "distance": 0.7347718477249127,
+                        "relevant": false,
+                        "in_top_k": false
+                    },
+                    {
+                        "source_id": "history.save_turn",
+                        "rank": 7,
+                        "distance": 0.7440079894070615,
+                        "relevant": false,
+                        "in_top_k": false
+                    },
+                    {
+                        "source_id": "budget.measure_request_bytes",
+                        "rank": 8,
+                        "distance": 0.8465799448835815,
+                        "relevant": false,
+                        "in_top_k": false
+                    }
+                ],
+                "nearest_distance": 0.402389252328231,
+                "first_second_gap": 0.03603534431741573
+            },
+            {
+                "query_id": "dev-bytes",
+                "status": "ok",
+                "answerable": true,
+                "candidates": [
+                    {
+                        "source_id": "budget.check_request_budget",
+                        "rank": 1,
+                        "distance": 0.5506149426652343,
+                        "relevant": true,
+                        "in_top_k": true
+                    },
+                    {
+                        "source_id": "budget.measure_request_bytes",
+                        "rank": 2,
+                        "distance": 0.5937622776273261,
+                        "relevant": true,
+                        "in_top_k": true
+                    },
+                    {
+                        "source_id": "scope.verify_revision",
+                        "rank": 3,
+                        "distance": 0.6429371897782629,
+                        "relevant": false,
+                        "in_top_k": true
+                    },
+                    {
+                        "source_id": "control.cancellation_checkpoint",
+                        "rank": 4,
+                        "distance": 0.6600085586322149,
+                        "relevant": false,
+                        "in_top_k": false
+                    },
+                    {
+                        "source_id": "control.cancel_task",
+                        "rank": 5,
+                        "distance": 0.6786492179616517,
+                        "relevant": false,
+                        "in_top_k": false
+                    },
+                    {
+                        "source_id": "history.restore_history",
+                        "rank": 6,
+                        "distance": 0.7126331750660708,
+                        "relevant": false,
+                        "in_top_k": false
+                    },
+                    {
+                        "source_id": "history.save_turn",
+                        "rank": 7,
+                        "distance": 0.7266262958386951,
+                        "relevant": false,
+                        "in_top_k": false
+                    },
+                    {
+                        "source_id": "scope.authorize_workspace",
+                        "rank": 8,
+                        "distance": 0.7459094666080694,
+                        "relevant": false,
+                        "in_top_k": false
+                    }
+                ],
+                "nearest_distance": 0.5506149426652343,
+                "first_second_gap": 0.04314733496209189
+            },
+            {
+                "query_id": "dev-history",
+                "status": "ok",
+                "answerable": true,
+                "candidates": [
+                    {
+                        "source_id": "history.restore_history",
+                        "rank": 1,
+                        "distance": 0.4166552151225804,
+                        "relevant": true,
+                        "in_top_k": true
+                    },
+                    {
+                        "source_id": "history.save_turn",
+                        "rank": 2,
+                        "distance": 0.5233195282018042,
+                        "relevant": false,
+                        "in_top_k": true
+                    },
+                    {
+                        "source_id": "budget.measure_request_bytes",
+                        "rank": 3,
+                        "distance": 0.6675247450925332,
+                        "relevant": false,
+                        "in_top_k": true
+                    },
+                    {
+                        "source_id": "scope.verify_revision",
+                        "rank": 4,
+                        "distance": 0.6988203733807912,
+                        "relevant": false,
+                        "in_top_k": false
+                    },
+                    {
+                        "source_id": "budget.check_request_budget",
+                        "rank": 5,
+                        "distance": 0.7140741433479136,
+                        "relevant": false,
+                        "in_top_k": false
+                    },
+                    {
+                        "source_id": "control.cancellation_checkpoint",
+                        "rank": 6,
+                        "distance": 0.7179949199555788,
+                        "relevant": false,
+                        "in_top_k": false
+                    },
+                    {
+                        "source_id": "scope.authorize_workspace",
+                        "rank": 7,
+                        "distance": 0.7209487391083681,
+                        "relevant": false,
+                        "in_top_k": false
+                    },
+                    {
+                        "source_id": "control.cancel_task",
+                        "rank": 8,
+                        "distance": 0.7410790401375569,
+                        "relevant": false,
+                        "in_top_k": false
+                    }
+                ],
+                "nearest_distance": 0.4166552151225804,
+                "first_second_gap": 0.10666431307922375
+            },
+            {
+                "query_id": "dev-token",
+                "status": "ok",
+                "answerable": false,
+                "candidates": [
+                    {
+                        "source_id": "scope.authorize_workspace",
+                        "rank": 1,
+                        "distance": 0.5902319672634595,
+                        "relevant": false,
+                        "in_top_k": true
+                    },
+                    {
+                        "source_id": "scope.verify_revision",
+                        "rank": 2,
+                        "distance": 0.7334299842458968,
+                        "relevant": false,
+                        "in_top_k": true
+                    },
+                    {
+                        "source_id": "budget.check_request_budget",
+                        "rank": 3,
+                        "distance": 0.7401942026383634,
+                        "relevant": false,
+                        "in_top_k": true
+                    },
+                    {
+                        "source_id": "history.restore_history",
+                        "rank": 4,
+                        "distance": 0.7465552238556836,
+                        "relevant": false,
+                        "in_top_k": false
+                    },
+                    {
+                        "source_id": "history.save_turn",
+                        "rank": 5,
+                        "distance": 0.7590723032312208,
+                        "relevant": false,
+                        "in_top_k": false
+                    },
+                    {
+                        "source_id": "control.cancellation_checkpoint",
+                        "rank": 6,
+                        "distance": 0.7641887209302946,
+                        "relevant": false,
+                        "in_top_k": false
+                    },
+                    {
+                        "source_id": "budget.measure_request_bytes",
+                        "rank": 7,
+                        "distance": 0.7719401555097006,
+                        "relevant": false,
+                        "in_top_k": false
+                    },
+                    {
+                        "source_id": "control.cancel_task",
+                        "rank": 8,
+                        "distance": 0.7868896231782886,
+                        "relevant": false,
+                        "in_top_k": false
+                    }
+                ],
+                "nearest_distance": 0.5902319672634595,
+                "first_second_gap": 0.14319801698243728
+            },
+            {
+                "query_id": "dev-retry",
+                "status": "ok",
+                "answerable": false,
+                "candidates": [
+                    {
+                        "source_id": "scope.verify_revision",
+                        "rank": 1,
+                        "distance": 0.6772854328155518,
+                        "relevant": false,
+                        "in_top_k": true
+                    },
+                    {
+                        "source_id": "control.cancellation_checkpoint",
+                        "rank": 2,
+                        "distance": 0.6991701722145081,
+                        "relevant": false,
+                        "in_top_k": true
+                    },
+                    {
+                        "source_id": "scope.authorize_workspace",
+                        "rank": 3,
+                        "distance": 0.7078867169584844,
+                        "relevant": false,
+                        "in_top_k": true
+                    },
+                    {
+                        "source_id": "history.save_turn",
+                        "rank": 4,
+                        "distance": 0.7086804509162903,
+                        "relevant": false,
+                        "in_top_k": false
+                    },
+                    {
+                        "source_id": "control.cancel_task",
+                        "rank": 5,
+                        "distance": 0.7217681871790769,
+                        "relevant": false,
+                        "in_top_k": false
+                    },
+                    {
+                        "source_id": "budget.check_request_budget",
+                        "rank": 6,
+                        "distance": 0.7423859392174514,
+                        "relevant": false,
+                        "in_top_k": false
+                    },
+                    {
+                        "source_id": "history.restore_history",
+                        "rank": 7,
+                        "distance": 0.749130904570924,
+                        "relevant": false,
+                        "in_top_k": false
+                    },
+                    {
+                        "source_id": "budget.measure_request_bytes",
+                        "rank": 8,
+                        "distance": 0.8302442282438278,
+                        "relevant": false,
+                        "in_top_k": false
+                    }
+                ],
+                "nearest_distance": 0.6772854328155518,
+                "first_second_gap": 0.0218847393989563
+            },
+            {
+                "query_id": "dev-encryption",
+                "status": "ok",
+                "answerable": false,
+                "candidates": [
+                    {
+                        "source_id": "history.save_turn",
+                        "rank": 1,
+                        "distance": 0.6327980537890221,
+                        "relevant": false,
+                        "in_top_k": true
+                    },
+                    {
+                        "source_id": "scope.verify_revision",
+                        "rank": 2,
+                        "distance": 0.6541017683805084,
+                        "relevant": false,
+                        "in_top_k": true
+                    },
+                    {
+                        "source_id": "history.restore_history",
+                        "rank": 3,
+                        "distance": 0.6715184458825187,
+                        "relevant": false,
+                        "in_top_k": true
+                    },
+                    {
+                        "source_id": "scope.authorize_workspace",
+                        "rank": 4,
+                        "distance": 0.6985525219338405,
+                        "relevant": false,
+                        "in_top_k": false
+                    },
+                    {
+                        "source_id": "control.cancellation_checkpoint",
+                        "rank": 5,
+                        "distance": 0.7523598672366059,
+                        "relevant": false,
+                        "in_top_k": false
+                    },
+                    {
+                        "source_id": "budget.measure_request_bytes",
+                        "rank": 6,
+                        "distance": 0.7618808157372956,
+                        "relevant": false,
+                        "in_top_k": false
+                    },
+                    {
+                        "source_id": "control.cancel_task",
+                        "rank": 7,
+                        "distance": 0.7643875330686553,
+                        "relevant": false,
+                        "in_top_k": false
+                    },
+                    {
+                        "source_id": "budget.check_request_budget",
+                        "rank": 8,
+                        "distance": 0.7926520854234681,
+                        "relevant": false,
+                        "in_top_k": false
+                    }
+                ],
+                "nearest_distance": 0.6327980537890221,
+                "first_second_gap": 0.021303714591486278
+            },
+            {
+                "query_id": "dev-stream",
+                "status": "ok",
+                "answerable": false,
+                "candidates": [
+                    {
+                        "source_id": "budget.measure_request_bytes",
+                        "rank": 1,
+                        "distance": 0.5799426090751516,
+                        "relevant": false,
+                        "in_top_k": true
+                    },
+                    {
+                        "source_id": "budget.check_request_budget",
+                        "rank": 2,
+                        "distance": 0.6627986237050744,
+                        "relevant": false,
+                        "in_top_k": true
+                    },
+                    {
+                        "source_id": "scope.verify_revision",
+                        "rank": 3,
+                        "distance": 0.6794698429423658,
+                        "relevant": false,
+                        "in_top_k": true
+                    },
+                    {
+                        "source_id": "history.restore_history",
+                        "rank": 4,
+                        "distance": 0.7096581584011364,
+                        "relevant": false,
+                        "in_top_k": false
+                    },
+                    {
+                        "source_id": "history.save_turn",
+                        "rank": 5,
+                        "distance": 0.7132963709058535,
+                        "relevant": false,
+                        "in_top_k": false
+                    },
+                    {
+                        "source_id": "control.cancel_task",
+                        "rank": 6,
+                        "distance": 0.7250278919901977,
+                        "relevant": false,
+                        "in_top_k": false
+                    },
+                    {
+                        "source_id": "control.cancellation_checkpoint",
+                        "rank": 7,
+                        "distance": 0.7321995656371371,
+                        "relevant": false,
+                        "in_top_k": false
+                    },
+                    {
+                        "source_id": "scope.authorize_workspace",
+                        "rank": 8,
+                        "distance": 0.802532559557778,
+                        "relevant": false,
+                        "in_top_k": false
+                    }
+                ],
+                "nearest_distance": 0.5799426090751516,
+                "first_second_gap": 0.08285601462992276
+            }
+        ],
+        "groups": {
+            "nearest_answerable": {
+                "count": 4,
+                "min": 0.402389252328231,
+                "max": 0.5506149426652343,
+                "mean": 0.4617797957163955
+            },
+            "nearest_no_answer": {
+                "count": 4,
+                "min": 0.5799426090751516,
+                "max": 0.6772854328155518,
+                "mean": 0.6200645157357962
+            },
+            "relevant_candidates": {
+                "count": 8,
+                "min": 0.402389252328231,
+                "max": 0.5937622776273261,
+                "mean": 0.49356926698121023
+            },
+            "irrelevant_candidates": {
+                "count": 56,
+                "min": 0.5055634238665419,
+                "max": 0.8465799448835815,
+                "mean": 0.7086772557636499
+            }
+        },
+        "limits": [
+            "distance is not confidence",
+            "descriptive only; no threshold selected",
+            "candidate samples from the same query are not independent",
+            "labels never change ranking or provider requests"
+        ]
+    },
+    "limitations": [
+        "no calibrated provider abstention",
+        "cost unknown",
+        "query usage unknown when failure occurs before combined result"
+    ],
+    "mode": "real",
+    "execution": {
+        "date": "2026-10-10",
+        "provider": "Alibaba Cloud Model Studio, Beijing",
+        "stage": "development_only",
+        "scope": "fixed learning corpus; isolated PostgreSQL cleaned before publication; no holdout requests",
+        "design": "design.json"
+    }
+}

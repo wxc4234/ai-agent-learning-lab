@@ -112,6 +112,38 @@ created_at仅接受有效公历、1～9999年、带Z或HH:MM偏移、最多6位�
 
 可信宿主也可通过下述串联入口生成查询向量并执行召回，显式将选定快照交给[有界Context Builder](code-context.md)，或调用[授权查询上下文组合](code-context.md#授权查询上下文串联)。本地查询HTTP已复用该组合，契约与验收见[API协议](code-context.md#本地授权查询-api)和[同源BFF](code-context.md#同源-bff-代理)；索引重建、混合排序与PC展示未装配。算子与排序依据[pgvector查询说明](https://github.com/pgvector/pgvector#querying)及[Python SQLAlchemy适配器](https://github.com/pgvector/pgvector-python#sqlalchemy)；数据库距离校验不能替代真实模型/固定任务集的语义评测。
 
+## 授权批次关键词召回
+
+[内部服务](../apps/api/app/services/workspace/files/code_keyword_search.py) `search_code_keyword_batch` 接收 query、当前 user/workspace/task、明确 batch_id/space_id 和 top_k。不调用模型、不读取磁盘、不写索引；当前只复用已存Embedding批次正文，因此仍需已有批次，但查询不需要Embedding凭据或查询向量。尚未接入Agent、API或UI。
+
+- 查询最多2000字符/4096字节、32个不同词项，不接受控制字符；top_k为1～20。`unicode-word-overlap-v1`先casefold，再提取连续Unicode文字/数字，下划线拆词；查询词与相对路径、限定符号名、正文词集合求交，任一命中即为候选。中文连续文本不分词、驼峰不拆词，没有词干还原或模糊子串匹配。
+- score是命中的不同词项数，重复词不加分；按score降序、原始ordinal和chunk_id升序排序。例如查询`alpha beta`时，两词均命中的片段优先于仅命中`alpha`的片段。分数不是相关性概率，也不能直接与余弦距离相加。
+- 同一事务先锁定当前归属，再复核批次任务、会话归属、完整space_id、目录绑定及修订；只读取该批次最多21条以检测20条上限，不加载向量列。SQL只传回不超过4096字节的正文和16KiB的片段元数据，超限静态失败；数据库另有正文长度约束。原批次元数据读取后限制128KiB，这不是数据库CPU或内存硬隔离。
+- 全部片段通过路径、来源摘要、文本摘要、坐标、序号连续性、分片完整性校验后，才匹配及截取Top K；坏的非命中尾部也整次拒绝。零向量不妨碍词面匹配。结果保留原片段、批次metadata、matched_terms、总片段数/命中片段数/Top K省略数，原truncated覆盖原因不被省略数覆盖。
+- 无词面匹配返回空hits；非法输入为`code_keyword_query_invalid`，数据不一致为`code_keyword_batch_inconsistent`，权限/绑定错误保留`WorkspaceNotAccessibleError`。数据库失败不转为空结果。返回值是脱离Session的快照，不授权下一次访问或模型发送，也不证明磁盘当前版本、语义无答案或内容可信。
+
+[定向测试](../apps/api/tests/workspace/files/test_code_keyword_search.py)覆盖稳定排序/并列、路径与符号、大小写/去重、明确批次、20条/Top K边界、零向量与不加载向量列、原来源/不完整分片、深复制、无匹配、坏尾部与当前授权/修订撤销。复用随机PostgreSQL库与私有schema；在`apps/api`运行：
+
+```bash
+../../.venv/bin/python -m pytest tests/workspace/files/test_code_keyword_search.py -q --tb=short -W error
+```
+
+## 授权单批RRF混合召回
+
+[内部服务](../apps/api/app/services/workspace/files/code_hybrid_search.py) `search_code_hybrid_batch` 接收当前user/workspace/task、明确batch_id、query及可信宿主提供的同题query_vector/config/response_model。模型空间由配置及返回模型名推导，不接受另一个独立space_id。服务不生成查询向量、不请求模型、不读取磁盘、不写入；输入向量是否确由该query生成仍由上游保证。已提供[有界Context Builder适配](code-context.md#混合召回的有界上下文)，已提供[显式查询生成组合](code-context.md#授权查询与混合上下文串联)，尚未接入Agent、API或UI。
+
+- 固定RRF常数60，每个片段的分数为两路已有排名的`1 / (60 + rank)`之和，缺失通道贡献0。先向两路各请求最多20个完整候选，按同批chunk_id去重，再取最终1～20个Top K。两路都命中的同一chunk必须有完全相同的正文及来源；片段分片彼此独立，不把同文件各分片错误合并。
+- 用Fraction精确比较分数，同分按相对路径、起始行/列、chunk_id排序；仅输出时转为浮点。输出保留keyword_rank/vector_rank、matched_terms、原关键词分数及向量距离，缺失证据为None/空元组；RRF分数不是概率，也没有配置拒答阈值。
+- 关键词先在自己的短事务内验证全批正文；向量随后在第二个事务内重新验证当前归属、绑定修订和模型空间。两路metadata/批次/空间/片段数必须一致，融合候选另做来源校验。任一路异常均整次传播，禁止因故障、零查询向量或空间不兼容回退为关键词成功。两次读取之间撤销归属、改根或改根后再改回都拒绝。
+- 合法空关键词结果允许向量单路排序；存储零向量只从向量通道排除，仍可词面命中；两路合法空结果返回空hits。输出分别保留原批次覆盖、两路候选数、零向量数、融合联集数及融合Top K省略数，不把空结果解释为语义无答案。
+- 依赖现有批次不可变追加约定，两个事务不构成原子快照，也不保证抵御绕过服务的并发数据库篡改。各事务退出后不保持锁，最终结果不授予未来文件读取或模型发送权限。尚未评测真实融合收益，不改变现有Agent向量检索策略。
+
+[22项专项](../apps/api/tests/workspace/files/test_code_hybrid_search.py)验证真实PG排名融合、精确并列、明确批次、去重与来源、深复制、原始分片覆盖、单路/双路为空、坏尾部、通道失败不降级及通道间撤销。运行入口（`apps/api`）：
+
+```bash
+../../.venv/bin/python -m pytest tests/workspace/files/test_code_hybrid_search.py -q --tb=short -W error
+```
+
 ## 授权查询与召回串联
 
 `search_code_query(query, *, user_id, workspace_id, task_id, batch_id, config, response_model, top_k=5, transport=None)` 只消费可信宿主明确选定的查询文本、当前身份、目标批次与预期模型空间。`response_model`是宿主预期的供应商报告版本，与独立配置共同确定完整空间；不按返回版本自动切换批次。transport仅供可信测试注入，不对外开放。

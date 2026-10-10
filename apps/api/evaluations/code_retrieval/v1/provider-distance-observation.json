@@ -1,0 +1,1376 @@
+{
+    "schema_version": 1,
+    "manifest": {
+        "config_sha256": "11a44206f0083f0f8376530a612bcbffe2c398b764f8926b135e1c11ac35944b",
+        "dataset_sha256": "f38316f72364b1e0ad0e4cd948ae04de684aeb56a233b57b903b00aebb239df9",
+        "source_count": 8,
+        "query_count": 8,
+        "planned_requests": 9,
+        "planned_body_bytes": 2558,
+        "dimensions": 1024,
+        "requested_model": "text-embedding-v4",
+        "expected_response_model": "text-embedding-v4",
+        "cost": null,
+        "cost_state": "unknown"
+    },
+    "requests": 9,
+    "request_body_bytes": 2558,
+    "literal": {
+        "schema_version": 1,
+        "dataset_id": "code-retrieval-v1",
+        "dataset_sha256": "f38316f72364b1e0ad0e4cd948ae04de684aeb56a233b57b903b00aebb239df9",
+        "strategy": "literal-term-overlap-v1",
+        "citation_origin": "retrieval_reference",
+        "k": 3,
+        "query_count": 8,
+        "answerable_count": 6,
+        "no_answer_count": 2,
+        "error_count": 0,
+        "recall_at_k": 0.8333333333333334,
+        "mrr_at_k": 0.8333333333333334,
+        "no_answer_false_positive_count": 1,
+        "no_answer_error_count": 0,
+        "citation_count": 6,
+        "citation_relevance": 0.8333333333333334,
+        "citation_grounding_at_k": 1.0,
+        "rows": [
+            {
+                "query_id": "cancel",
+                "status": "ok",
+                "top_source_ids": [
+                    "control.cancel_task",
+                    "control.cancellation_checkpoint",
+                    "history.save_turn"
+                ],
+                "duplicate_count": 0,
+                "relevant_count": 3,
+                "matched_source_ids": [
+                    "control.cancel_task",
+                    "control.cancellation_checkpoint",
+                    "history.save_turn"
+                ],
+                "recall_at_k": 1.0,
+                "reciprocal_rank_at_k": 1.0,
+                "no_answer_false_positive": null,
+                "citation_count": 1,
+                "relevant_citation_count": 1,
+                "grounded_citation_count": 1
+            },
+            {
+                "query_id": "history",
+                "status": "ok",
+                "top_source_ids": [
+                    "history.save_turn",
+                    "history.restore_history"
+                ],
+                "duplicate_count": 0,
+                "relevant_count": 2,
+                "matched_source_ids": [
+                    "history.restore_history",
+                    "history.save_turn"
+                ],
+                "recall_at_k": 1.0,
+                "reciprocal_rank_at_k": 1.0,
+                "no_answer_false_positive": null,
+                "citation_count": 1,
+                "relevant_citation_count": 1,
+                "grounded_citation_count": 1
+            },
+            {
+                "query_id": "authorization",
+                "status": "ok",
+                "top_source_ids": [
+                    "scope.authorize_workspace",
+                    "scope.verify_revision"
+                ],
+                "duplicate_count": 0,
+                "relevant_count": 2,
+                "matched_source_ids": [
+                    "scope.authorize_workspace",
+                    "scope.verify_revision"
+                ],
+                "recall_at_k": 1.0,
+                "reciprocal_rank_at_k": 1.0,
+                "no_answer_false_positive": null,
+                "citation_count": 1,
+                "relevant_citation_count": 1,
+                "grounded_citation_count": 1
+            },
+            {
+                "query_id": "budget",
+                "status": "ok",
+                "top_source_ids": [
+                    "budget.measure_request_bytes",
+                    "budget.check_request_budget",
+                    "control.cancel_task"
+                ],
+                "duplicate_count": 0,
+                "relevant_count": 2,
+                "matched_source_ids": [
+                    "budget.check_request_budget",
+                    "budget.measure_request_bytes"
+                ],
+                "recall_at_k": 1.0,
+                "reciprocal_rank_at_k": 1.0,
+                "no_answer_false_positive": null,
+                "citation_count": 1,
+                "relevant_citation_count": 1,
+                "grounded_citation_count": 1
+            },
+            {
+                "query_id": "exact-symbol",
+                "status": "ok",
+                "top_source_ids": [
+                    "history.restore_history",
+                    "history.save_turn"
+                ],
+                "duplicate_count": 0,
+                "relevant_count": 1,
+                "matched_source_ids": [
+                    "history.restore_history"
+                ],
+                "recall_at_k": 1.0,
+                "reciprocal_rank_at_k": 1.0,
+                "no_answer_false_positive": null,
+                "citation_count": 1,
+                "relevant_citation_count": 1,
+                "grounded_citation_count": 1
+            },
+            {
+                "query_id": "chinese",
+                "status": "ok",
+                "top_source_ids": [],
+                "duplicate_count": 0,
+                "relevant_count": 2,
+                "matched_source_ids": [],
+                "recall_at_k": 0.0,
+                "reciprocal_rank_at_k": 0.0,
+                "no_answer_false_positive": null,
+                "citation_count": 0,
+                "relevant_citation_count": 0,
+                "grounded_citation_count": 0
+            },
+            {
+                "query_id": "absent",
+                "status": "ok",
+                "top_source_ids": [],
+                "duplicate_count": 0,
+                "relevant_count": 0,
+                "matched_source_ids": [],
+                "recall_at_k": null,
+                "reciprocal_rank_at_k": null,
+                "no_answer_false_positive": false,
+                "citation_count": 0,
+                "relevant_citation_count": 0,
+                "grounded_citation_count": 0
+            },
+            {
+                "query_id": "absent-related",
+                "status": "ok",
+                "top_source_ids": [
+                    "budget.check_request_budget",
+                    "budget.measure_request_bytes",
+                    "control.cancel_task"
+                ],
+                "duplicate_count": 0,
+                "relevant_count": 0,
+                "matched_source_ids": [],
+                "recall_at_k": null,
+                "reciprocal_rank_at_k": null,
+                "no_answer_false_positive": true,
+                "citation_count": 1,
+                "relevant_citation_count": 0,
+                "grounded_citation_count": 1
+            }
+        ],
+        "limits": [
+            "offline_authored_fixture",
+            "source_level_dedup_before_k",
+            "not_semantic_or_answer_quality",
+            "no_latency_or_cost_measurement"
+        ]
+    },
+    "vector": {
+        "schema_version": 1,
+        "dataset_id": "code-retrieval-v1",
+        "dataset_sha256": "f38316f72364b1e0ad0e4cd948ae04de684aeb56a233b57b903b00aebb239df9",
+        "strategy": "configured-provider-v1",
+        "citation_origin": "retrieval_reference",
+        "k": 3,
+        "query_count": 8,
+        "answerable_count": 6,
+        "no_answer_count": 2,
+        "error_count": 0,
+        "recall_at_k": 1.0,
+        "mrr_at_k": 1.0,
+        "no_answer_false_positive_count": 2,
+        "no_answer_error_count": 0,
+        "citation_count": 8,
+        "citation_relevance": 0.75,
+        "citation_grounding_at_k": 1.0,
+        "rows": [
+            {
+                "query_id": "cancel",
+                "status": "ok",
+                "top_source_ids": [
+                    "control.cancellation_checkpoint",
+                    "control.cancel_task",
+                    "history.save_turn"
+                ],
+                "duplicate_count": 0,
+                "relevant_count": 3,
+                "matched_source_ids": [
+                    "control.cancel_task",
+                    "control.cancellation_checkpoint",
+                    "history.save_turn"
+                ],
+                "recall_at_k": 1.0,
+                "reciprocal_rank_at_k": 1.0,
+                "no_answer_false_positive": null,
+                "citation_count": 1,
+                "relevant_citation_count": 1,
+                "grounded_citation_count": 1
+            },
+            {
+                "query_id": "history",
+                "status": "ok",
+                "top_source_ids": [
+                    "history.restore_history",
+                    "history.save_turn",
+                    "budget.measure_request_bytes"
+                ],
+                "duplicate_count": 0,
+                "relevant_count": 2,
+                "matched_source_ids": [
+                    "history.restore_history",
+                    "history.save_turn"
+                ],
+                "recall_at_k": 1.0,
+                "reciprocal_rank_at_k": 1.0,
+                "no_answer_false_positive": null,
+                "citation_count": 1,
+                "relevant_citation_count": 1,
+                "grounded_citation_count": 1
+            },
+            {
+                "query_id": "authorization",
+                "status": "ok",
+                "top_source_ids": [
+                    "scope.verify_revision",
+                    "scope.authorize_workspace",
+                    "control.cancel_task"
+                ],
+                "duplicate_count": 0,
+                "relevant_count": 2,
+                "matched_source_ids": [
+                    "scope.authorize_workspace",
+                    "scope.verify_revision"
+                ],
+                "recall_at_k": 1.0,
+                "reciprocal_rank_at_k": 1.0,
+                "no_answer_false_positive": null,
+                "citation_count": 1,
+                "relevant_citation_count": 1,
+                "grounded_citation_count": 1
+            },
+            {
+                "query_id": "budget",
+                "status": "ok",
+                "top_source_ids": [
+                    "budget.check_request_budget",
+                    "budget.measure_request_bytes",
+                    "scope.verify_revision"
+                ],
+                "duplicate_count": 0,
+                "relevant_count": 2,
+                "matched_source_ids": [
+                    "budget.check_request_budget",
+                    "budget.measure_request_bytes"
+                ],
+                "recall_at_k": 1.0,
+                "reciprocal_rank_at_k": 1.0,
+                "no_answer_false_positive": null,
+                "citation_count": 1,
+                "relevant_citation_count": 1,
+                "grounded_citation_count": 1
+            },
+            {
+                "query_id": "exact-symbol",
+                "status": "ok",
+                "top_source_ids": [
+                    "history.restore_history",
+                    "history.save_turn",
+                    "scope.verify_revision"
+                ],
+                "duplicate_count": 0,
+                "relevant_count": 1,
+                "matched_source_ids": [
+                    "history.restore_history"
+                ],
+                "recall_at_k": 1.0,
+                "reciprocal_rank_at_k": 1.0,
+                "no_answer_false_positive": null,
+                "citation_count": 1,
+                "relevant_citation_count": 1,
+                "grounded_citation_count": 1
+            },
+            {
+                "query_id": "chinese",
+                "status": "ok",
+                "top_source_ids": [
+                    "history.save_turn",
+                    "history.restore_history",
+                    "control.cancellation_checkpoint"
+                ],
+                "duplicate_count": 0,
+                "relevant_count": 2,
+                "matched_source_ids": [
+                    "control.cancellation_checkpoint",
+                    "history.save_turn"
+                ],
+                "recall_at_k": 1.0,
+                "reciprocal_rank_at_k": 1.0,
+                "no_answer_false_positive": null,
+                "citation_count": 1,
+                "relevant_citation_count": 1,
+                "grounded_citation_count": 1
+            },
+            {
+                "query_id": "absent",
+                "status": "ok",
+                "top_source_ids": [
+                    "history.save_turn",
+                    "history.restore_history",
+                    "control.cancellation_checkpoint"
+                ],
+                "duplicate_count": 0,
+                "relevant_count": 0,
+                "matched_source_ids": [],
+                "recall_at_k": null,
+                "reciprocal_rank_at_k": null,
+                "no_answer_false_positive": true,
+                "citation_count": 1,
+                "relevant_citation_count": 0,
+                "grounded_citation_count": 1
+            },
+            {
+                "query_id": "absent-related",
+                "status": "ok",
+                "top_source_ids": [
+                    "budget.measure_request_bytes",
+                    "scope.verify_revision",
+                    "budget.check_request_budget"
+                ],
+                "duplicate_count": 0,
+                "relevant_count": 0,
+                "matched_source_ids": [],
+                "recall_at_k": null,
+                "reciprocal_rank_at_k": null,
+                "no_answer_false_positive": true,
+                "citation_count": 1,
+                "relevant_citation_count": 0,
+                "grounded_citation_count": 1
+            }
+        ],
+        "limits": [
+            "offline_authored_fixture",
+            "source_level_dedup_before_k",
+            "not_semantic_or_answer_quality",
+            "no_latency_or_cost_measurement"
+        ]
+    },
+    "rrf": {
+        "schema_version": 1,
+        "dataset_id": "code-retrieval-v1",
+        "dataset_sha256": "f38316f72364b1e0ad0e4cd948ae04de684aeb56a233b57b903b00aebb239df9",
+        "strategy": "rrf-c60-v1",
+        "citation_origin": "retrieval_reference",
+        "k": 3,
+        "query_count": 8,
+        "answerable_count": 6,
+        "no_answer_count": 2,
+        "error_count": 0,
+        "recall_at_k": 1.0,
+        "mrr_at_k": 1.0,
+        "no_answer_false_positive_count": 2,
+        "no_answer_error_count": 0,
+        "citation_count": 8,
+        "citation_relevance": 0.75,
+        "citation_grounding_at_k": 1.0,
+        "rows": [
+            {
+                "query_id": "cancel",
+                "status": "ok",
+                "top_source_ids": [
+                    "control.cancel_task",
+                    "control.cancellation_checkpoint",
+                    "history.save_turn"
+                ],
+                "duplicate_count": 0,
+                "relevant_count": 3,
+                "matched_source_ids": [
+                    "control.cancel_task",
+                    "control.cancellation_checkpoint",
+                    "history.save_turn"
+                ],
+                "recall_at_k": 1.0,
+                "reciprocal_rank_at_k": 1.0,
+                "no_answer_false_positive": null,
+                "citation_count": 1,
+                "relevant_citation_count": 1,
+                "grounded_citation_count": 1
+            },
+            {
+                "query_id": "history",
+                "status": "ok",
+                "top_source_ids": [
+                    "history.restore_history",
+                    "history.save_turn",
+                    "budget.measure_request_bytes"
+                ],
+                "duplicate_count": 0,
+                "relevant_count": 2,
+                "matched_source_ids": [
+                    "history.restore_history",
+                    "history.save_turn"
+                ],
+                "recall_at_k": 1.0,
+                "reciprocal_rank_at_k": 1.0,
+                "no_answer_false_positive": null,
+                "citation_count": 1,
+                "relevant_citation_count": 1,
+                "grounded_citation_count": 1
+            },
+            {
+                "query_id": "authorization",
+                "status": "ok",
+                "top_source_ids": [
+                    "scope.authorize_workspace",
+                    "scope.verify_revision",
+                    "control.cancel_task"
+                ],
+                "duplicate_count": 0,
+                "relevant_count": 2,
+                "matched_source_ids": [
+                    "scope.authorize_workspace",
+                    "scope.verify_revision"
+                ],
+                "recall_at_k": 1.0,
+                "reciprocal_rank_at_k": 1.0,
+                "no_answer_false_positive": null,
+                "citation_count": 1,
+                "relevant_citation_count": 1,
+                "grounded_citation_count": 1
+            },
+            {
+                "query_id": "budget",
+                "status": "ok",
+                "top_source_ids": [
+                    "budget.check_request_budget",
+                    "budget.measure_request_bytes",
+                    "control.cancel_task"
+                ],
+                "duplicate_count": 0,
+                "relevant_count": 2,
+                "matched_source_ids": [
+                    "budget.check_request_budget",
+                    "budget.measure_request_bytes"
+                ],
+                "recall_at_k": 1.0,
+                "reciprocal_rank_at_k": 1.0,
+                "no_answer_false_positive": null,
+                "citation_count": 1,
+                "relevant_citation_count": 1,
+                "grounded_citation_count": 1
+            },
+            {
+                "query_id": "exact-symbol",
+                "status": "ok",
+                "top_source_ids": [
+                    "history.restore_history",
+                    "history.save_turn",
+                    "scope.verify_revision"
+                ],
+                "duplicate_count": 0,
+                "relevant_count": 1,
+                "matched_source_ids": [
+                    "history.restore_history"
+                ],
+                "recall_at_k": 1.0,
+                "reciprocal_rank_at_k": 1.0,
+                "no_answer_false_positive": null,
+                "citation_count": 1,
+                "relevant_citation_count": 1,
+                "grounded_citation_count": 1
+            },
+            {
+                "query_id": "chinese",
+                "status": "ok",
+                "top_source_ids": [
+                    "history.save_turn",
+                    "history.restore_history",
+                    "control.cancellation_checkpoint"
+                ],
+                "duplicate_count": 0,
+                "relevant_count": 2,
+                "matched_source_ids": [
+                    "control.cancellation_checkpoint",
+                    "history.save_turn"
+                ],
+                "recall_at_k": 1.0,
+                "reciprocal_rank_at_k": 1.0,
+                "no_answer_false_positive": null,
+                "citation_count": 1,
+                "relevant_citation_count": 1,
+                "grounded_citation_count": 1
+            },
+            {
+                "query_id": "absent",
+                "status": "ok",
+                "top_source_ids": [
+                    "history.save_turn",
+                    "history.restore_history",
+                    "control.cancellation_checkpoint"
+                ],
+                "duplicate_count": 0,
+                "relevant_count": 0,
+                "matched_source_ids": [],
+                "recall_at_k": null,
+                "reciprocal_rank_at_k": null,
+                "no_answer_false_positive": true,
+                "citation_count": 1,
+                "relevant_citation_count": 0,
+                "grounded_citation_count": 1
+            },
+            {
+                "query_id": "absent-related",
+                "status": "ok",
+                "top_source_ids": [
+                    "budget.measure_request_bytes",
+                    "budget.check_request_budget",
+                    "control.cancel_task"
+                ],
+                "duplicate_count": 0,
+                "relevant_count": 0,
+                "matched_source_ids": [],
+                "recall_at_k": null,
+                "reciprocal_rank_at_k": null,
+                "no_answer_false_positive": true,
+                "citation_count": 1,
+                "relevant_citation_count": 0,
+                "grounded_citation_count": 1
+            }
+        ],
+        "limits": [
+            "offline_authored_fixture",
+            "source_level_dedup_before_k",
+            "not_semantic_or_answer_quality",
+            "no_latency_or_cost_measurement"
+        ]
+    },
+    "observation": {
+        "schema_version": 1,
+        "clock": "monotonic",
+        "percentile": "nearest-rank",
+        "spans": [
+            {
+                "phase": "build",
+                "sample": "build",
+                "stage": "end_to_end",
+                "status": "ok",
+                "duration_ms": 466.10966700245626
+            },
+            {
+                "phase": "query",
+                "sample": "cancel",
+                "stage": "end_to_end",
+                "status": "ok",
+                "duration_ms": 264.8168340092525
+            },
+            {
+                "phase": "query",
+                "sample": "history",
+                "stage": "end_to_end",
+                "status": "ok",
+                "duration_ms": 233.02854201756418
+            },
+            {
+                "phase": "query",
+                "sample": "authorization",
+                "stage": "end_to_end",
+                "status": "ok",
+                "duration_ms": 264.0747089753859
+            },
+            {
+                "phase": "query",
+                "sample": "budget",
+                "stage": "end_to_end",
+                "status": "ok",
+                "duration_ms": 172.11008301819675
+            },
+            {
+                "phase": "query",
+                "sample": "exact-symbol",
+                "stage": "end_to_end",
+                "status": "ok",
+                "duration_ms": 184.92220801999792
+            },
+            {
+                "phase": "query",
+                "sample": "chinese",
+                "stage": "end_to_end",
+                "status": "ok",
+                "duration_ms": 272.1051659900695
+            },
+            {
+                "phase": "query",
+                "sample": "absent",
+                "stage": "end_to_end",
+                "status": "ok",
+                "duration_ms": 204.65737499762326
+            },
+            {
+                "phase": "query",
+                "sample": "absent-related",
+                "stage": "end_to_end",
+                "status": "ok",
+                "duration_ms": 340.3552499949001
+            },
+            {
+                "phase": "evaluation",
+                "sample": "dataset",
+                "stage": "literal",
+                "status": "ok",
+                "duration_ms": 0.7972919847816229
+            },
+            {
+                "phase": "evaluation",
+                "sample": "dataset",
+                "stage": "fusion",
+                "status": "ok",
+                "duration_ms": 1.4107500028330833
+            }
+        ],
+        "latency": [
+            {
+                "phase": "build",
+                "stage": "end_to_end",
+                "status": "ok",
+                "count": 1,
+                "mean_ms": 466.10966700245626,
+                "p50_ms": 466.10966700245626,
+                "p95_ms": 466.10966700245626
+            },
+            {
+                "phase": "evaluation",
+                "stage": "fusion",
+                "status": "ok",
+                "count": 1,
+                "mean_ms": 1.4107500028330833,
+                "p50_ms": 1.4107500028330833,
+                "p95_ms": 1.4107500028330833
+            },
+            {
+                "phase": "evaluation",
+                "stage": "literal",
+                "status": "ok",
+                "count": 1,
+                "mean_ms": 0.7972919847816229,
+                "p50_ms": 0.7972919847816229,
+                "p95_ms": 0.7972919847816229
+            },
+            {
+                "phase": "query",
+                "stage": "end_to_end",
+                "status": "ok",
+                "count": 8,
+                "mean_ms": 242.00877087787376,
+                "p50_ms": 233.02854201756418,
+                "p95_ms": 340.3552499949001
+            }
+        ],
+        "usage": [
+            {
+                "phase": "build",
+                "sample": "build",
+                "attempts": 1,
+                "validated_requests": 1,
+                "prompt_tokens": 315,
+                "total_tokens": 315,
+                "state": "reported"
+            },
+            {
+                "phase": "query",
+                "sample": "absent",
+                "attempts": 1,
+                "validated_requests": 1,
+                "prompt_tokens": 6,
+                "total_tokens": 6,
+                "state": "reported"
+            },
+            {
+                "phase": "query",
+                "sample": "absent-related",
+                "attempts": 1,
+                "validated_requests": 1,
+                "prompt_tokens": 5,
+                "total_tokens": 5,
+                "state": "reported"
+            },
+            {
+                "phase": "query",
+                "sample": "authorization",
+                "attempts": 1,
+                "validated_requests": 1,
+                "prompt_tokens": 5,
+                "total_tokens": 5,
+                "state": "reported"
+            },
+            {
+                "phase": "query",
+                "sample": "budget",
+                "attempts": 1,
+                "validated_requests": 1,
+                "prompt_tokens": 6,
+                "total_tokens": 6,
+                "state": "reported"
+            },
+            {
+                "phase": "query",
+                "sample": "cancel",
+                "attempts": 1,
+                "validated_requests": 1,
+                "prompt_tokens": 8,
+                "total_tokens": 8,
+                "state": "reported"
+            },
+            {
+                "phase": "query",
+                "sample": "chinese",
+                "attempts": 1,
+                "validated_requests": 1,
+                "prompt_tokens": 9,
+                "total_tokens": 9,
+                "state": "reported"
+            },
+            {
+                "phase": "query",
+                "sample": "exact-symbol",
+                "attempts": 1,
+                "validated_requests": 1,
+                "prompt_tokens": 3,
+                "total_tokens": 3,
+                "state": "reported"
+            },
+            {
+                "phase": "query",
+                "sample": "history",
+                "attempts": 1,
+                "validated_requests": 1,
+                "prompt_tokens": 5,
+                "total_tokens": 5,
+                "state": "reported"
+            }
+        ],
+        "usage_totals": [
+            {
+                "phase": "build",
+                "samples": 1,
+                "attempts": 1,
+                "unknown_samples": 0,
+                "prompt_tokens": 315,
+                "total_tokens": 315,
+                "cost": null,
+                "cost_state": "unknown"
+            },
+            {
+                "phase": "query",
+                "samples": 8,
+                "attempts": 8,
+                "unknown_samples": 0,
+                "prompt_tokens": 47,
+                "total_tokens": 47,
+                "cost": null,
+                "cost_state": "unknown"
+            }
+        ],
+        "timing_scope": "nested spans overlap; do not sum stage percentiles",
+        "environment": "local PostgreSQL; configured real provider"
+    },
+    "distance_observation": {
+        "schema_version": 1,
+        "metric": "cosine_distance",
+        "direction": "lower_is_closer",
+        "scope": "same configured model space; all returned source candidates",
+        "error_count": 0,
+        "empty_success_count": 0,
+        "rows": [
+            {
+                "query_id": "cancel",
+                "status": "ok",
+                "answerable": true,
+                "candidates": [
+                    {
+                        "source_id": "control.cancellation_checkpoint",
+                        "rank": 1,
+                        "distance": 0.33690810203552246,
+                        "relevant": true,
+                        "in_top_k": true
+                    },
+                    {
+                        "source_id": "control.cancel_task",
+                        "rank": 2,
+                        "distance": 0.35765329851786387,
+                        "relevant": true,
+                        "in_top_k": true
+                    },
+                    {
+                        "source_id": "history.save_turn",
+                        "rank": 3,
+                        "distance": 0.4212263822555542,
+                        "relevant": true,
+                        "in_top_k": true
+                    },
+                    {
+                        "source_id": "history.restore_history",
+                        "rank": 4,
+                        "distance": 0.5575839051704262,
+                        "relevant": false,
+                        "in_top_k": false
+                    },
+                    {
+                        "source_id": "scope.verify_revision",
+                        "rank": 5,
+                        "distance": 0.6553489565849304,
+                        "relevant": false,
+                        "in_top_k": false
+                    },
+                    {
+                        "source_id": "budget.check_request_budget",
+                        "rank": 6,
+                        "distance": 0.6580453420850425,
+                        "relevant": false,
+                        "in_top_k": false
+                    },
+                    {
+                        "source_id": "scope.authorize_workspace",
+                        "rank": 7,
+                        "distance": 0.6765839361126402,
+                        "relevant": false,
+                        "in_top_k": false
+                    },
+                    {
+                        "source_id": "budget.measure_request_bytes",
+                        "rank": 8,
+                        "distance": 0.6880516111850739,
+                        "relevant": false,
+                        "in_top_k": false
+                    }
+                ],
+                "nearest_distance": 0.33690810203552246,
+                "first_second_gap": 0.02074519648234141
+            },
+            {
+                "query_id": "history",
+                "status": "ok",
+                "answerable": true,
+                "candidates": [
+                    {
+                        "source_id": "history.restore_history",
+                        "rank": 1,
+                        "distance": 0.2425580313870891,
+                        "relevant": true,
+                        "in_top_k": true
+                    },
+                    {
+                        "source_id": "history.save_turn",
+                        "rank": 2,
+                        "distance": 0.30895113945007324,
+                        "relevant": true,
+                        "in_top_k": true
+                    },
+                    {
+                        "source_id": "budget.measure_request_bytes",
+                        "rank": 3,
+                        "distance": 0.5913671851158142,
+                        "relevant": false,
+                        "in_top_k": true
+                    },
+                    {
+                        "source_id": "budget.check_request_budget",
+                        "rank": 4,
+                        "distance": 0.5975601912999031,
+                        "relevant": false,
+                        "in_top_k": false
+                    },
+                    {
+                        "source_id": "control.cancellation_checkpoint",
+                        "rank": 5,
+                        "distance": 0.6460980176925659,
+                        "relevant": false,
+                        "in_top_k": false
+                    },
+                    {
+                        "source_id": "scope.authorize_workspace",
+                        "rank": 6,
+                        "distance": 0.6559338467101408,
+                        "relevant": false,
+                        "in_top_k": false
+                    },
+                    {
+                        "source_id": "control.cancel_task",
+                        "rank": 7,
+                        "distance": 0.6655688485164131,
+                        "relevant": false,
+                        "in_top_k": false
+                    },
+                    {
+                        "source_id": "scope.verify_revision",
+                        "rank": 8,
+                        "distance": 0.7066984176635742,
+                        "relevant": false,
+                        "in_top_k": false
+                    }
+                ],
+                "nearest_distance": 0.2425580313870891,
+                "first_second_gap": 0.06639310806298415
+            },
+            {
+                "query_id": "authorization",
+                "status": "ok",
+                "answerable": true,
+                "candidates": [
+                    {
+                        "source_id": "scope.verify_revision",
+                        "rank": 1,
+                        "distance": 0.43552857637405396,
+                        "relevant": true,
+                        "in_top_k": true
+                    },
+                    {
+                        "source_id": "scope.authorize_workspace",
+                        "rank": 2,
+                        "distance": 0.49003313452104114,
+                        "relevant": true,
+                        "in_top_k": true
+                    },
+                    {
+                        "source_id": "control.cancel_task",
+                        "rank": 3,
+                        "distance": 0.7671932716850473,
+                        "relevant": false,
+                        "in_top_k": true
+                    },
+                    {
+                        "source_id": "control.cancellation_checkpoint",
+                        "rank": 4,
+                        "distance": 0.7787066847085953,
+                        "relevant": false,
+                        "in_top_k": false
+                    },
+                    {
+                        "source_id": "history.save_turn",
+                        "rank": 5,
+                        "distance": 0.8012799620628357,
+                        "relevant": false,
+                        "in_top_k": false
+                    },
+                    {
+                        "source_id": "history.restore_history",
+                        "rank": 6,
+                        "distance": 0.8337540726368502,
+                        "relevant": false,
+                        "in_top_k": false
+                    },
+                    {
+                        "source_id": "budget.check_request_budget",
+                        "rank": 7,
+                        "distance": 0.8465368839182325,
+                        "relevant": false,
+                        "in_top_k": false
+                    },
+                    {
+                        "source_id": "budget.measure_request_bytes",
+                        "rank": 8,
+                        "distance": 0.9032711088657379,
+                        "relevant": false,
+                        "in_top_k": false
+                    }
+                ],
+                "nearest_distance": 0.43552857637405396,
+                "first_second_gap": 0.05450455814698718
+            },
+            {
+                "query_id": "budget",
+                "status": "ok",
+                "answerable": true,
+                "candidates": [
+                    {
+                        "source_id": "budget.check_request_budget",
+                        "rank": 1,
+                        "distance": 0.4763674480258012,
+                        "relevant": true,
+                        "in_top_k": true
+                    },
+                    {
+                        "source_id": "budget.measure_request_bytes",
+                        "rank": 2,
+                        "distance": 0.5825248262256562,
+                        "relevant": true,
+                        "in_top_k": true
+                    },
+                    {
+                        "source_id": "scope.verify_revision",
+                        "rank": 3,
+                        "distance": 0.700858747856764,
+                        "relevant": false,
+                        "in_top_k": true
+                    },
+                    {
+                        "source_id": "control.cancellation_checkpoint",
+                        "rank": 4,
+                        "distance": 0.7433234163137159,
+                        "relevant": false,
+                        "in_top_k": false
+                    },
+                    {
+                        "source_id": "control.cancel_task",
+                        "rank": 5,
+                        "distance": 0.761034680419919,
+                        "relevant": false,
+                        "in_top_k": false
+                    },
+                    {
+                        "source_id": "scope.authorize_workspace",
+                        "rank": 6,
+                        "distance": 0.7681967227283044,
+                        "relevant": false,
+                        "in_top_k": false
+                    },
+                    {
+                        "source_id": "history.save_turn",
+                        "rank": 7,
+                        "distance": 0.7918271223512727,
+                        "relevant": false,
+                        "in_top_k": false
+                    },
+                    {
+                        "source_id": "history.restore_history",
+                        "rank": 8,
+                        "distance": 0.798181086778635,
+                        "relevant": false,
+                        "in_top_k": false
+                    }
+                ],
+                "nearest_distance": 0.4763674480258012,
+                "first_second_gap": 0.10615737819985493
+            },
+            {
+                "query_id": "exact-symbol",
+                "status": "ok",
+                "answerable": true,
+                "candidates": [
+                    {
+                        "source_id": "history.restore_history",
+                        "rank": 1,
+                        "distance": 0.36468675206403955,
+                        "relevant": true,
+                        "in_top_k": true
+                    },
+                    {
+                        "source_id": "history.save_turn",
+                        "rank": 2,
+                        "distance": 0.4915635434259038,
+                        "relevant": false,
+                        "in_top_k": true
+                    },
+                    {
+                        "source_id": "scope.verify_revision",
+                        "rank": 3,
+                        "distance": 0.6742951176850531,
+                        "relevant": false,
+                        "in_top_k": true
+                    },
+                    {
+                        "source_id": "control.cancellation_checkpoint",
+                        "rank": 4,
+                        "distance": 0.6901609209227835,
+                        "relevant": false,
+                        "in_top_k": false
+                    },
+                    {
+                        "source_id": "control.cancel_task",
+                        "rank": 5,
+                        "distance": 0.7123980309844593,
+                        "relevant": false,
+                        "in_top_k": false
+                    },
+                    {
+                        "source_id": "scope.authorize_workspace",
+                        "rank": 6,
+                        "distance": 0.7299610215402259,
+                        "relevant": false,
+                        "in_top_k": false
+                    },
+                    {
+                        "source_id": "budget.check_request_budget",
+                        "rank": 7,
+                        "distance": 0.7547115309622418,
+                        "relevant": false,
+                        "in_top_k": false
+                    },
+                    {
+                        "source_id": "budget.measure_request_bytes",
+                        "rank": 8,
+                        "distance": 0.7872058089734855,
+                        "relevant": false,
+                        "in_top_k": false
+                    }
+                ],
+                "nearest_distance": 0.36468675206403955,
+                "first_second_gap": 0.12687679136186425
+            },
+            {
+                "query_id": "chinese",
+                "status": "ok",
+                "answerable": true,
+                "candidates": [
+                    {
+                        "source_id": "history.save_turn",
+                        "rank": 1,
+                        "distance": 0.38848098447805446,
+                        "relevant": true,
+                        "in_top_k": true
+                    },
+                    {
+                        "source_id": "history.restore_history",
+                        "rank": 2,
+                        "distance": 0.4398198914205824,
+                        "relevant": false,
+                        "in_top_k": true
+                    },
+                    {
+                        "source_id": "control.cancellation_checkpoint",
+                        "rank": 3,
+                        "distance": 0.5884414963985374,
+                        "relevant": true,
+                        "in_top_k": true
+                    },
+                    {
+                        "source_id": "budget.check_request_budget",
+                        "rank": 4,
+                        "distance": 0.5886283814907045,
+                        "relevant": false,
+                        "in_top_k": false
+                    },
+                    {
+                        "source_id": "control.cancel_task",
+                        "rank": 5,
+                        "distance": 0.6037560403346987,
+                        "relevant": false,
+                        "in_top_k": false
+                    },
+                    {
+                        "source_id": "budget.measure_request_bytes",
+                        "rank": 6,
+                        "distance": 0.6213562560889867,
+                        "relevant": false,
+                        "in_top_k": false
+                    },
+                    {
+                        "source_id": "scope.authorize_workspace",
+                        "rank": 7,
+                        "distance": 0.6599507027820379,
+                        "relevant": false,
+                        "in_top_k": false
+                    },
+                    {
+                        "source_id": "scope.verify_revision",
+                        "rank": 8,
+                        "distance": 0.6899833196391648,
+                        "relevant": false,
+                        "in_top_k": false
+                    }
+                ],
+                "nearest_distance": 0.38848098447805446,
+                "first_second_gap": 0.05133890694252796
+            },
+            {
+                "query_id": "absent",
+                "status": "ok",
+                "answerable": false,
+                "candidates": [
+                    {
+                        "source_id": "history.save_turn",
+                        "rank": 1,
+                        "distance": 0.7846091348398748,
+                        "relevant": false,
+                        "in_top_k": true
+                    },
+                    {
+                        "source_id": "history.restore_history",
+                        "rank": 2,
+                        "distance": 0.7903502583503663,
+                        "relevant": false,
+                        "in_top_k": true
+                    },
+                    {
+                        "source_id": "control.cancellation_checkpoint",
+                        "rank": 3,
+                        "distance": 0.8006412177513564,
+                        "relevant": false,
+                        "in_top_k": true
+                    },
+                    {
+                        "source_id": "control.cancel_task",
+                        "rank": 4,
+                        "distance": 0.8219466974830569,
+                        "relevant": false,
+                        "in_top_k": false
+                    },
+                    {
+                        "source_id": "scope.authorize_workspace",
+                        "rank": 5,
+                        "distance": 0.8349179475082784,
+                        "relevant": false,
+                        "in_top_k": false
+                    },
+                    {
+                        "source_id": "budget.check_request_budget",
+                        "rank": 6,
+                        "distance": 0.845175949601659,
+                        "relevant": false,
+                        "in_top_k": false
+                    },
+                    {
+                        "source_id": "budget.measure_request_bytes",
+                        "rank": 7,
+                        "distance": 0.8507057606332576,
+                        "relevant": false,
+                        "in_top_k": false
+                    },
+                    {
+                        "source_id": "scope.verify_revision",
+                        "rank": 8,
+                        "distance": 0.8899989333750081,
+                        "relevant": false,
+                        "in_top_k": false
+                    }
+                ],
+                "nearest_distance": 0.7846091348398748,
+                "first_second_gap": 0.005741123510491497
+            },
+            {
+                "query_id": "absent-related",
+                "status": "ok",
+                "answerable": false,
+                "candidates": [
+                    {
+                        "source_id": "budget.measure_request_bytes",
+                        "rank": 1,
+                        "distance": 0.7098013758659363,
+                        "relevant": false,
+                        "in_top_k": true
+                    },
+                    {
+                        "source_id": "scope.verify_revision",
+                        "rank": 2,
+                        "distance": 0.7191342115402222,
+                        "relevant": false,
+                        "in_top_k": true
+                    },
+                    {
+                        "source_id": "budget.check_request_budget",
+                        "rank": 3,
+                        "distance": 0.722859786578429,
+                        "relevant": false,
+                        "in_top_k": true
+                    },
+                    {
+                        "source_id": "history.restore_history",
+                        "rank": 4,
+                        "distance": 0.7819325216928135,
+                        "relevant": false,
+                        "in_top_k": false
+                    },
+                    {
+                        "source_id": "control.cancellation_checkpoint",
+                        "rank": 5,
+                        "distance": 0.7882992923259735,
+                        "relevant": false,
+                        "in_top_k": false
+                    },
+                    {
+                        "source_id": "control.cancel_task",
+                        "rank": 6,
+                        "distance": 0.7932205919491888,
+                        "relevant": false,
+                        "in_top_k": false
+                    },
+                    {
+                        "source_id": "history.save_turn",
+                        "rank": 7,
+                        "distance": 0.8197786211967468,
+                        "relevant": false,
+                        "in_top_k": false
+                    },
+                    {
+                        "source_id": "scope.authorize_workspace",
+                        "rank": 8,
+                        "distance": 0.8373084317835697,
+                        "relevant": false,
+                        "in_top_k": false
+                    }
+                ],
+                "nearest_distance": 0.7098013758659363,
+                "first_second_gap": 0.009332835674285889
+            }
+        ],
+        "groups": {
+            "nearest_answerable": {
+                "count": 6,
+                "min": 0.2425580313870891,
+                "max": 0.4763674480258012,
+                "mean": 0.3740883157274268
+            },
+            "nearest_no_answer": {
+                "count": 2,
+                "min": 0.7098013758659363,
+                "max": 0.7846091348398748,
+                "mean": 0.7472052553529056
+            },
+            "relevant_candidates": {
+                "count": 12,
+                "min": 0.2425580313870891,
+                "max": 0.5884414963985374,
+                "mean": 0.4161133476444406
+            },
+            "irrelevant_candidates": {
+                "count": 52,
+                "min": 0.4398198914205824,
+                "max": 0.9032711088657379,
+                "mean": 0.7274514484074711
+            }
+        },
+        "limits": [
+            "distance is not confidence",
+            "descriptive only; no threshold selected",
+            "candidate samples from the same query are not independent",
+            "labels never change ranking or provider requests"
+        ]
+    },
+    "limitations": [
+        "no calibrated provider abstention",
+        "cost unknown",
+        "query usage unknown when failure occurs before combined result"
+    ],
+    "mode": "real",
+    "execution": {
+        "date": "2026-10-10",
+        "timezone": "Asia/Shanghai",
+        "provider": "Alibaba Cloud Model Studio, Beijing",
+        "scope": "fixed v1 learning corpus; fresh isolated PostgreSQL; no user project indexing",
+        "requests_this_run": 9,
+        "billing": "reported tokens only; actual billed cost unknown"
+    }
+}
