@@ -1,5 +1,13 @@
 # ChatSearch：Checkpoint 语义与一致性
 
+范围：本页的 checkpoint 指**前端 SSE 续传游标**；后文跨进程指页面、WebView 或浏览器进程。Python Agent 的 BOS Checkpoint 与跨 worker 恢复见[后端核对专题](chatsearch-ai-fullstack-interview.md)，不能由前端内存游标推导后端恢复能力。
+
+## 服务端语义补充（2026-10-23 恢复）
+
+当前本地网关 `f9ad9e1` 的 resolveStartID 区分 Header（上一条，exclusive）与 body checkpoint.seq_id（下一条，inclusive）。例如前端收到 10 后传 body=11，网关用 10-0 作为 XREAD 起点。Header 优先且不做减一。对应 G5 有边界测试源码，本次未执行。
+
+这只修复连接恢复起点，不能把下文客户端 maxSeqId 提升为业务提交水位。坏包跳过、Redis 裁剪和业务消费失败仍须分开处理。见[工作全栈题](chatsearch-fullstack-interview.md)与[Redis 知识题](../backend/distributed/redis-stream-delivery.md)。
+
 > **阅读边界：**第 1～5 节描述【当前实现】及其缺口；第 6～9 节是【改进建议】；第 10 节区分当前进程内恢复与跨进程恢复。面试时不能把改进后的幂等账本和原子事务说成已经上线。
 
 <details>

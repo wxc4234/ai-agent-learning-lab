@@ -1,5 +1,21 @@
 # 面试题库（AI 全栈工程师 · 社招）
 
+## 项目复习入口（2026-10-23 恢复）
+
+目标岗位：**AI 全栈开发工程师**。工作项目与独立学习项目分开维护，后端是核心准备方向。
+
+| 入口 | 用途 |
+| --- | --- |
+| [项目索引](projects/README.md) | 工作经历、协作后端源码理解、学习项目证据的分工 |
+| [Agent 执行、Checkpoint 与工具调度最新核对](projects/chatsearch-ai-fullstack-interview.md) | 20 道项目题与 7 个知识专题；P 固定为 77d5befe |
+| [ChatSearch 全栈任务链路](projects/chatsearch-fullstack-interview.md) | Go 网关、Redis、续传、取消、历史事务与系统设计 |
+| [技能输入契约](projects/chatsearch-skill-contract.md) | 原文、结构化身份、上传与重答一致性 |
+| [源码版本与证据](projects/chatsearch-source-baseline.md) | 三个后端仓库、本地业务引用与未验证边界 |
+| [后端知识](backend/README.md) / [Agent 知识](ai/README.md) | 原理、取舍、失败路径及项目反向链接 |
+| [Learning Lab 独立证据](projects/learning-lab-evidence.md) | 本地 Coding Agent 学习实践，不冒充工作成果 |
+
+恢复专题均为“参考答案已整理、尚未模拟”。下方课程题导航继续服务学习项目，不作为 ChatSearch 已实现能力。
+
 第五周重要考点：[多文件持久恢复、目录锁与隔离副本导出](backend/web/workspace-directory.md#多文件变更怎样在数据库与文件系统之间恢复)；参考答案已整理、尚未模拟。
 
 面向「AI 全栈工程师」社招面试的系统化题库，覆盖算法、前端、后端、AI / LLM、系统设计、项目复盘、行为面试七个维度。
@@ -60,8 +76,8 @@ interview-questions/
 
 | 优先级 | 目录 | 精力占比 | 说明 |
 | --- | --- | --- | --- |
-| **P0 核心** | `ai/` `system-design/` `projects/` | 60% | AI 岗的区分项，面试重头戏 |
-| **P1 保底** | `frontend/` `backend/` | 25% | 全栈底座，服务于 AI 场景，够用即可 |
+| **P0 核心** | `ai/` `backend/` `system-design/` `projects/` | 70% | Agent、服务端数据与并发、项目系统设计共同构成全栈能力 |
+| **P1 优势** | `frontend/` | 15% | 保持交互、状态与工程化优势 |
 | **P2 补强** | `algorithms/` `behavioral/` | 15% | 算法 Medium 为主；BQ 面试前突击 |
 
 ## 知识点 vs 项目：为什么不合并

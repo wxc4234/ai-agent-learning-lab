@@ -1,5 +1,11 @@
 # ChatSearch：SSE 中断与断点续传
 
+## 服务端语义补充（2026-10-23 恢复）
+
+当前本地网关 `f9ad9e1` 的 resolveStartID 区分 Header（上一条，exclusive）与 body checkpoint.seq_id（下一条，inclusive）。例如前端收到 10 后传 body=11，网关用 10-0 作为 XREAD 起点。Header 优先且不做减一。对应 G5 有边界测试源码，本次未执行。
+
+这只修复连接恢复起点，不能把下文客户端 maxSeqId 提升为业务提交水位。坏包跳过、Redis 裁剪和业务消费失败仍须分开处理。见[工作全栈题](chatsearch-fullstack-interview.md)与[Redis 知识题](../backend/distributed/redis-stream-delivery.md)。
+
 > **难点一句话：**SSE 回调是异步到达的，页面“当前轮次”却会随用户操作立即变化；网络重连还涉及确认点、去重与序号缺口，因此必须同时解决旧请求污染和续传一致性。
 
 > **阅读提示：**本章重点讲【当前实现】如何隔离旧回调和计算续传序号；checkpoint 是否真正不重不漏，请直接看“深挖 B”。

@@ -1,6 +1,21 @@
 # 后端
 
-全栈底座之一。以本项目技术栈（Python / FastAPI / PostgreSQL / pgvector / Redis / Docker）为主线，兼顾通用后端面试题。
+后续执行细节与新旧版本区别见[Agent 执行、Checkpoint 与工具调度核对](../projects/chatsearch-ai-fullstack-interview.md)（源码核对 2026-10-22，P：77d5befe）。本页仅作分类导航，答案在对应专题维护。
+
+## AI 全栈 P0 知识题（2026-10-23 恢复）
+
+工作后端涉及 Go 网关、MySQL 历史 DAO、Redis Stream 和 Python Agent；学习项目使用 FastAPI/PostgreSQL 等技术，两类证据分别标识。
+
+| 题目 | 项目关联 | 状态 |
+| --- | --- | --- |
+| [Redis Stream、游标与投递语义](distributed/redis-stream-delivery.md) | 工作：agent-gateway | P0；参考答案已整理、尚未模拟 |
+| [Go/Python 取消与资源所有权](concurrency/cancellation-and-resource-ownership.md) | 工作链路＋学习项目独立对照 | P0；参考答案已整理、尚未模拟 |
+| [事务、索引与缓存一致性](database/transactions-indexes-cache.md) | 工作：assistant-ui-go；学习：PG 对照 | P0；参考答案已整理、尚未模拟 |
+| [Agent Checkpoint 与副作用](../ai/agent/checkpoint-and-tool-effects.md) | 工作：pl-agent 业务快照 | P0；参考答案已整理、尚未模拟 |
+
+[完整项目题](../projects/chatsearch-fullstack-interview.md)从业务现象切入，本页专题补原理；下方既有课程题以学习项目为主。
+
+后端是 AI 全栈岗位的核心能力。结合工作服务的真实边界与学习项目的可运行实践准备，覆盖数据建模、事务、并发、网络、授权、恢复与可观测。
 
 准备重点：面试常**从项目切入**（如「这个 RAG 为什么选 pgvector」「会话怎么落库」），抓与 **Agent 后端**强相关的原理（数据库 / 缓存 / 并发 / API 设计），传统深度八股（JVM、手写锁）可少放。
 

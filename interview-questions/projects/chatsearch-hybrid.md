@@ -383,7 +383,7 @@ cacheValid = Date.now() <= expireAt
 
 ## 10. 异步初始化屏障与最小 Store 同步
 
-`chat.main.san` 中的实际顺序是：
+`chat.main.ts` 中的实际顺序是：
 
 ```text
 chat-start

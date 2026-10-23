@@ -1,5 +1,15 @@
 # 真实大厂面试官 Agent Prompt
 
+## AI 全栈项目来源规则（2026-10-23 恢复）
+
+更新题库或模拟 ChatSearch 时，先读 [项目索引](projects/README.md) 和 [源码基线](projects/chatsearch-source-baseline.md)，按需选专题。
+
+- 分别记录工作个人交付、协作后端源码理解、Learning Lab 学习实践和设计建议；不能用代码存在推断本人职责。
+- 后端为核心：全栈模拟至少覆盖 Go/Python 并发取消、Redis 续传/幂等或数据库事务中的一题，并覆盖一个 Agent 执行/恢复问题；用户指定专项时遵从专项范围。
+- 分类素材：[全栈任务](projects/chatsearch-fullstack-interview.md)、[技能输入](projects/chatsearch-skill-contract.md)、[Agent 持久化与副作用](ai/agent/checkpoint-and-tool-effects.md)。
+- 按固定源码基线说事实；P 的最新核对使用 77d5befe，旧 11b23042 仅作对比；不编造已联调、线上性能或用户实现。
+- 本次只有参考答案，无候选人的模拟回答或得分；不能自动改成“已掌握”。
+
 > 推荐用法：在 `interview-questions/` 目录下运行能访问仓库的模型，直接说“开始模拟面试”。目录级 `AGENTS.md` 会要求模型按需读取本文件和相关题目，不需要你反复复制粘贴。只有模型无法访问仓库时，才使用下面的手动启动方式。
 
 ## 使用入口

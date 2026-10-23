@@ -1,5 +1,13 @@
 # AI Agent 岗位面试作战手册：准备路线与 Codex 模拟面试
 
+## 本轮准备策略更新（2026-10-23 恢复）
+
+目标统一为 **AI 全栈开发工程师**。后端事务、并发、事件恢复与 Agent 执行进入 P0，不再仅作保底。项目依据扩展为 [ChatSearch＋三个协作服务源码](projects/chatsearch-source-baseline.md)，独立学习项目见[证据导航](projects/learning-lab-evidence.md)。
+
+优先复习[全栈任务题](projects/chatsearch-fullstack-interview.md)、[技能契约](projects/chatsearch-skill-contract.md)、[Redis](backend/distributed/redis-stream-delivery.md)、[取消](backend/concurrency/cancellation-and-resource-ownership.md)、[事务](backend/database/transactions-indexes-cache.md)和[Agent 恢复](ai/agent/checkpoint-and-tool-effects.md)。后文旧训练建议中涉及自动安排每周模拟或课程检查的内容仅供参考，不代表已授权创建自动任务，也不改变学习完成门槛。
+
+一场全栈模拟至少抽一个后端原理与失败场景、一个 Agent 执行题；先核对个人职责，再讨论代码。Agent 执行、Checkpoint 与工具调度以[最新核对专题](projects/chatsearch-ai-fullstack-interview.md)为准，源码日期不等于线上现状。
+
 > 适用方向：AI Agent 前端工程师、AI Agent 应用开发工程师（偏前端）、Agent 产品工程师、AI Agent 全栈应用工程师<br>
 > 项目依据：`chat-search/packages/chat-search` 与本仓库 `apps/`、`interview-questions/`<br>
 > 制定时间：2026-09-07
@@ -99,12 +107,18 @@
 - 如何回答“你怎么知道改动以后变好了”和“你怎么知道评测可信”。
 - 超时、重试、幂等、权限、Prompt Injection、成本上限怎么处理。
 
+#### D. 后端核心题
+
+- [Go/Python 并发与取消](backend/concurrency/cancellation-and-resource-ownership.md)：事件循环、线程、资源所有权与超时未知。
+- [Redis 事件投递与续传](backend/distributed/redis-stream-delivery.md)：游标、ACK、幂等、保留窗口与容量。
+- [事务、索引与缓存一致性](backend/database/transactions-indexes-cache.md)：数据库提交、外部副作用和故障恢复边界。
+- [Agent 执行、Checkpoint 与工具调度](projects/chatsearch-ai-fullstack-interview.md)：按固定源码版本讲创建、恢复和工具执行，工作理解与学习实践分开。
+
 ### P1：保证不会明显失分
 
 - JavaScript / TypeScript：事件循环、Promise、类型收窄、泛型、内存泄漏。
 - 浏览器与网络：渲染流程、HTTP、缓存、跨域、安全、ReadableStream、AbortController。
 - 前端工程：组件边界、状态管理、monorepo、构建拆包、性能指标、测试策略。
-- 后端基础：FastAPI、asyncio、数据库事务与索引、Redis、鉴权与幂等。
 - 系统设计：需求澄清、容量、数据流、失败路径、可观测、演进。
 - 行为面试：所有故事保持同一条职业叙事。
 

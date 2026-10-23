@@ -229,7 +229,7 @@ allSseEnded = false
 
 此时前端不会误判正常完成，而是继续等待；后续只能由 B 的完成包、网络异常、用户停止或超时降级路径来收敛。用户停止和异常中断时，前端会主动把未完成分支设置为 `ABORT`，并人工补齐 ended/finished，这不代表服务端真的返回了 `endTurn`，而是业务层明确进入中断终态。
 
-当前 `generate.san` 还保留了一个兼容兜底：收到 `endTurn=true` 但没有 `compareIdx` 时，会把所有分支标记为 ended。按照现有协议“对比包必须携带 compareIdx”，这个分支理论上不应该命中。更严格的实现应当把它视为协议异常，执行上报并等待异常收口，而不是直接推断所有分支完成，否则畸形包可能提前打开 Network Barrier。
+当前 `generate/index.ts` 还保留了一个兼容兜底：收到 `endTurn=true` 但没有 `compareIdx` 时，会把所有分支标记为 ended。按照现有协议“对比包必须携带 compareIdx”，这个分支理论上不应该命中。更严格的实现应当把它视为协议异常，执行上报并等待异常收口，而不是直接推断所有分支完成，否则畸形包可能提前打开 Network Barrier。
 
 另外，`request-actions.ts` 的传输层使用 `Set<number>` 记录完成分支，并以 `set.size >= expectedBranches` 判断网络层完成。这同样依赖服务端保证 `compareIdx` 合法；如果收到 `0` 和异常索引 `7`，Set 的数量也可能达到 2。渲染层已经有索引越界检查，更稳妥的做法是传输层也先验证 `0 <= compareIdx < expectedBranches`，并最终检查预期索引集合，而不只检查 Set 大小。
 

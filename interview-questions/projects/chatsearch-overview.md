@@ -1,5 +1,15 @@
 # ChatSearch 项目总览与全链路
 
+Agent 执行、后端 Checkpoint 与工具调度的后续核对见[统一专题](chatsearch-ai-fullstack-interview.md)；本页保留前端专项材料，本次未逐项重新验收。
+
+## 2026-10-22 全栈口径更新
+
+以 [源码基线](chatsearch-source-baseline.md) 和 [全栈任务题](chatsearch-fullstack-interview.md) 为本轮跨服务事实入口。后文保留的详细前端讲稿不是三个后端的完整实现说明，也未在本轮重新执行全部专题验收。
+
+30 秒版本：ChatSearch 是多端 AI 搜索与助手产品，前端负责问题输入、流式回答、任务状态和结构化渲染。普通 conversation 关联 assistant-ui-go，任务模式关联 Go agent-gateway；网关把长任务执行与浏览器订阅解耦，经 Redis Stream 回放事件。Python pl-agent 的固定业务快照展示了 Agent 执行和挂起恢复。我的个人交付与后端协作理解分别说明，再用独立 Learning Lab 证明自己的服务端实践。
+
+建议主讲：[技能契约](chatsearch-skill-contract.md) → [任务网关与恢复](chatsearch-fullstack-interview.md) → [Agent 副作用](../ai/agent/checkpoint-and-tool-effects.md)。SSE、双答案、Hybrid 和构建继续作为前端深挖，不再是全部项目准备范围。
+
 > 这是一份“分层使用”的面试讲稿，不需要从头背到尾。先用速讲版建立项目认知，面试官追问后再进入对应专题；代码级状态、伪代码和改进方案统一放在深挖区。
 
 ## 0. 怎么使用这份文档
@@ -16,7 +26,7 @@
 
 后文会区分三类内容，避免把现状和理想方案混在一起：
 
-- **【当前实现】**：能在当前仓库代码中直接核对；
+- **【当前实现】**：能在 ChatSearch 前端代码库中直接核对；
 - **【协同方案】**：前端与 Native/服务端共同设计，但实现不完全在本仓库；
 - **【改进建议】**：针对现状缺口给出的更严格方案，不能说成已经上线。
 
@@ -1004,8 +1014,8 @@ completeHandle
 | 层次 | 主要位置 | 负责什么 |
 |---|---|---|
 | SSE 协议层 | `packages/chat-sse` | 把字节流解析成 waiting、message、complete、abort |
-| 回答业务编排 | `chat-answer/answer-generate/components/generate.san` | 识别 generator、分支和 section，把包送入正确 AI Container |
-| 渲染运行时 | `chat-search/.../ai-entry/index.san` | Block 规范化、组件匹配、队列、组件复用和完成确认 |
+| 回答业务编排 | `chat-answer/answer-generate/components/generate/index.ts` | 识别 generator、分支和 section，把包送入正确 AI Container |
+| 渲染运行时 | `chat-search/.../ai-entry/index.ts` | Block 规范化、组件匹配、队列、组件复用和完成确认 |
 | 通用画布组件库 | `packages/chat-huabu` | Markdown、图表、图片、医疗卡片等组件，以及组件访问主应用能力的 API |
 | 基础 UI | Cosmic/Cosmic-DQA 等 | Markdown、Chart、Image 等底层视觉组件 |
 
@@ -1486,12 +1496,12 @@ send-prompt
 | HTML 壳与入口 | `packages/chat-search/search.html`、`search-pc.html` |
 | BaseData 读取与页面 Store | `packages/chat-util/util/get-data-form-dom.ts`、`packages/chat-search/src/client/store/index.ts` |
 | 客户端启动 | `pages/chat-search/bootstrap.ts`、`pages/chat-search-pc/bootstrap.ts` |
-| 根容器、路由、首页和 Chat 页 | `component/chat-container/index.san`、`index.pc.san`、`chat-home-pc.ts`、`chat.main.san`、`chat-main-pc.san`、`service/route.ts` |
+| 根容器、路由、首页和 Chat 页 | `component/chat-container/index.ts`、`index.pc.ts`、`chat-home-pc.ts`、`chat.main.ts`、`chat-main-pc.ts`、`service/route.ts` |
 | 对话视图注入 | `packages/chat-search/src/client/service/chatstream.ts` |
 | QAPair 与 ChatBody | `packages/chat-stream/src/index.ts`、`components/chat-body/index.ts`、`components/item-render/assistant-render-manager.ts` |
 | 请求和 SSE | `packages/chat-stream/src/actions/request-actions.ts`、`request-service.ts`、`packages/chat-sse/src/chat-sse.ts` |
-| 回答协议处理 | `packages/chat-search/src/client/component/chat-answer/index.ts`、`answer-generate/components/generate.san` |
-| 组件选择与增量渲染 | `answer-generate/components/ai-container.san`、`ai-entry/index.san` |
+| 回答协议处理 | `packages/chat-search/src/client/component/chat-answer/index.ts`、`answer-generate/components/generate/index.ts` |
+| 组件选择与增量渲染 | `answer-generate/components/ai-container/index.ts`、`ai-entry/index.ts` |
 | Huabu 注册表与通用组件 | `packages/chat-huabu/index.ts`、`packages/chat-huabu/components/*` |
 | Huabu 主应用能力注入 | `packages/chat-huabu/assistant.ts`、`packages/chat-search/src/client/module/assistant.ts` |
 

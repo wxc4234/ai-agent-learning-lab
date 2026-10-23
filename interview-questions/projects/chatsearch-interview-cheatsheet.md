@@ -1,5 +1,19 @@
 # ChatSearch：面试速查
 
+Agent 执行、后端 Checkpoint 与工具调度的后续核对见[统一专题](chatsearch-ai-fullstack-interview.md)；本页保留前端专项材料，本次未逐项重新验收。
+
+## AI 全栈复习顺序
+
+1. [源码基线](chatsearch-source-baseline.md)：说清工作交付、后端协作理解和学习项目的区别。
+2. [全栈任务链路](chatsearch-fullstack-interview.md)：准备 Go / Redis / MySQL 的失败路径。
+3. [技能契约](chatsearch-skill-contract.md)：原文、身份、快照、跨语言坐标。
+4. [Agent 恢复](../ai/agent/checkpoint-and-tool-effects.md)：区分传输回放、执行恢复和副作用幂等。
+5. [学习项目](learning-lab-evidence.md)：用独立实践补 API、数据库和 RAG 证据。
+
+新增高频自检方向（复习建议，不是公开面试频率统计）：body checkpoint 的下一条序号需要减一交给 XREAD；XADD 后 ACK 不等于 exactly-once；断订阅不等于停止任务；事务不包含外部模型或 Redis；Checkpointer 有持久化触发点和内存降级边界。
+
+以下为保留的前端速查；本次恢复不代表重新执行所有专题验收，完整源码版本与未验证边界以上述基线为准。
+
 ## 1. 项目总收口
 
 > 这个项目有价值的地方不是简单使用了 SSE、离线包或状态机，而是解决了复杂异步链路中的一致性与性能冲突。我的处理方式不是假设事件会按理想顺序发生，而是先定义数据归属、完成条件和系统不变量，再让正常、停止、重连和异常路径收敛到明确状态。
@@ -11,7 +25,7 @@
 | 多个回答分支异步结束 | 稳定路由＋双重完成屏障＋幂等收口 |
 | 新旧请求回调交叉 | 回调绑定稳定 QAPair id，不依赖当前下标 |
 | 网络速度快于 DOM | 消费队列＋组件 ack＋应用层背压 |
-| checkpoint 语义不严格 | 当前明确为 best-effort；严格方案使用连续业务提交水位 |
+| 前端 SSE 游标 checkpoint 语义不严格 | 当前明确为 best-effort；严格方案使用连续业务提交水位 |
 | Hybrid 静态资源与动态数据冲突 | 离线包＋BaseData SWR＋初始化屏障＋发送前恢复 |
 | 大型项目构建和首屏资源膨胀 | Vite/Rolldown＋依赖分层＋按需加载与精准预载 |
 
@@ -42,7 +56,7 @@ R：线上指标、问题量或稳定性变化
 | 主题 | 主要实现位置 | 职责 |
 |---|---|---|
 | HTML 壳与 BaseData | `packages/chat-search/search.html`、`search-pc.html`、`packages/chat-util/util/get-data-form-dom.ts` | 提供 `#app`、读取 head 中的 JSON 启动数据 |
-| 启动与路由 | `packages/chat-search/src/client/pages/chat-search*/bootstrap.ts`、`component/chat-container/index*.san`、`service/route.ts` | attach 根容器，根据平台和 URL 挂载 Home/Chat |
+| 启动与路由 | `packages/chat-search/src/client/pages/chat-search*/bootstrap.ts`、`component/chat-container/index*.ts`、`service/route.ts` | attach 根容器，根据平台和 URL 挂载 Home/Chat |
 | 首屏业务分支 | `packages/chat-search/src/client/component/chat-container/chat-init*.ts` | 选择引导内容、历史、query 自动请求或 frame 预加载 |
 | ChatBody 组件树 | `packages/chat-search/src/client/service/chatstream.ts`、`packages/chat-stream/src/components/chat-body/index.ts` | 注入业务组件，把 QAPair 映射为 Question/Answer |
 | Answer 实例复用 | `packages/chat-stream/src/components/item-render/assistant-render-manager.ts`、`packages/chat-search/src/client/component/chat-answer/index.ts` | 复用 Answer，只处理新增 `answerData` |
@@ -51,16 +65,16 @@ R：线上指标、问题量或稳定性变化
 | SSE 协议处理 | `packages/chat-sse/src/chat-sse.ts` | JSON 解析、序号记录、reconnect、完成分类 |
 | QAPair 与续传 | `packages/chat-stream/src/actions/request-actions.ts` | 请求实例、回调绑定、checkpoint 和重试 |
 | 按业务实体更新 | `packages/chat-stream/src/actions/chat-stream-actions.ts` | 根据 QAPair id 查找并更新轮次 |
-| 双答案编排 | `packages/chat-search/src/client/component/chat-answer/answer-generate/components/generate.san` | 分支路由、完成屏障和异常收口 |
+| 双答案编排 | `packages/chat-search/src/client/component/chat-answer/answer-generate/components/generate/index.ts` | 分支路由、完成屏障和异常收口 |
 | 双答案状态逻辑 | `packages/chat-search/src/client/service/compare.ts` | 状态机、完成策略和幂等判定 |
-| Block 渲染队列 | `packages/chat-search/src/client/component/chat-answer/answer-generate/components/ai-entry/index.san` | 入队、合并、消费、ack 和渲染完成 |
+| Block 渲染队列 | `packages/chat-search/src/client/component/chat-answer/answer-generate/components/ai-entry/index.ts` | 入队、合并、消费、ack 和渲染完成 |
 | Huabu 组件注册 | `packages/chat-huabu/index.ts` | 将 Markdown、Chart、Image 和业务卡片注册为 `ai-*` 组件 |
 | Huabu 组件实现 | `packages/chat-huabu/components/*` | 处理各自数据、交互和 render/typing-finished 契约 |
 | Huabu 能力注入 | `packages/chat-huabu/assistant.ts`、`packages/chat-search/src/client/module/assistant.ts` | 将请求、日志、上下文、预览和工作区能力注入通用组件 |
 | Hybrid BaseData | `packages/chat-search/src/client/service/base-data.ts` | SWR、共享请求、重试和 ensureToken |
 | BaseData 缓存 | `packages/chat-util/util/get-data-form-dom.ts` | 内存缓存、localStorage 和过期判断 |
 | 实验一致性 | `packages/chat-search/src/client/service/na-exp-vars.ts` | `nev` 收集、请求拼接和等价判断 |
-| Hybrid 初始化屏障 | `packages/chat-search/src/client/component/chat-container/chat.main.san` | BaseData 尝试完成后初始化 ChatStream |
+| Hybrid 初始化屏障 | `packages/chat-search/src/client/component/chat-container/chat.main.ts` | BaseData 尝试完成后初始化 ChatStream |
 | Store 最小同步 | `packages/chat-search/src/client/store/index.ts` | 只同步 BaseData 派生字段 |
 | GuideData 复用 | `packages/chat-search/src/client/service/context-init.ts` | 复用 BaseData，失败回退原接口 |
 | Hybrid 构建 | `packages/chat-search/scripts/vite/vite-hybrid-plugin.ts` | ZIP、版本、MD5、资源映射和 manifest |

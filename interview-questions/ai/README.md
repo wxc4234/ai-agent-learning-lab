@@ -1,6 +1,12 @@
 # AI / LLM 原理
 
-社招 AI 岗的**核心区分项**。这里补的是 `LEARNING_CURRICULUM.md` 没覆盖的**原理层**问题——Transformer、微调、推理部署、评测等；应用层的 Agent/MCP/RAG pipeline 题继续看那份文件的第 4 章。
+后续执行细节与新旧版本区别见[Agent 执行、Checkpoint 与工具调度核对](../projects/chatsearch-ai-fullstack-interview.md)（源码核对 2026-10-22，P：77d5befe）。本页仅作分类导航，答案在对应专题维护。
+
+## Agent 工程重点
+
+[Agent Loop、Checkpoint 与工具副作用](agent/checkpoint-and-tool-effects.md)：5 道核心追问，关联工作项目 pl-agent 的本地业务快照，并单独链接 Learning Lab 的运行与评测证据。P0；参考答案已整理、尚未模拟。
+
+社招 AI 岗的**核心区分项**。这里补的是 `LEARNING_CURRICULUM.md` 没覆盖的**原理层**问题——Transformer、微调、推理部署、评测等；应用层任务与验收导航见课程大纲；本目录维护可复习的完整答案，并区分工作项目源码与学习项目证据。
 
 ## 主题分类
 
